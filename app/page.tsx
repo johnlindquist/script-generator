@@ -4,6 +4,84 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
+import ScriptCard from "@/components/ScriptCard"
+
+interface ScriptGenerationFormProps {
+  prompt: string
+  setPrompt: (prompt: string) => void
+  isGenerating: boolean
+  error: string | null
+  generatedScript: string
+  onSubmit: (e: React.FormEvent) => Promise<void>
+}
+
+const ScriptGenerationForm = ({
+  prompt,
+  setPrompt,
+  isGenerating,
+  error,
+  generatedScript,
+  onSubmit
+}: ScriptGenerationFormProps) => (
+  <div className="mb-12">
+    <h2 className="text-2xl font-bold mb-6">Generate New Script</h2>
+    <form onSubmit={onSubmit} className="max-w-2xl">
+      <div className="mb-6">
+        <label
+          htmlFor="prompt"
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Describe your script idea
+        </label>
+        <textarea
+          id="prompt"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          disabled={isGenerating}
+          className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
+          required
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isGenerating}
+        className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+          isGenerating ? "cursor-wait" : ""
+        }`}
+      >
+        {isGenerating ? "Generating..." : "Generate Script"}
+      </button>
+    </form>
+
+    {error && (
+      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <h3 className="font-semibold mb-2">Error</h3>
+        <p className="whitespace-pre-wrap">{error}</p>
+      </div>
+    )}
+
+    {generatedScript && (
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Generated Script:</h2>
+        <div className="relative mb-2">
+          <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+            <code>{generatedScript}</code>
+          </pre>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(generatedScript)
+            }}
+            className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded shadow hover:bg-blue-600"
+          >
+            Copy
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -72,57 +150,6 @@ export default function Home() {
       .catch(console.error)
   }, [])
 
-  const ScriptGenerationForm = () => (
-    <div className="mb-12">
-      <h2 className="text-2xl font-bold mb-6">Generate New Script</h2>
-      <form onSubmit={handleGenerate} className="max-w-2xl">
-        <div className="mb-6">
-          <label
-            htmlFor="prompt"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Describe your script idea
-          </label>
-          <textarea
-            id="prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={isGenerating}
-            className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isGenerating}
-          className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-            isGenerating ? "cursor-wait" : ""
-          }`}
-        >
-          {isGenerating ? "Generating..." : "Generate Script"}
-        </button>
-      </form>
-
-      {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          <h3 className="font-semibold mb-2">Error</h3>
-          <p className="whitespace-pre-wrap">{error}</p>
-        </div>
-      )}
-
-      {generatedScript && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Generated Script:</h2>
-          <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
-            <code>{generatedScript}</code>
-          </pre>
-        </div>
-      )}
-    </div>
-  )
-
   return (
     <main className="container mx-auto px-4 py-8">
       <NavBar isAuthenticated={!!session} />
@@ -130,7 +157,14 @@ export default function Home() {
       {/* Script Generation Form */}
       {status === "authenticated" ? (
         <Auth>
-          <ScriptGenerationForm />
+          <ScriptGenerationForm
+            prompt={prompt}
+            setPrompt={setPrompt}
+            isGenerating={isGenerating}
+            error={error}
+            generatedScript={generatedScript}
+            onSubmit={handleGenerate}
+          />
         </Auth>
       ) : status === "unauthenticated" ? (
         <div className="mb-12 text-center">
@@ -148,33 +182,12 @@ export default function Home() {
         <h2 className="text-2xl font-bold mb-6">Your Scripts</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {scripts.map((script) => (
-            <div
+            <ScriptCard
               key={script.id}
-              className="border rounded-lg p-6 bg-white shadow-sm"
-            >
-              <h2 className="text-xl font-semibold mb-2">{script.title}</h2>
-              <p className="text-gray-600 mb-4">
-                by {script.owner.username} • {new Date(script.createdAt).toLocaleDateString()}
-              </p>
-              <pre className="bg-gray-50 p-4 rounded overflow-x-auto">
-                <code>{script.content.slice(0, 200)}...</code>
-              </pre>
-              <div className="mt-4 flex justify-between items-center">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(script.content)
-                  }}
-                  className="text-blue-500 hover:text-blue-600"
-                >
-                  Copy Script
-                </button>
-                {session?.user?.id && (
-                  <button className="text-yellow-500 hover:text-yellow-600">
-                    {script.starred ? "★ Starred" : "☆ Star"}
-                  </button>
-                )}
-              </div>
-            </div>
+              script={script}
+              isAuthenticated={!!session}
+              currentUserId={session?.user?.id}
+            />
           ))}
         </div>
       </div>
