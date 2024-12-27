@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
@@ -14,6 +14,7 @@ import {
   DocumentCheckIcon, 
   ArrowPathIcon 
 } from "@heroicons/react/24/solid"
+import debounce from "lodash.debounce"
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -54,126 +55,153 @@ const ScriptGenerationForm = ({
   setEditableScript,
   onSubmit,
   onSave
-}: ScriptGenerationFormProps) => (
-  <div className="mb-12">
-    <h2 className="text-2xl font-bold mb-6">
-      {isGenerating ? (
-        <span>
-          Generating Script<LoadingDots />
-        </span>
-      ) : generatedScript ? (
-        "Edit Generated Script"
-      ) : (
-        "Generate New Script"
-      )}
-    </h2>
-    {!generatedScript && (
-      <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <label
-            htmlFor="prompt"
-            className="block text-sm font-medium text-slate-300 mb-2"
-          >
-            Describe your script idea
-          </label>
-          <textarea
-            id="prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                onSubmit(e as any);
-              }
-            }}
-            disabled={isGenerating}
-            className="w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
-            required
-          />
-          <ScriptSuggestions setPrompt={setPrompt} />
-        </div>
+}: ScriptGenerationFormProps) => {
+  const editorRef = useRef<any>(null);
+  const prevIsGeneratingRef = useRef(isGenerating);
 
-        <button
-          type="submit"
-          disabled={isGenerating}
-          className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-            isGenerating ? "cursor-wait" : ""
-          }`}
-        >
-          {isGenerating ? (
-            <>
-              <ArrowPathIcon className="w-5 h-5 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <RocketLaunchIcon className="w-5 h-5" />
-              Generate Script
-            </>
-          )}
-        </button>
-      </form>
-    )}
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
+  };
 
-    {error && (
-      <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
-        <h3 className="font-semibold mb-2">Error</h3>
-        <p className="whitespace-pre-wrap">{error}</p>
-      </div>
-    )}
+  // Scroll while generating
+  useEffect(() => {
+    if (editorRef.current && isGenerating) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        const lineCount = model.getLineCount();
+        editorRef.current.revealLine(lineCount);
+      }
+    }
+  }, [editableScript, isGenerating]);
 
-    {generatedScript && (
-      <div className="mt-8">
-        <div className="relative mb-2">
-          <div className="bg-gray-900 rounded-lg overflow-hidden">
-            <div className="w-full h-[600px] relative">
-              <Editor
-                height="100%"
-                defaultLanguage="typescript"
-                value={editableScript}
-                onChange={(value) => setEditableScript(value || "")}
-                options={monacoOptions}
-                beforeMount={initializeTheme}
-                theme="night-owl"
-              />
-            </div>
+  // Final scroll when generation completes
+  useEffect(() => {
+    if (prevIsGeneratingRef.current && !isGenerating && editorRef.current) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        const lineCount = model.getLineCount();
+        editorRef.current.revealLine(lineCount);
+      }
+    }
+    prevIsGeneratingRef.current = isGenerating;
+  }, [isGenerating]);
+
+  return (
+    <div className="mb-12">
+      <h2 className="text-2xl font-bold mb-6 text-center">
+        {isGenerating ? (
+          <span>
+            Generating Script<LoadingDots />
+          </span>
+        ) : generatedScript ? (
+          "Edit Generated Script"
+        ) : (
+          "Enter Your Script Idea"
+        )}
+      </h2>
+      {!generatedScript && (
+        <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <textarea
+              id="prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  onSubmit(e as any);
+                }
+              }}
+              disabled={isGenerating}
+              className="w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
+              required
+            />
+            <ScriptSuggestions setPrompt={setPrompt} />
           </div>
-          {!isGenerating && (
-            <div className="absolute bottom-4 right-4 flex gap-2">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(editableScript)
-                }}
-                className="bg-gradient-to-tr from-cyan-300 to-cyan-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-              >
-                <ClipboardIcon className="w-5 h-5" />
-                Copy Script
-              </button>
-              <button
-                onClick={onSave}
-                className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-              >
-                <DocumentCheckIcon className="w-5 h-5" />
-                Save Script
-              </button>
-              <button
-                onClick={() => {
-                  setPrompt("")
-                  setEditableScript("")
-                }}
-                className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-              >
-                <ArrowPathIcon className="w-5 h-5" />
-                Generate Another
-              </button>
-            </div>
-          )}
+
+          <button
+            type="submit"
+            disabled={isGenerating}
+            className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
+              isGenerating ? "cursor-wait" : ""
+            }`}
+          >
+            {isGenerating ? (
+              <>
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <RocketLaunchIcon className="w-5 h-5" />
+                Generate Script
+              </>
+            )}
+          </button>
+        </form>
+      )}
+
+      {error && (
+        <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
+          <h3 className="font-semibold mb-2">Error</h3>
+          <p className="whitespace-pre-wrap">{error}</p>
         </div>
-      </div>
-    )}
-  </div>
-)
+      )}
+
+      {generatedScript && (
+        <div className="mt-8">
+          <div className="relative mb-2">
+            <div className="bg-gray-900 rounded-lg overflow-hidden">
+              <div className="w-full h-[600px] relative">
+                <Editor
+                  height="100%"
+                  defaultLanguage="typescript"
+                  value={editableScript}
+                  onChange={(value) => setEditableScript(value || "")}
+                  options={monacoOptions}
+                  beforeMount={initializeTheme}
+                  theme="brillance-black"
+                  onMount={handleEditorDidMount}
+                />
+              </div>
+            </div>
+            {!isGenerating && (
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(editableScript)
+                  }}
+                  className="bg-gradient-to-tr from-cyan-300 to-cyan-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                >
+                  <ClipboardIcon className="w-5 h-5" />
+                  Copy Script
+                </button>
+                <button
+                  onClick={onSave}
+                  className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                >
+                  <DocumentCheckIcon className="w-5 h-5" />
+                  Save Script
+                </button>
+                <button
+                  onClick={() => {
+                    setPrompt("")
+                    setEditableScript("")
+                  }}
+                  className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                >
+                  <ArrowPathIcon className="w-5 h-5" />
+                  Generate Another
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -184,6 +212,15 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<any[]>([])
   const [showGenerateForm, setShowGenerateForm] = useState(true)
+  const textBufferRef = useRef("")
+
+  // Throttled update function
+  const updateEditorContent = useRef(
+    debounce((content: string) => {
+      setGeneratedScript(content)
+      setEditableScript(content)
+    }, 100)
+  ).current
 
   // Add debug logging for session
   useEffect(() => {
@@ -201,6 +238,7 @@ export default function Home() {
     setGeneratedScript("")
     setEditableScript("")
     setError(null)
+    textBufferRef.current = ""
 
     try {
       const response = await fetch("/api/generate", {
@@ -224,21 +262,21 @@ export default function Home() {
       // Handle streaming response
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
-      let fullScript = ""
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const text = decoder.decode(value)
-          fullScript += text
-          setGeneratedScript(fullScript)
-          setEditableScript(fullScript)
+          textBufferRef.current += text
+          updateEditorContent(textBufferRef.current)
         }
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error))
     } finally {
+      // Ensure the final content is set
+      updateEditorContent.flush()
       setIsGenerating(false)
     }
   }

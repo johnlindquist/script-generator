@@ -1,14 +1,14 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
-import { default as NightOwlTheme } from "monaco-themes/themes/Night Owl.json";
+import { default as BrillanceBlack } from "monaco-themes/themes/Brilliance Black.json";
 
 export const initializeTheme = (monacoInstance: any) => {
   // Define theme
-  monacoInstance.editor.defineTheme("night-owl", {
-    ...NightOwlTheme,
+  monacoInstance.editor.defineTheme("brillance-black", {
+    ...BrillanceBlack,
     base: "vs-dark",
   } as monaco.editor.IStandaloneThemeData);
-  monacoInstance.editor.setTheme("night-owl");
+  monacoInstance.editor.setTheme("brillance-black");
 
   // Configure TypeScript defaults
   monacoInstance.languages.typescript.typescriptDefaults.setCompilerOptions({
@@ -48,7 +48,7 @@ export const initializeTheme = (monacoInstance: any) => {
 loader.init().then(initializeTheme);
 
 export const monacoOptions = {
-  theme: "night-owl",
+  theme: "brillance-black",
   fontSize: 14,
   minimap: { enabled: false },
   automaticLayout: true,
@@ -67,11 +67,11 @@ export const monacoOptions = {
   suggestOnTriggerCharacters: false,
   acceptSuggestionOnEnter: "off",
   tabCompletion: "off",
-  wordBasedSuggestions: false,
+  wordBasedSuggestions: "off",
   parameterHints: {
     enabled: false
   },
   inlayHints: {
-    enabled: false
+    enabled: "off"
   }
 } as const; 

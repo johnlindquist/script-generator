@@ -190,7 +190,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
                 onChange={handleEditorChange}
                 options={monacoOptions}
                 beforeMount={initializeTheme}
-                theme="night-owl"
+                theme="brillance-black"
               />
             </div>
           </div>
