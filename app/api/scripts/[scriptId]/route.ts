@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "../../auth/[...nextauth]/route"
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: { scriptId: string } }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const { content } = await req.json()
-    const scriptId = params.id
+    const scriptId = params.scriptId
 
     // Verify ownership
     const script = await prisma.script.findUnique({
@@ -42,14 +42,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { scriptId: string } }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const scriptId = params.id
+    const scriptId = params.scriptId
 
     // Verify ownership
     const script = await prisma.script.findUnique({

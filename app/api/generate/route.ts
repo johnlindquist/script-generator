@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { authOptions } from "../auth/[...nextauth]/route"
+import fs from "fs"
+import path from "path"
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -13,6 +15,23 @@ const model = genAI.getGenerativeModel({
     temperature: 0.7,
   }
 })
+
+// Function to read example scripts
+function getExampleScripts() {
+  const examplesPath = path.join(process.cwd(), "examples")
+  let allExampleContent = ""
+
+  if (fs.existsSync(examplesPath)) {
+    const files = fs.readdirSync(examplesPath)
+    for (const file of files) {
+      const filePath = path.join(examplesPath, file)
+      const content = fs.readFileSync(filePath, "utf-8")
+      allExampleContent += `\n---\nFile: ${file}\n${content}\n`
+    }
+  }
+
+  return allExampleContent
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,12 +75,22 @@ export async function POST(req: NextRequest) {
 
     console.log("Found user:", { userId: dbUser.id, username: dbUser.username })
 
+    // Get example scripts
+    const exampleScripts = getExampleScripts()
+    
     // Generate script using Gemini with streaming
     console.log("Starting Gemini generation...")
-    const result = await model.generateContentStream(
+    const finalPrompt = exampleScripts ? 
+      `Here are some example scripts that show the desired style and format:
+
+${exampleScripts}
+
+Based on these examples, create a shell script for this prompt: ${prompt}
+The script should be well-commented and include error handling.` :
       `Create a shell script based on this description: ${prompt}\n` +
       `The script should be well-commented and include error handling.`
-    )
+
+    const result = await model.generateContentStream(finalPrompt)
     console.log("Gemini stream initialized")
 
     let fullScript = ''

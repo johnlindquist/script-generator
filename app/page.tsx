@@ -69,14 +69,18 @@ const ScriptGenerationForm = ({
           <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
             <code>{generatedScript}</code>
           </pre>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(generatedScript)
-            }}
-            className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded shadow hover:bg-blue-600"
-          >
-            Copy
-          </button>
+          {!isGenerating && (
+            <div className="absolute bottom-4 right-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedScript)
+                }}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-colors"
+              >
+                Copy Script
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )}
