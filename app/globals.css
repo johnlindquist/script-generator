@@ -62,7 +62,7 @@ body {
 }
 
 .inline-code {
-  @apply font-mono bg-white bg-opacity-10 px-1 py-0.5 rounded-sm text-amber-300;
+  @apply font-mono bg-gray-800 px-1 py-0.5 rounded-sm text-amber-300;
 }
 
 .simplebar-scrollbar:before {

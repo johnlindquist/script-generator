@@ -12,6 +12,7 @@
     "@fontsource/inter": "^5.1.0",
     "@fontsource/lexend": "^5.1.1",
     "@google/generative-ai": "^0.21.0",
+    "@heroicons/react": "^2.2.0",
     "@monaco-editor/react": "^4.6.0",
     "@prisma/client": "^6.1.0",
     "lodash.debounce": "^4.0.8",

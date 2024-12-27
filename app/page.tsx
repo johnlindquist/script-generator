@@ -7,6 +7,12 @@ import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
 import { Editor } from "@monaco-editor/react"
 import ScriptSuggestions from "@/components/ScriptSuggestions"
+import { 
+  RocketLaunchIcon, 
+  ClipboardIcon, 
+  DocumentCheckIcon, 
+  ArrowPathIcon 
+} from "@heroicons/react/24/solid"
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -65,7 +71,7 @@ const ScriptGenerationForm = ({
         <div className="mb-6">
           <label
             htmlFor="prompt"
-            className="block text-sm font-medium text-gray-700 mb-2"
+            className="block text-sm font-medium text-slate-300 mb-2"
           >
             Describe your script idea
           </label>
@@ -80,7 +86,7 @@ const ScriptGenerationForm = ({
               }
             }}
             disabled={isGenerating}
-            className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-32 px-3 py-2 bg-gray-800 text-slate-300 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
             required
           />
@@ -90,17 +96,27 @@ const ScriptGenerationForm = ({
         <button
           type="submit"
           disabled={isGenerating}
-          className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 ${
             isGenerating ? "cursor-wait" : ""
           }`}
         >
-          {isGenerating ? "Generating..." : "Generate Script"}
+          {isGenerating ? (
+            <>
+              <ArrowPathIcon className="w-5 h-5 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <RocketLaunchIcon className="w-5 h-5" />
+              Generate Script
+            </>
+          )}
         </button>
       </form>
     )}
 
     {error && (
-      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+      <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
         <h3 className="font-semibold mb-2">Error</h3>
         <p className="whitespace-pre-wrap">{error}</p>
       </div>
@@ -109,7 +125,7 @@ const ScriptGenerationForm = ({
     {generatedScript && (
       <div className="mt-8">
         <div className="relative mb-2">
-          <div className="bg-gray-50 rounded-lg overflow-hidden">
+          <div className="bg-gray-900 rounded-lg overflow-hidden">
             <Editor
               height="500px"
               defaultLanguage="typescript"
@@ -146,14 +162,16 @@ const ScriptGenerationForm = ({
                 onClick={() => {
                   navigator.clipboard.writeText(editableScript)
                 }}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-colors"
+                className="bg-gradient-to-tr from-cyan-300 to-cyan-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
               >
+                <ClipboardIcon className="w-5 h-5" />
                 Copy Script
               </button>
               <button
                 onClick={onSave}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600 transition-colors"
+                className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
               >
+                <DocumentCheckIcon className="w-5 h-5" />
                 Save Script
               </button>
               <button
@@ -161,8 +179,9 @@ const ScriptGenerationForm = ({
                   setPrompt("")
                   setEditableScript("")
                 }}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition-colors"
+                className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
               >
+                <ArrowPathIcon className="w-5 h-5" />
                 Generate Another
               </button>
             </div>
