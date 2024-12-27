@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
 import { Editor } from "@monaco-editor/react"
+import ScriptSuggestions from "@/components/ScriptSuggestions"
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -83,6 +84,7 @@ const ScriptGenerationForm = ({
             placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
             required
           />
+          <ScriptSuggestions setPrompt={setPrompt} />
         </div>
 
         <button
