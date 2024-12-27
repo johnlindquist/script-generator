@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { Editor } from "@monaco-editor/react";
 import debounce from "lodash.debounce";
+import { monacoOptions, initializeTheme } from "@/lib/monaco";
 
 interface ScriptPageProps {
   params: Promise<{ scriptId: string }>;
@@ -128,9 +129,9 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-40 bg-gray-200 rounded mb-4"></div>
+          <div className="h-8 bg-neutral-800 rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-neutral-800 rounded w-1/3 mb-4"></div>
+          <div className="h-40 bg-neutral-800 rounded mb-4"></div>
         </div>
       </div>
     );
@@ -139,8 +140,8 @@ export default function ScriptPage({ params }: ScriptPageProps) {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-red-500">Error</h1>
-        <p className="mt-2 text-gray-600">{error}</p>
+        <h1 className="text-2xl font-bold text-red-400">Error</h1>
+        <p className="mt-2 text-slate-300">{error}</p>
       </div>
     );
   }
@@ -148,64 +149,50 @@ export default function ScriptPage({ params }: ScriptPageProps) {
   if (!script) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-red-500">Script not found</h1>
-        <p className="mt-2 text-gray-600">The requested script could not be found.</p>
+        <h1 className="text-2xl font-bold text-red-400">Script not found</h1>
+        <p className="mt-2 text-slate-300">The requested script could not be found.</p>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-4">
-      <Link href="/" className="inline-block mb-4 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+      <Link 
+        href="/" 
+        className="inline-block mb-4 px-4 py-2 text-sm font-medium text-amber-300 bg-neutral-800/80 rounded-md hover:bg-neutral-700/80 transition-colors"
+      >
         ← Back to Home
       </Link>
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{script.title}</h1>
-              <p className="text-gray-600">
+              <h1 className="text-3xl font-bold mb-2 text-amber-300">{script.title}</h1>
+              <p className="text-slate-400">
                 by {script.owner?.username || "Anonymous"} •{" "}
                 {new Date(script.createdAt).toLocaleDateString()}
               </p>
             </div>
             <button
               onClick={handleShare}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-colors"
             >
               Share
             </button>
           </div>
           
-          <div className="bg-gray-50 rounded-lg shadow-sm overflow-hidden">
-            <Editor
-              height="600px"
-              defaultLanguage="typescript"
-              value={content}
-              onChange={handleEditorChange}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: true },
-                fontSize: 14,
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                semanticHighlighting: { enabled: false },
-                semanticValidation: false,
-                syntaxValidation: false,
-                formatOnType: false,
-                formatOnPaste: false,
-                hover: { enabled: false },
-                suggestOnTriggerCharacters: false,
-                parameterHints: { enabled: false },
-                quickSuggestions: false,
-                wordBasedSuggestions: false,
-                inlayHints: { enabled: false },
-                renderValidationDecorations: "off"
-              }}
-              className="w-full"
-            />
+          <div className="bg-zinc-900/90 rounded-lg shadow-2xl overflow-hidden">
+            <div className="w-full h-[calc(100vh-4rem)] relative">
+              <Editor
+                height="100%"
+                defaultLanguage="javascript"
+                value={content}
+                onChange={handleEditorChange}
+                options={monacoOptions}
+                beforeMount={initializeTheme}
+                theme="night-owl"
+              />
+            </div>
           </div>
         </div>
       </main>

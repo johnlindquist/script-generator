@@ -12,10 +12,24 @@
   --foreground: #ededed;
 }
 
+html {
+  background: var(--background);
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* Override any potential background colors */
+.dark {
+  background-color: var(--background);
+}
+
+.dark body {
+  background-color: var(--background);
 }
 
 @layer utilities {

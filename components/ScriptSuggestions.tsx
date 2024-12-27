@@ -40,7 +40,7 @@ export default function ScriptSuggestions({ setPrompt }: ScriptSuggestionsProps)
         <button
           key={idx}
           onClick={() => setPrompt(suggestion)}
-          className="text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded-full transition-colors duration-200"
+          className="text-sm bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full transition-colors duration-200"
         >
           {suggestion}
         </button>

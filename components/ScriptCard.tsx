@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Highlight, Prism, themes } from "prism-react-renderer";
+import { Highlight, Prism, themes, type PrismTheme } from "prism-react-renderer";
 import { 
   ClipboardIcon, 
   PencilSquareIcon, 
@@ -15,6 +15,71 @@ import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline"
 // Initialize Prism with TypeScript support
 (typeof global !== "undefined" ? global : window).Prism = Prism;
 require("prismjs/components/prism-typescript");
+
+// Custom Night Owl theme
+const nightOwlTheme: PrismTheme = {
+  plain: {
+    color: "#d6deeb",
+    backgroundColor: "transparent",
+  },
+  styles: [
+    {
+      types: ["comment", "prolog", "doctype", "cdata"],
+      style: {
+        color: "#637777",
+        fontStyle: "italic"
+      }
+    },
+    {
+      types: ["namespace"],
+      style: {
+        opacity: 0.7
+      }
+    },
+    {
+      types: ["string", "attr-value"],
+      style: {
+        color: "#addb67"
+      }
+    },
+    {
+      types: ["punctuation", "operator"],
+      style: {
+        color: "#7fdbca"
+      }
+    },
+    {
+      types: ["entity", "url", "symbol", "number", "boolean", "variable", "constant", "property", "regex", "inserted"],
+      style: {
+        color: "#ff5874"
+      }
+    },
+    {
+      types: ["atrule", "keyword", "attr-name"],
+      style: {
+        color: "#c792ea"
+      }
+    },
+    {
+      types: ["function", "deleted", "tag"],
+      style: {
+        color: "#82aaff"
+      }
+    },
+    {
+      types: ["function-variable"],
+      style: {
+        color: "#82aaff"
+      }
+    },
+    {
+      types: ["tag", "selector", "keyword"],
+      style: {
+        color: "#7fdbca"
+      }
+    }
+  ]
+} as const;
 
 interface ScriptCardProps {
   script: {
@@ -103,7 +168,10 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
   })
 
   return (
-    <div className="border border-gray-800 rounded-lg p-6 bg-gray-900/80 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors" data-script-id={script.id}>
+    <div 
+      className="border border-neutral-700 rounded-lg p-6 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90" 
+      data-script-id={script.id}
+    >
       <div className="mb-4">
         <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
           <h2 className="text-xl font-lexend font-semibold mb-2 text-amber-300">{script.title}</h2>
@@ -122,9 +190,9 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       </div>
       <div className="flex-grow flex flex-col">
         <Link href={`/scripts/${script.id}`} className="block flex-grow">
-          <div className="bg-gray-950 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
+          <div className="bg-neutral-800/50 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight
-              theme={themes.vsDark}
+              theme={nightOwlTheme}
               code={script.content.slice(0, 200) + "..."}
               language="typescript"
               prism={Prism}

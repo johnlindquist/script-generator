@@ -7,6 +7,7 @@ import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
 import { Editor } from "@monaco-editor/react"
 import ScriptSuggestions from "@/components/ScriptSuggestions"
+import { monacoOptions, initializeTheme } from "@/lib/monaco"
 import { 
   RocketLaunchIcon, 
   ClipboardIcon, 
@@ -86,7 +87,7 @@ const ScriptGenerationForm = ({
               }
             }}
             disabled={isGenerating}
-            className="w-full h-32 px-3 py-2 bg-gray-800 text-slate-300 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
             required
           />
@@ -96,7 +97,7 @@ const ScriptGenerationForm = ({
         <button
           type="submit"
           disabled={isGenerating}
-          className={`w-full bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 ${
+          className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
             isGenerating ? "cursor-wait" : ""
           }`}
         >
@@ -126,35 +127,17 @@ const ScriptGenerationForm = ({
       <div className="mt-8">
         <div className="relative mb-2">
           <div className="bg-gray-900 rounded-lg overflow-hidden">
-            <Editor
-              height="500px"
-              defaultLanguage="typescript"
-              value={editableScript}
-              onChange={(value) => setEditableScript(value || "")}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: true },
-                fontSize: 14,
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                readOnly: isGenerating,
-                // Disable all error highlighting and validation
-                semanticHighlighting: { enabled: false },
-                semanticValidation: false,
-                syntaxValidation: false,
-                formatOnType: false,
-                formatOnPaste: false,
-                hover: { enabled: false },
-                suggestOnTriggerCharacters: false,
-                parameterHints: { enabled: false },
-                quickSuggestions: false,
-                wordBasedSuggestions: false,
-                inlayHints: { enabled: false },
-                renderValidationDecorations: "off"
-              }}
-            />
+            <div className="w-full h-[600px] relative">
+              <Editor
+                height="100%"
+                defaultLanguage="javascript"
+                value={editableScript}
+                onChange={(value) => setEditableScript(value || "")}
+                options={monacoOptions}
+                beforeMount={initializeTheme}
+                theme="night-owl"
+              />
+            </div>
           </div>
           {!isGenerating && (
             <div className="absolute bottom-4 right-4 flex gap-2">
@@ -326,15 +309,15 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
       <NavBar isAuthenticated={!!session} />
       <main className="container mx-auto px-4 py-8">
         {status === "loading" ? (
           <div>Loading...</div>
         ) : !session ? (
           <div className="mb-12 text-center">
-            <h2 className="text-2xl font-bold mb-4">Welcome to Script Generator</h2>
-            <p className="text-gray-600 mb-8">Sign in to start generating scripts!</p>
+            <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
+            <p className="text-slate-300 mb-8">Sign in to start generating scripts!</p>
             <Auth>
               <div>Sign in to continue</div>
             </Auth>
@@ -354,7 +337,7 @@ export default function Home() {
             />
 
             <div className="mt-12">
-              <h2 className="text-2xl font-bold mb-6">Your Scripts</h2>
+              <h2 className="text-2xl font-bold mb-6 text-amber-300">Your Scripts</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {scripts.map((script) => (
                   <ScriptCard
