@@ -1,21 +1,77 @@
+/* Import fonts */
+@import "@fontsource/inter/index.css";
+@import "@fontsource/lexend/index.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@layer utilities {
+  .masonry-3 {
+    column-count: 3;
+  }
+  .masonry-2 {
+    column-count: 2;
+  }
+  .masonry-1 {
+    column-count: 1;
+  }
+  .break-inside {
+    break-inside: avoid;
+  }
+}
+
+.js-focus-visible :focus:not(.focus-visible) {
+  outline: none;
+}
+
+.prose {
+  @apply text-slate-300;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold mb-4;
+}
+
+.prose h2 {
+  @apply text-3xl font-bold my-8;
+}
+
+.prose h3 {
+  @apply text-2xl font-bold my-8;
+}
+
+.prose a {
+  @apply text-amber-300 hover:underline;
+}
+
+.prose blockquote {
+  @apply border-l-4 p-3 italic text-sm rounded-sm m-10 border-amber-400 text-gray-300;
+}
+
+.inline-code {
+  @apply font-mono bg-white bg-opacity-10 px-1 py-0.5 rounded-sm text-amber-300;
+}
+
+.simplebar-scrollbar:before {
+  @apply bg-gray-700;
+  position: absolute;
+  content: '';
+  border-radius: 7px;
+  left: 2px;
+  right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s 0.5s linear;
 }
