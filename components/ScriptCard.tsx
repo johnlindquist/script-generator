@@ -28,9 +28,7 @@ interface ScriptCardProps {
 export default function ScriptCard({ script, isAuthenticated, currentUserId }: ScriptCardProps) {
   const [isStarred, setIsStarred] = useState(script.starred)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [editedContent, setEditedContent] = useState(script.content)
   const router = useRouter()
 
   const handleStar = async () => {
@@ -62,24 +60,8 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
     navigator.clipboard.writeText(script.content)
   }
 
-  const handleEdit = async () => {
-    try {
-      const response = await fetch(`/api/scripts/${script.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editedContent }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update script")
-      }
-
-      setIsEditing(false)
-      router.refresh()
-    } catch (error) {
-      console.error("Edit error:", error)
-      alert("Failed to update script")
-    }
+  const handleEdit = () => {
+    router.push(`/scripts/${script.id}`)
   }
 
   const handleDelete = async () => {
@@ -132,55 +114,28 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         </Link>
       </div>
       <div className="flex-grow flex flex-col">
-        {isEditing ? (
-          <div className="flex-grow flex flex-col">
-            <textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="flex-grow w-full p-4 border border-amber-400/20 rounded-lg font-mono text-sm bg-gray-950 text-slate-300 resize-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400/30"
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={handleEdit}
-                className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 px-4 py-2 rounded-md hover:brightness-110 transition shadow-lg font-medium"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false)
-                  setEditedContent(script.content)
-                }}
-                className="bg-gray-800 text-amber-300 border border-amber-400/20 px-4 py-2 rounded-md hover:bg-amber-400/10 transition"
-              >
-                Cancel
-              </button>
-            </div>
+        <Link href={`/scripts/${script.id}`} className="block flex-grow">
+          <div className="bg-gray-950 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
+            <Highlight
+              theme={themes.vsDark}
+              code={script.content.slice(0, 200) + "..."}
+              language="typescript"
+              prism={Prism}
+            >
+              {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                <pre className={`${className} p-4 h-full`} style={{ ...style, margin: 0, background: 'transparent' }}>
+                  {tokens.map((line, i) => (
+                    <div key={i} {...getLineProps({ line })}>
+                      {line.map((token, key) => (
+                        <span key={key} {...getTokenProps({ token })} />
+                      ))}
+                    </div>
+                  ))}
+                </pre>
+              )}
+            </Highlight>
           </div>
-        ) : (
-          <Link href={`/scripts/${script.id}`} className="block flex-grow">
-            <div className="bg-gray-950 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
-              <Highlight
-                theme={themes.vsDark}
-                code={script.content.slice(0, 200) + "..."}
-                language="typescript"
-                prism={Prism}
-              >
-                {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                  <pre className={`${className} p-4 h-full`} style={{ ...style, margin: 0, background: 'transparent' }}>
-                    {tokens.map((line, i) => (
-                      <div key={i} {...getLineProps({ line })}>
-                        {line.map((token, key) => (
-                          <span key={key} {...getTokenProps({ token })} />
-                        ))}
-                      </div>
-                    ))}
-                  </pre>
-                )}
-              </Highlight>
-            </div>
-          </Link>
-        )}
+        </Link>
       </div>
       <div className="mt-4 flex justify-between items-center border-t border-amber-400/10 pt-4">
         <div className="flex gap-2">
@@ -196,7 +151,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           {isOwner && (
             <>
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={handleEdit}
                 className="text-amber-300 hover:text-amber-200 transition ml-4 flex items-center gap-1"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">

@@ -1,16 +1,10 @@
 "use client";
 
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { useEffect, useState, use } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import { Highlight, Prism, themes } from "prism-react-renderer";
-
-// Initialize Prism with TypeScript support
-(typeof global !== "undefined" ? global : window).Prism = Prism;
-require("prismjs/components/prism-typescript");
+import { Editor } from "@monaco-editor/react";
+import debounce from "lodash.debounce";
 
 interface ScriptPageProps {
   params: Promise<{ scriptId: string }>;
@@ -19,8 +13,10 @@ interface ScriptPageProps {
 export default function ScriptPage({ params }: ScriptPageProps) {
   const { scriptId } = use(params);
   const [script, setScript] = useState<any>(null);
+  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchScript = async () => {
@@ -42,6 +38,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
         const data = await response.json();
         console.log("Successfully fetched script:", data);
         setScript(data);
+        setContent(data.content);
         setError(null);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -58,6 +55,46 @@ export default function ScriptPage({ params }: ScriptPageProps) {
 
     fetchScript();
   }, [scriptId]);
+
+  const saveScript = async (updatedContent: string) => {
+    if (!script || saving) return;
+    
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/scripts/${scriptId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: updatedContent }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save script");
+      }
+
+      toast.success("Script saved");
+    } catch (error) {
+      console.error("Error saving script:", error);
+      toast.error("Failed to save script");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Debounced save function
+  const debouncedSave = debounce(saveScript, 1000);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
+
+  const handleEditorChange = (value: string | undefined) => {
+    const newContent = value || "";
+    setContent(newContent);
+    debouncedSave(newContent);
+  };
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -140,28 +177,35 @@ export default function ScriptPage({ params }: ScriptPageProps) {
             </button>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
-            <Highlight
-              theme={themes.vsDark}
-              code={script.content || ""}
-              language="typescript"
-              prism={Prism}
-            >
-              {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                <pre className={`${className} overflow-x-auto whitespace-pre`} style={{...style, padding: '1rem'}}>
-                  {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })} className="table-row">
-                      <span className="table-cell pr-4 select-none text-gray-500 text-right">{i + 1}</span>
-                      <span className="table-cell">
-                        {line.map((token, key) => (
-                          <span key={key} {...getTokenProps({ token })} />
-                        ))}
-                      </span>
-                    </div>
-                  ))}
-                </pre>
-              )}
-            </Highlight>
+          <div className="bg-gray-50 rounded-lg shadow-sm overflow-hidden">
+            <Editor
+              height="600px"
+              defaultLanguage="typescript"
+              value={content}
+              onChange={handleEditorChange}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: true },
+                fontSize: 14,
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                semanticHighlighting: { enabled: false },
+                semanticValidation: false,
+                syntaxValidation: false,
+                formatOnType: false,
+                formatOnPaste: false,
+                hover: { enabled: false },
+                suggestOnTriggerCharacters: false,
+                parameterHints: { enabled: false },
+                quickSuggestions: false,
+                wordBasedSuggestions: false,
+                inlayHints: { enabled: false },
+                renderValidationDecorations: "off"
+              }}
+              className="w-full"
+            />
           </div>
         </div>
       </main>

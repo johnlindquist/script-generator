@@ -5,11 +5,7 @@ import { useSession } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
-import { Highlight, Prism, themes } from "prism-react-renderer"
-
-// Initialize Prism with TypeScript support
-(typeof global !== "undefined" ? global : window).Prism = Prism;
-require("prismjs/components/prism-typescript");
+import { Editor } from "@monaco-editor/react"
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -17,7 +13,10 @@ interface ScriptGenerationFormProps {
   isGenerating: boolean
   error: string | null
   generatedScript: string
+  editableScript: string
+  setEditableScript: (script: string) => void
   onSubmit: (e: React.FormEvent) => Promise<void>
+  onSave: () => Promise<void>
 }
 
 const LoadingDots = () => (
@@ -43,45 +42,60 @@ const ScriptGenerationForm = ({
   isGenerating,
   error,
   generatedScript,
-  onSubmit
+  editableScript,
+  setEditableScript,
+  onSubmit,
+  onSave
 }: ScriptGenerationFormProps) => (
   <div className="mb-12">
-    <h2 className="text-2xl font-bold mb-6">Generate New Script</h2>
-    <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <label
-          htmlFor="prompt"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          Describe your script idea
-        </label>
-        <textarea
-          id="prompt"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              onSubmit(e as any);
-            }
-          }}
-          disabled={isGenerating}
-          className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
-          required
-        />
-      </div>
+    <h2 className="text-2xl font-bold mb-6">
+      {isGenerating ? (
+        <span>
+          Generating Script<LoadingDots />
+        </span>
+      ) : generatedScript ? (
+        "Edit Generated Script"
+      ) : (
+        "Generate New Script"
+      )}
+    </h2>
+    {!generatedScript && (
+      <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <label
+            htmlFor="prompt"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Describe your script idea
+          </label>
+          <textarea
+            id="prompt"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onSubmit(e as any);
+              }
+            }}
+            disabled={isGenerating}
+            className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
+            required
+          />
+        </div>
 
-      <button
-        type="submit"
-        disabled={isGenerating}
-        className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-          isGenerating ? "cursor-wait" : ""
-        }`}
-      >
-        {isGenerating ? "Generating..." : "Generate Script"}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={isGenerating}
+          className={`w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isGenerating ? "cursor-wait" : ""
+          }`}
+        >
+          {isGenerating ? "Generating..." : "Generate Script"}
+        </button>
+      </form>
+    )}
 
     {error && (
       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -92,37 +106,62 @@ const ScriptGenerationForm = ({
 
     {generatedScript && (
       <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Generated Script:</h2>
         <div className="relative mb-2">
-          <div className="bg-gray-50 rounded-lg overflow-x-auto">
-            <Highlight
-              theme={themes.vsDark}
-              code={generatedScript}
-              language="typescript"
-              prism={Prism}
-            >
-              {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                <pre className={`${className} p-4`} style={style}>
-                  {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })}>
-                      {line.map((token, key) => (
-                        <span key={key} {...getTokenProps({ token })} />
-                      ))}
-                    </div>
-                  ))}
-                </pre>
-              )}
-            </Highlight>
+          <div className="bg-gray-50 rounded-lg overflow-hidden">
+            <Editor
+              height="500px"
+              defaultLanguage="typescript"
+              value={editableScript}
+              onChange={(value) => setEditableScript(value || "")}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: true },
+                fontSize: 14,
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                readOnly: isGenerating,
+                // Disable all error highlighting and validation
+                semanticHighlighting: { enabled: false },
+                semanticValidation: false,
+                syntaxValidation: false,
+                formatOnType: false,
+                formatOnPaste: false,
+                hover: { enabled: false },
+                suggestOnTriggerCharacters: false,
+                parameterHints: { enabled: false },
+                quickSuggestions: false,
+                wordBasedSuggestions: false,
+                inlayHints: { enabled: false },
+                renderValidationDecorations: "off"
+              }}
+            />
           </div>
           {!isGenerating && (
-            <div className="absolute bottom-4 right-4">
+            <div className="absolute bottom-4 right-4 flex gap-2">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(generatedScript)
+                  navigator.clipboard.writeText(editableScript)
                 }}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-colors"
               >
                 Copy Script
+              </button>
+              <button
+                onClick={onSave}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600 transition-colors"
+              >
+                Save Script
+              </button>
+              <button
+                onClick={() => {
+                  setPrompt("")
+                  setEditableScript("")
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition-colors"
+              >
+                Generate Another
               </button>
             </div>
           )}
@@ -156,8 +195,8 @@ export default function Home() {
     e.preventDefault()
     setIsGenerating(true)
     setGeneratedScript("")
+    setEditableScript("")
     setError(null)
-    setShowGenerateForm(false)
 
     try {
       const response = await fetch("/api/generate", {
@@ -181,17 +220,16 @@ export default function Home() {
       // Handle streaming response
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
+      let fullScript = ""
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const text = decoder.decode(value)
-          setGeneratedScript(prev => {
-            const newScript = prev + text
-            setEditableScript(newScript)
-            return newScript
-          })
+          fullScript += text
+          setGeneratedScript(fullScript)
+          setEditableScript(fullScript)
         }
       }
     } catch (error) {
@@ -267,159 +305,49 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50">
       <NavBar isAuthenticated={!!session} />
-
-      {/* Script Generation Form */}
-      {status === "authenticated" ? (
-        <Auth>
-          {showGenerateForm ? (
+      <main className="container mx-auto px-4 py-8">
+        {status === "loading" ? (
+          <div>Loading...</div>
+        ) : !session ? (
+          <div className="mb-12 text-center">
+            <h2 className="text-2xl font-bold mb-4">Welcome to Script Generator</h2>
+            <p className="text-gray-600 mb-8">Sign in to start generating scripts!</p>
+            <Auth>
+              <div>Sign in to continue</div>
+            </Auth>
+          </div>
+        ) : (
+          <>
             <ScriptGenerationForm
               prompt={prompt}
               setPrompt={setPrompt}
               isGenerating={isGenerating}
               error={error}
               generatedScript={generatedScript}
+              editableScript={editableScript}
+              setEditableScript={setEditableScript}
               onSubmit={handleGenerate}
+              onSave={handleSave}
             />
-          ) : (
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-6">
-                {isGenerating ? (
-                  <span>
-                    Generating Script<LoadingDots />
-                  </span>
-                ) : (
-                  "Edit Generated Script"
-                )}
-              </h2>
-              <div className="max-w-2xl mx-auto">
-                {error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                    <h3 className="font-semibold mb-2">Error</h3>
-                    <p className="whitespace-pre-wrap">{error}</p>
-                  </div>
-                )}
 
-                {(generatedScript || editableScript) && (
-                  <div className="mt-8">
-                    <div className="relative mb-2">
-                      <div className="bg-gray-50 rounded-lg overflow-x-auto">
-                        {isGenerating ? (
-                          <Highlight
-                            theme={themes.vsDark}
-                            code={generatedScript}
-                            language="typescript"
-                            prism={Prism}
-                          >
-                            {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                              <pre className={`${className} p-4`} style={style}>
-                                {tokens.map((line, i) => (
-                                  <div key={i} {...getLineProps({ line })}>
-                                    {line.map((token, key) => (
-                                      <span key={key} {...getTokenProps({ token })} />
-                                    ))}
-                                  </div>
-                                ))}
-                              </pre>
-                            )}
-                          </Highlight>
-                        ) : (
-                          <div className="relative">
-                            <Highlight
-                              theme={themes.vsDark}
-                              code={editableScript}
-                              language="typescript"
-                              prism={Prism}
-                            >
-                              {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                <pre 
-                                  className={`${className} p-4 font-mono text-sm leading-5`}
-                                  style={{
-                                    ...style,
-                                    tabSize: 2,
-                                    MozTabSize: 2,
-                                  }}
-                                >
-                                  {tokens.map((line, i) => (
-                                    <div key={i} {...getLineProps({ line })}>
-                                      {line.map((token, key) => (
-                                        <span key={key} {...getTokenProps({ token })} />
-                                      ))}
-                                    </div>
-                                  ))}
-                                </pre>
-                              )}
-                            </Highlight>
-                            <textarea
-                              value={editableScript}
-                              onChange={(e) => setEditableScript(e.target.value)}
-                              className="absolute inset-0 w-full h-full p-4 font-mono text-sm leading-5 bg-transparent text-transparent caret-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              style={{
-                                tabSize: 2,
-                                MozTabSize: 2,
-                                whiteSpace: 'pre',
-                                overflowWrap: 'normal'
-                              }}
-                              spellCheck="false"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      {!isGenerating && (
-                        <div className="absolute bottom-4 right-4 flex gap-2">
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(editableScript)
-                            }}
-                            className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition-colors"
-                          >
-                            Copy
-                          </button>
-                          <button
-                            onClick={handleSave}
-                            className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition-colors"
-                          >
-                            Save Script
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold mb-6">Your Scripts</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {scripts.map((script) => (
+                  <ScriptCard
+                    key={script.id}
+                    script={script}
+                    isAuthenticated={!!session}
+                    currentUserId={session.user?.id}
+                  />
+                ))}
               </div>
             </div>
-          )}
-        </Auth>
-      ) : status === "unauthenticated" ? (
-        <div className="mb-12 text-center">
-          <h2 className="text-2xl font-bold mb-4">Welcome to Script Generator</h2>
-          <p className="text-gray-600 mb-8">Sign in to start generating scripts!</p>
-        </div>
-      ) : (
-        <div className="mb-12 text-center">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      )}
-
-      {/* Scripts List */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">Your Scripts</h2>
-        {status === "loading" ? (
-          <div className="text-center text-gray-500">Loading scripts...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {scripts.map((script) => (
-              <ScriptCard
-                key={script.id}
-                script={script}
-                isAuthenticated={!!session}
-                currentUserId={session?.user?.id}
-              />
-            ))}
-          </div>
+          </>
         )}
-      </div>
-    </main>
+      </main>
+    </div>
   )
 }
