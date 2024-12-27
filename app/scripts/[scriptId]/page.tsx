@@ -5,22 +5,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { useEffect, useState, use } from "react";
 import { toast } from "react-hot-toast";
+import Link from "next/link";
 
 interface ScriptPageProps {
-  params: { scriptId: string };
+  params: Promise<{ scriptId: string }>;
 }
 
 export default function ScriptPage({ params }: ScriptPageProps) {
-  const resolvedParams = use(params);
+  const { scriptId } = use(params);
   const [script, setScript] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchScript = async () => {
-      console.log("Fetching script with ID:", resolvedParams.scriptId);
+      console.log("Fetching script with ID:", scriptId);
       try {
-        const response = await fetch(`/api/scripts/${resolvedParams.scriptId}`);
+        const response = await fetch(`/api/scripts/${scriptId}`);
         console.log("Response status:", response.status);
         
         if (!response.ok) {
@@ -42,7 +43,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
         console.error("Error fetching script:", {
           error,
           message: errorMessage,
-          scriptId: resolvedParams.scriptId
+          scriptId: scriptId
         });
         setError(errorMessage);
       } finally {
@@ -51,7 +52,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     };
 
     fetchScript();
-  }, [resolvedParams.scriptId]);
+  }, [scriptId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -112,30 +113,35 @@ export default function ScriptPage({ params }: ScriptPageProps) {
   }
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{script.title}</h1>
-            <p className="text-gray-600">
-              by {script.owner?.username || "Anonymous"} •{" "}
-              {new Date(script.createdAt).toLocaleDateString()}
-            </p>
+    <div className="container mx-auto p-4">
+      <Link href="/" className="inline-block mb-4 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+        ← Back to Home
+      </Link>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">{script.title}</h1>
+              <p className="text-gray-600">
+                by {script.owner?.username || "Anonymous"} •{" "}
+                {new Date(script.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <button
+              onClick={handleShare}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Share
+            </button>
           </div>
-          <button
-            onClick={handleShare}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Share
-          </button>
+          
+          <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
+            <pre className="overflow-x-auto whitespace-pre-wrap">
+              <code className="text-sm">{script.content}</code>
+            </pre>
+          </div>
         </div>
-        
-        <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
-          <pre className="overflow-x-auto whitespace-pre-wrap">
-            <code className="text-sm">{script.content}</code>
-          </pre>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 } 

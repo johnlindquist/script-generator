@@ -21,16 +21,47 @@ function getExampleScripts() {
   const examplesPath = path.join(process.cwd(), "examples")
   let allExampleContent = ""
 
-  if (fs.existsSync(examplesPath)) {
-    const files = fs.readdirSync(examplesPath)
-    for (const file of files) {
-      const filePath = path.join(examplesPath, file)
-      const content = fs.readFileSync(filePath, "utf-8")
-      allExampleContent += `\n---\nFile: ${file}\n${content}\n`
+  try {
+    if (!fs.existsSync(examplesPath)) {
+      console.warn(`Examples directory not found at ${examplesPath}`)
+      return ""
     }
-  }
 
-  return allExampleContent
+    const files = fs.readdirSync(examplesPath)
+      .filter(file => file.endsWith('.ts') && !file.startsWith('.')) // Only .ts files, no hidden files
+      .sort() // Ensure consistent ordering
+
+    if (files.length === 0) {
+      console.warn("No .ts files found in examples directory")
+      return ""
+    }
+
+    console.log(`Found ${files.length} example scripts`)
+
+    for (const file of files) {
+      try {
+        const filePath = path.join(examplesPath, file)
+        const stats = fs.statSync(filePath)
+        
+        // Skip if not a file or too large (> 100KB)
+        if (!stats.isFile() || stats.size > 100 * 1024) {
+          console.warn(`Skipping ${file}: ${!stats.isFile() ? 'Not a file' : 'Too large'}`)
+          continue
+        }
+
+        const content = fs.readFileSync(filePath, "utf-8")
+        allExampleContent += `\n---\nFile: ${file}\n${content}\n`
+      } catch (fileError) {
+        console.error(`Error reading file ${file}:`, fileError)
+        // Continue with other files
+      }
+    }
+
+    return allExampleContent
+  } catch (error) {
+    console.error("Error reading example scripts:", error)
+    return "" // Return empty string on error, allowing generation to continue
+  }
 }
 
 function removeLeadingTrailingCodeFence(script: string) {
@@ -99,14 +130,37 @@ export async function POST(req: NextRequest) {
     // Generate script using Gemini with streaming
     console.log("Starting Gemini generation...")
     const finalPrompt = exampleScripts ? 
-      `Here are some example scripts that show the desired style and format:
+      `You are a TypeScript script generator that creates scripts in the exact style of the examples below.
+Each script should be a standalone TypeScript file that can be run directly.
+
+Here are example scripts that demonstrate the required format and style:
 
 ${exampleScripts}
 
-Based on these examples, create a shell script for this prompt: ${prompt}
-The script should be well-commented and include error handling.` :
-      `Create a shell script based on this description: ${prompt}\n` +
-      `The script should be well-commented and include error handling.`
+Based on these examples, create a new script that follows the EXACT SAME format and style for this prompt:
+${prompt}
+
+Requirements:
+1. Follow the EXACT same format as the examples
+2. Include proper error handling like the examples
+3. Include clear comments explaining the code
+4. Make the script a standalone .ts file that can be run directly
+5. Use the same coding style and patterns shown in the examples
+6. Include all necessary imports at the top
+7. Export a default async function like the examples
+
+Generate ONLY the script content, no additional explanations or markdown:` :
+      `Create a TypeScript script based on this description: ${prompt}
+
+Requirements:
+1. Make it a standalone .ts file that can be run directly
+2. Include proper error handling
+3. Include clear comments explaining the code
+4. Include all necessary imports at the top
+5. Export a default async function
+6. The script should be well-documented and production-ready
+
+Generate ONLY the script content, no additional explanations or markdown:`
 
     const result = await model.generateContentStream(finalPrompt)
     console.log("Gemini stream initialized")
@@ -118,11 +172,40 @@ The script should be well-commented and include error handling.` :
       async start(controller) {
         try {
           console.log("Starting stream processing...")
+          let isFirstChunk = true
+          let lastChunk = ''
+          
           for await (const chunk of result.stream) {
-            const chunkText = chunk.text()
+            let chunkText = chunk.text()
+            
+            // For the first chunk, remove leading code fence if present
+            if (isFirstChunk) {
+              const tripleBackticks = "```"
+              const tripleTildes = "~~~"
+              
+              if (chunkText.startsWith(tripleBackticks)) {
+                chunkText = chunkText.slice(tripleBackticks.length)
+              } else if (chunkText.startsWith(tripleTildes)) {
+                chunkText = chunkText.slice(tripleTildes.length)
+              }
+              
+              isFirstChunk = false
+            }
+            
+            // Store this chunk for next iteration
+            lastChunk = chunkText
             fullScript += chunkText
             controller.enqueue(new TextEncoder().encode(chunkText))
           }
+          
+          // For the last chunk, remove trailing code fence if present
+          if (lastChunk.endsWith("```") || lastChunk.endsWith("~~~")) {
+            // Remove the last 3 characters from fullScript
+            fullScript = fullScript.slice(0, -3)
+            // Send a backspace control to remove the last 3 characters
+            controller.enqueue(new TextEncoder().encode("\b\b\b"))
+          }
+          
           console.log("Stream processing complete")
 
           // Remove code fences before saving

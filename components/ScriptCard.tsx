@@ -24,6 +24,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
   const [isStarred, setIsStarred] = useState(script.starred)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editedContent, setEditedContent] = useState(script.content)
   const router = useRouter()
 
@@ -77,8 +78,6 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
   }
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this script?")) return
-
     try {
       const response = await fetch(`/api/scripts/${script.id}`, {
         method: "DELETE",
@@ -88,17 +87,21 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         throw new Error("Failed to delete script")
       }
 
+      const scriptElement = document.querySelector(`[data-script-id="${script.id}"]`)
+      scriptElement?.remove()
       router.refresh()
     } catch (error) {
       console.error("Delete error:", error)
       alert("Failed to delete script")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   const isOwner = currentUserId === script.owner.id
 
   return (
-    <div className="border rounded-lg p-6 bg-white shadow-sm">
+    <div className="border rounded-lg p-6 bg-white shadow-sm" data-script-id={script.id}>
       <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
         <h2 className="text-xl font-semibold mb-2">{script.title}</h2>
         <p className="text-gray-600 mb-4">
@@ -153,12 +156,29 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
               >
                 Edit
               </button>
-              <button
-                onClick={handleDelete}
-                className="text-red-500 hover:text-red-600"
-              >
-                Delete
-              </button>
+              {!isDeleting ? (
+                <button
+                  onClick={() => setIsDeleting(true)}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  Delete
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setIsDeleting(false)}
+                    className="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
