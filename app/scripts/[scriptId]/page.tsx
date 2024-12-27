@@ -185,7 +185,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
             <div className="w-full h-[calc(100vh-4rem)] relative">
               <Editor
                 height="100%"
-                defaultLanguage="javascript"
+                defaultLanguage="typescript"
                 value={content}
                 onChange={handleEditorChange}
                 options={monacoOptions}

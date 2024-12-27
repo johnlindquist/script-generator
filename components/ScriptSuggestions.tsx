@@ -27,7 +27,7 @@ export default function ScriptSuggestions({ setPrompt }: ScriptSuggestionsProps)
   const [randomSuggestions, setRandomSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
-    const randomCount = Math.floor(Math.random() * 2) + 3; // 3 to 4 suggestions
+    const randomCount = Math.floor(Math.random() * 2) + 4; // 3 to 4 suggestions
     const shuffled = [...SUGGESTIONS]
       .sort(() => 0.5 - Math.random())
       .slice(0, randomCount);
@@ -35,7 +35,7 @@ export default function ScriptSuggestions({ setPrompt }: ScriptSuggestionsProps)
   }, []);
 
   return (
-    <div className="flex flex-wrap gap-2 mt-4">
+    <div className="flex flex-wrap justify-center gap-2 mt-4">
       {randomSuggestions.map((suggestion, idx) => (
         <button
           key={idx}

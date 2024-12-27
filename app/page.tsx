@@ -130,7 +130,7 @@ const ScriptGenerationForm = ({
             <div className="w-full h-[600px] relative">
               <Editor
                 height="100%"
-                defaultLanguage="javascript"
+                defaultLanguage="typescript"
                 value={editableScript}
                 onChange={(value) => setEditableScript(value || "")}
                 options={monacoOptions}

@@ -193,14 +193,24 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           <div className="bg-neutral-800/50 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight
               theme={nightOwlTheme}
-              code={script.content.slice(0, 200) + "..."}
+              code={script.content.slice(0, 500)}
               language="typescript"
               prism={Prism}
             >
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                <pre className={`${className} p-4 h-full`} style={{ ...style, margin: 0, background: 'transparent' }}>
-                  {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })}>
+                <pre 
+                  className={`${className} p-4 h-full overflow-hidden`} 
+                  style={{ 
+                    ...style, 
+                    margin: 0, 
+                    background: 'transparent',
+                    maxHeight: '300px',
+                    overflow: 'hidden',
+                    display: 'block'
+                  }}
+                >
+                  {tokens.slice(0, 12).map((line, i) => (
+                    <div key={i} {...getLineProps({ line })} className="whitespace-pre-wrap">
                       {line.map((token, key) => (
                         <span key={key} {...getTokenProps({ token })} />
                       ))}
