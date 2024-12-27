@@ -12,6 +12,7 @@ model User {
   githubId String   @unique
   username String
   scripts  Script[]
+  usage    Usage[]
 }
 
 model Script {
@@ -23,4 +24,14 @@ model Script {
   ownerId   String
   owner     User     @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Usage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime @default(now()) @db.Date
+  count     Int      @default(0)
+
+  @@unique([userId, date])
 } 
