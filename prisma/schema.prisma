@@ -1,0 +1,26 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       String   @id @default(uuid())
+  githubId String   @unique
+  username String
+  scripts  Script[]
+}
+
+model Script {
+  id        String   @id @default(uuid())
+  title     String
+  summary   String?
+  content   String
+  starred   Boolean  @default(false)
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+} 

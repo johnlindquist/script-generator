@@ -1,0 +1,6 @@
+{
+  "name": "Script Generator",
+  "url": "http://localhost:3001",
+  "callback_url": "http://localhost:3001/api/auth/callback/github",
+  "description": "AI-powered shell script generator"
+} 
