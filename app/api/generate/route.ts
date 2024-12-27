@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { authOptions } from "../auth/[...nextauth]/route"
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -16,7 +17,7 @@ const model = genAI.getGenerativeModel({
 export async function POST(req: NextRequest) {
   try {
     console.log("Starting script generation process...")
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
     // Log the full session for debugging
     console.log("Full session data:", JSON.stringify(session, null, 2))
@@ -38,39 +39,21 @@ export async function POST(req: NextRequest) {
 
     // Get the user from the database using ID
     console.log("Looking up user with ID:", session.user.id)
-    let dbUser = await prisma.user.findUnique({
+    const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id }
     })
 
     if (!dbUser) {
-      // Try finding by GitHub ID as fallback
-      if (session.user.githubId) {
-        console.log("User not found by ID, trying GitHub ID:", session.user.githubId)
-        const userByGithub = await prisma.user.findUnique({
-          where: { githubId: session.user.githubId }
-        })
-        
-        if (userByGithub) {
-          console.log("Found user by GitHub ID:", { 
-            userId: userByGithub.id, 
-            username: userByGithub.username 
-          })
-          dbUser = userByGithub
-        }
-      }
-      
-      if (!dbUser) {
-        console.error("User not found in database:", { 
-          userId: session.user.id,
-          githubId: session.user.githubId
-        })
-        return NextResponse.json({ 
-          error: "User not found in database",
-          details: "Please try signing out and signing back in"
-        }, { status: 404 })
-      }
+      console.error("User not found in database:", { 
+        userId: session.user.id,
+        githubId: session.user.githubId
+      })
+      return NextResponse.json({ 
+        error: "User not found in database",
+        details: "Please try signing out and signing back in"
+      }, { status: 404 })
     }
-    
+
     console.log("Found user:", { userId: dbUser.id, username: dbUser.username })
 
     // Generate script using Gemini with streaming
@@ -155,7 +138,7 @@ export async function POST(req: NextRequest) {
         stack: error.stack,
         name: error.name
       } : error,
-      session: await getServerSession(),
+      session: await getServerSession(authOptions),
       timestamp: new Date().toISOString()
     })
     return NextResponse.json({ 

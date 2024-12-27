@@ -1,4 +1,4 @@
-import NextAuth, { DefaultSession } from "next-auth"
+import NextAuth, { DefaultSession, AuthOptions } from "next-auth"
 import GithubProvider from "next-auth/providers/github"
 import { prisma } from "@/lib/prisma"
 
@@ -12,7 +12,7 @@ declare module "next-auth" {
   }
 }
 
-const handler = NextAuth({
+export const authOptions: AuthOptions = {
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,
@@ -24,6 +24,10 @@ const handler = NextAuth({
       },
     }),
   ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "github") {
@@ -49,48 +53,45 @@ const handler = NextAuth({
       }
       return true
     },
-    async session({ session, token }) {
-      console.log("Session callback:", { session, token })
-      
-      if (token.sub) {
-        // Find user in database
-        const dbUser = await prisma.user.findUnique({
-          where: { githubId: token.sub }
-        })
-
-        if (dbUser) {
-          // Add database user ID and GitHub ID to session
-          session.user = {
-            ...session.user,
-            id: dbUser.id,
-            githubId: dbUser.githubId
-          }
-          console.log("Updated session with user data:", { 
-            id: dbUser.id, 
-            githubId: dbUser.githubId 
-          })
-        } else {
-          console.error("User not found in database during session callback:", { 
-            tokenSub: token.sub 
-          })
-        }
-      } else {
-        console.error("No sub in token during session callback:", { token })
-      }
-
-      return session
-    },
     async jwt({ token, account, profile }) {
       console.log("JWT callback:", { token, account, profile })
       
       if (account) {
         // Store the provider account id in the token
         token.sub = account.providerAccountId
+        
+        // Find user in database and store ID in token
+        const dbUser = await prisma.user.findUnique({
+          where: { githubId: account.providerAccountId }
+        })
+        
+        if (dbUser) {
+          token.userId = dbUser.id
+          token.githubId = dbUser.githubId
+        }
       }
       return token
+    },
+    async session({ session, token }) {
+      console.log("Session callback:", { session, token })
+      
+      if (token.userId && token.githubId) {
+        session.user.id = token.userId as string
+        session.user.githubId = token.githubId as string
+        console.log("Updated session with user data:", { 
+          id: session.user.id, 
+          githubId: session.user.githubId 
+        })
+      } else {
+        console.error("No user ID or GitHub ID in token:", { token })
+      }
+
+      return session
     }
   },
   debug: process.env.NODE_ENV === 'development',
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST } 
