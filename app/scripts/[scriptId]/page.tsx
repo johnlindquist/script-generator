@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { toast } from "react-hot-toast";
 
 interface ScriptPageProps {
@@ -11,15 +11,16 @@ interface ScriptPageProps {
 }
 
 export default function ScriptPage({ params }: ScriptPageProps) {
+  const resolvedParams = use(params);
   const [script, setScript] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchScript = async () => {
-      console.log("Fetching script with ID:", params.scriptId);
+      console.log("Fetching script with ID:", resolvedParams.scriptId);
       try {
-        const response = await fetch(`/api/scripts/${params.scriptId}`);
+        const response = await fetch(`/api/scripts/${resolvedParams.scriptId}`);
         console.log("Response status:", response.status);
         
         if (!response.ok) {
@@ -41,7 +42,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
         console.error("Error fetching script:", {
           error,
           message: errorMessage,
-          scriptId: params.scriptId
+          scriptId: resolvedParams.scriptId
         });
         setError(errorMessage);
       } finally {
@@ -50,7 +51,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     };
 
     fetchScript();
-  }, [params.scriptId]);
+  }, [resolvedParams.scriptId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -117,7 +118,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
           <div>
             <h1 className="text-3xl font-bold mb-2">{script.title}</h1>
             <p className="text-gray-600">
-              by {script.owner?.name || "Anonymous"} •{" "}
+              by {script.owner?.username || "Anonymous"} •{" "}
               {new Date(script.createdAt).toLocaleDateString()}
             </p>
           </div>

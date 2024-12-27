@@ -77,4 +77,25 @@ export async function DELETE(req: NextRequest, { params }: { params: { scriptId:
       { status: 500 }
     )
   }
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { scriptId: string } }
+) {
+  try {
+    const script = await prisma.script.findUnique({
+      where: { id: params.scriptId },
+      include: { owner: true },
+    })
+
+    if (!script) {
+      return NextResponse.json({ error: "Script not found" }, { status: 404 })
+    }
+
+    return NextResponse.json(script)
+  } catch (error) {
+    console.error("Get script error:", error)
+    return NextResponse.json({ error: "Failed to get script" }, { status: 500 })
+  }
 } 

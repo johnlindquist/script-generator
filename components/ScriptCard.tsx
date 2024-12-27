@@ -104,37 +104,39 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         <p className="text-gray-600 mb-4">
           by {script.owner.username} • {new Date(script.createdAt).toLocaleDateString()}
         </p>
-        {isEditing ? (
-          <div className="mb-4">
-            <textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="w-full h-48 p-4 border rounded-lg font-mono text-sm"
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={handleEdit}
-                className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false)
-                  setEditedContent(script.content)
-                }}
-                className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            </div>
+      </Link>
+      {isEditing ? (
+        <div className="mb-4">
+          <textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            className="w-full h-48 p-4 border rounded-lg font-mono text-sm"
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={handleEdit}
+              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setIsEditing(false)
+                setEditedContent(script.content)
+              }}
+              className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
+            >
+              Cancel
+            </button>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
           <pre className="bg-gray-50 p-4 rounded overflow-x-auto">
             <code>{script.content.slice(0, 200)}...</code>
           </pre>
-        )}
-      </Link>
+        </Link>
+      )}
       <div className="mt-4 flex justify-between items-center">
         <div className="flex gap-2">
           <button

@@ -33,6 +33,24 @@ function getExampleScripts() {
   return allExampleContent
 }
 
+function removeLeadingTrailingCodeFence(script: string) {
+  let s = script.trim()
+
+  const tripleBackticks = "```"
+  const tripleTildes = "~~~"
+
+  // Check for leading/trailing triple backticks
+  if (s.startsWith(tripleBackticks) && s.endsWith(tripleBackticks)) {
+    s = s.slice(tripleBackticks.length, s.length - tripleBackticks.length).trim()
+  }
+  // Else, check for leading/trailing triple tildes
+  else if (s.startsWith(tripleTildes) && s.endsWith(tripleTildes)) {
+    s = s.slice(tripleTildes.length, s.length - tripleTildes.length).trim()
+  }
+
+  return s
+}
+
 export async function POST(req: NextRequest) {
   try {
     console.log("Starting script generation process...")
@@ -106,6 +124,9 @@ The script should be well-commented and include error handling.` :
             controller.enqueue(new TextEncoder().encode(chunkText))
           }
           console.log("Stream processing complete")
+
+          // Remove code fences before saving
+          fullScript = removeLeadingTrailingCodeFence(fullScript)
 
           // Save to database after full generation
           try {
