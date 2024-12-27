@@ -45,7 +45,7 @@ const ScriptGenerationForm = ({
   generatedScript,
   onSubmit
 }: ScriptGenerationFormProps) => (
-  <div className="mb-12 text-center">
+  <div className="mb-12">
     <h2 className="text-2xl font-bold mb-6">Generate New Script</h2>
     <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
       <div className="mb-6">
@@ -283,7 +283,7 @@ export default function Home() {
               onSubmit={handleGenerate}
             />
           ) : (
-            <div className="mb-12 text-center">
+            <div className="mb-12">
               <h2 className="text-2xl font-bold mb-6">
                 {isGenerating ? (
                   <span>
@@ -333,7 +333,14 @@ export default function Home() {
                               prism={Prism}
                             >
                               {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                <pre className={`${className} p-4`} style={style}>
+                                <pre 
+                                  className={`${className} p-4 font-mono text-sm leading-5`}
+                                  style={{
+                                    ...style,
+                                    tabSize: 2,
+                                    MozTabSize: 2,
+                                  }}
+                                >
                                   {tokens.map((line, i) => (
                                     <div key={i} {...getLineProps({ line })}>
                                       {line.map((token, key) => (
@@ -347,7 +354,13 @@ export default function Home() {
                             <textarea
                               value={editableScript}
                               onChange={(e) => setEditableScript(e.target.value)}
-                              className="absolute inset-0 w-full h-full p-4 font-mono text-sm bg-transparent text-transparent caret-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="absolute inset-0 w-full h-full p-4 font-mono text-sm leading-5 bg-transparent text-transparent caret-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              style={{
+                                tabSize: 2,
+                                MozTabSize: 2,
+                                whiteSpace: 'pre',
+                                overflowWrap: 'normal'
+                              }}
                               spellCheck="false"
                             />
                           </div>
