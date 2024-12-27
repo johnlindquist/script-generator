@@ -45,9 +45,9 @@ const ScriptGenerationForm = ({
   generatedScript,
   onSubmit
 }: ScriptGenerationFormProps) => (
-  <div className="mb-12">
+  <div className="mb-12 text-center">
     <h2 className="text-2xl font-bold mb-6">Generate New Script</h2>
-    <form onSubmit={onSubmit} className="max-w-2xl">
+    <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
       <div className="mb-6">
         <label
           htmlFor="prompt"
@@ -283,7 +283,7 @@ export default function Home() {
               onSubmit={handleGenerate}
             />
           ) : (
-            <div className="mb-12">
+            <div className="mb-12 text-center">
               <h2 className="text-2xl font-bold mb-6">
                 {isGenerating ? (
                   <span>
@@ -293,7 +293,7 @@ export default function Home() {
                   "Edit Generated Script"
                 )}
               </h2>
-              <div className="max-w-2xl">
+              <div className="max-w-2xl mx-auto">
                 {error && (
                   <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
                     <h3 className="font-semibold mb-2">Error</h3>
