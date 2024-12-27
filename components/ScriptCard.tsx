@@ -3,6 +3,11 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Highlight, Prism, themes } from "prism-react-renderer";
+
+// Initialize Prism with TypeScript support
+(typeof global !== "undefined" ? global : window).Prism = Prism;
+require("prismjs/components/prism-typescript");
 
 interface ScriptCardProps {
   script: {
@@ -100,12 +105,28 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
 
   const isOwner = currentUserId === script.owner.id
 
+  console.log('ScriptCard Debug Info:', {
+    currentUserId,
+    ownerId: script.owner.id,
+    ownerUsername: script.owner.username,
+    isOwner,
+    scriptId: script.id
+  })
+
   return (
     <div className="border rounded-lg p-6 bg-white shadow-sm" data-script-id={script.id}>
       <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
         <h2 className="text-xl font-semibold mb-2">{script.title}</h2>
         <p className="text-gray-600 mb-4">
           by {script.owner.username} • {new Date(script.createdAt).toLocaleDateString()}
+          {!isOwner && (
+            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              <svg className="w-4 h-4 mr-1" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+              </svg>
+              {script.owner.username}
+            </span>
+          )}
         </p>
       </Link>
       {isEditing ? (
@@ -135,9 +156,26 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         </div>
       ) : (
         <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
-          <pre className="bg-gray-50 p-4 rounded overflow-x-auto">
-            <code>{script.content.slice(0, 200)}...</code>
-          </pre>
+          <div className="bg-gray-50 rounded overflow-x-auto">
+            <Highlight
+              theme={themes.vsDark}
+              code={script.content.slice(0, 200) + "..."}
+              language="typescript"
+              prism={Prism}
+            >
+              {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                <pre className={`${className} p-4`} style={style}>
+                  {tokens.map((line, i) => (
+                    <div key={i} {...getLineProps({ line })}>
+                      {line.map((token, key) => (
+                        <span key={key} {...getTokenProps({ token })} />
+                      ))}
+                    </div>
+                  ))}
+                </pre>
+              )}
+            </Highlight>
+          </div>
         </Link>
       )}
       <div className="mt-4 flex justify-between items-center">

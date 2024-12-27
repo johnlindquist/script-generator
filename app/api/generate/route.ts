@@ -64,22 +64,42 @@ function getExampleScripts() {
   }
 }
 
-function removeLeadingTrailingCodeFence(script: string) {
+function removeLeadingTrailingCodeFence(script: string): string {
   let s = script.trim()
-
-  const tripleBackticks = "```"
-  const tripleTildes = "~~~"
-
-  // Check for leading/trailing triple backticks
-  if (s.startsWith(tripleBackticks) && s.endsWith(tripleBackticks)) {
-    s = s.slice(tripleBackticks.length, s.length - tripleBackticks.length).trim()
+  const codeFenceRegex = /^(`{3,}|~{3,})([a-zA-Z0-9]*)?/
+  const match = s.match(codeFenceRegex)
+  
+  // If match found at start, remove it and any following newline
+  if (match) {
+    s = s.slice(match[0].length).trimStart()
   }
-  // Else, check for leading/trailing triple tildes
-  else if (s.startsWith(tripleTildes) && s.endsWith(tripleTildes)) {
-    s = s.slice(tripleTildes.length, s.length - tripleTildes.length).trim()
+  
+  // Now remove trailing fence at the end
+  if (s.endsWith("```") || s.endsWith("~~~")) {
+    s = s.slice(0, -3).trimEnd()
   }
-
+  
   return s
+}
+
+// Helper function to clean code fences and language specifiers
+function cleanCodeFences(text: string): string {
+  // First, remove code fences with inline language specifiers
+  let cleaned = text.replaceAll(/(```|~~~)[ ]?(ts|typescript)?/gi, "")
+  
+  // Then remove any "typescript" that appears alone on a line (case insensitive)
+  cleaned = cleaned.replace(/^typescript\s*$/gim, "")
+  
+  // Clean up any double newlines that might have been created
+  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, "\n\n")
+  
+  return cleaned.trim()
+}
+
+// Helper function to detect partial code fences at the end
+function getPartialFence(text: string): string {
+  const match = text.match(/(`+$|~+$)/)
+  return match ? match[0] : ""
 }
 
 export async function POST(req: NextRequest) {
@@ -165,51 +185,42 @@ Generate ONLY the script content, no additional explanations or markdown:`
     const result = await model.generateContentStream(finalPrompt)
     console.log("Gemini stream initialized")
 
-    let fullScript = ''
+    let fullScript = ""
 
     // Create a ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         try {
           console.log("Starting stream processing...")
-          let isFirstChunk = true
-          let lastChunk = ''
+          let carryover = ""
           
           for await (const chunk of result.stream) {
-            let chunkText = chunk.text()
+            // Combine carryover with new chunk
+            let combined = carryover + chunk.text()
             
-            // For the first chunk, remove leading code fence if present
-            if (isFirstChunk) {
-              const tripleBackticks = "```"
-              const tripleTildes = "~~~"
-              
-              if (chunkText.startsWith(tripleBackticks)) {
-                chunkText = chunkText.slice(tripleBackticks.length)
-              } else if (chunkText.startsWith(tripleTildes)) {
-                chunkText = chunkText.slice(tripleTildes.length)
-              }
-              
-              isFirstChunk = false
+            // Clean code fences and language specifiers
+            combined = cleanCodeFences(combined)
+            
+            // Check for partial fences at the end
+            const partialFence = getPartialFence(combined)
+            if (partialFence) {
+              carryover = partialFence
+              combined = combined.slice(0, -carryover.length)
+            } else {
+              carryover = ""
             }
             
-            // Store this chunk for next iteration
-            lastChunk = chunkText
-            fullScript += chunkText
-            controller.enqueue(new TextEncoder().encode(chunkText))
+            // Add to full script and send to client
+            fullScript += combined
+            controller.enqueue(new TextEncoder().encode(combined))
           }
           
-          // For the last chunk, remove trailing code fence if present
-          if (lastChunk.endsWith("```") || lastChunk.endsWith("~~~")) {
-            // Remove the last 3 characters from fullScript
-            fullScript = fullScript.slice(0, -3)
-            // Send a backspace control to remove the last 3 characters
-            controller.enqueue(new TextEncoder().encode("\b\b\b"))
+          // Handle any remaining carryover
+          if (carryover.length > 0) {
+            carryover = ""
           }
           
           console.log("Stream processing complete")
-
-          // Remove code fences before saving
-          fullScript = removeLeadingTrailingCodeFence(fullScript)
 
           // Save to database after full generation
           try {
@@ -248,10 +259,8 @@ Generate ONLY the script content, no additional explanations or markdown:`
               stack: streamError.stack,
               name: streamError.name
             } : streamError,
-            scriptLength: fullScript.length,
-            lastChunkLength: fullScript.split('\n').pop()?.length
+            scriptLength: fullScript.length
           })
-          // Send an error message to the client
           controller.enqueue(new TextEncoder().encode("\nError: Failed to complete script generation"))
           controller.close()
         }

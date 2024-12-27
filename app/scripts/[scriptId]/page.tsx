@@ -6,6 +6,11 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { useEffect, useState, use } from "react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
+import { Highlight, Prism, themes } from "prism-react-renderer";
+
+// Initialize Prism with TypeScript support
+(typeof global !== "undefined" ? global : window).Prism = Prism;
+require("prismjs/components/prism-typescript");
 
 interface ScriptPageProps {
   params: Promise<{ scriptId: string }>;
@@ -136,9 +141,27 @@ export default function ScriptPage({ params }: ScriptPageProps) {
           </div>
           
           <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
-            <pre className="overflow-x-auto whitespace-pre-wrap">
-              <code className="text-sm">{script.content}</code>
-            </pre>
+            <Highlight
+              theme={themes.vsDark}
+              code={script.content || ""}
+              language="typescript"
+              prism={Prism}
+            >
+              {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                <pre className={`${className} overflow-x-auto whitespace-pre`} style={{...style, padding: '1rem'}}>
+                  {tokens.map((line, i) => (
+                    <div key={i} {...getLineProps({ line })} className="table-row">
+                      <span className="table-cell pr-4 select-none text-gray-500 text-right">{i + 1}</span>
+                      <span className="table-cell">
+                        {line.map((token, key) => (
+                          <span key={key} {...getTokenProps({ token })} />
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </pre>
+              )}
+            </Highlight>
           </div>
         </div>
       </main>

@@ -5,6 +5,11 @@ import { useSession } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
+import { Highlight, Prism, themes } from "prism-react-renderer"
+
+// Initialize Prism with TypeScript support
+(typeof global !== "undefined" ? global : window).Prism = Prism;
+require("prismjs/components/prism-typescript");
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -66,9 +71,26 @@ const ScriptGenerationForm = ({
       <div className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Generated Script:</h2>
         <div className="relative mb-2">
-          <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
-            <code>{generatedScript}</code>
-          </pre>
+          <div className="bg-gray-50 rounded-lg overflow-x-auto">
+            <Highlight
+              theme={themes.vsDark}
+              code={generatedScript}
+              language="typescript"
+              prism={Prism}
+            >
+              {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                <pre className={`${className} p-4`} style={style}>
+                  {tokens.map((line, i) => (
+                    <div key={i} {...getLineProps({ line })}>
+                      {line.map((token, key) => (
+                        <span key={key} {...getTokenProps({ token })} />
+                      ))}
+                    </div>
+                  ))}
+                </pre>
+              )}
+            </Highlight>
+          </div>
           {!isGenerating && (
             <div className="absolute bottom-4 right-4">
               <button
@@ -94,6 +116,16 @@ export default function Home() {
   const [generatedScript, setGeneratedScript] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<any[]>([])
+
+  // Add debug logging for session
+  useEffect(() => {
+    console.log("Session Debug Info:", {
+      session,
+      status,
+      userId: session?.user?.id,
+      isAuthenticated: !!session
+    })
+  }, [session, status])
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -184,16 +216,20 @@ export default function Home() {
       {/* Scripts List */}
       <div>
         <h2 className="text-2xl font-bold mb-6">Your Scripts</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {scripts.map((script) => (
-            <ScriptCard
-              key={script.id}
-              script={script}
-              isAuthenticated={!!session}
-              currentUserId={session?.user?.id}
-            />
-          ))}
-        </div>
+        {status === "loading" ? (
+          <div className="text-center text-gray-500">Loading scripts...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {scripts.map((script) => (
+              <ScriptCard
+                key={script.id}
+                script={script}
+                isAuthenticated={!!session}
+                currentUserId={session?.user?.id}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </main>
   )
