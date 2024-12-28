@@ -42,6 +42,7 @@ interface ScriptCardProps {
 export default function ScriptCard({ script, isAuthenticated, currentUserId }: ScriptCardProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isTogglingStar, setIsTogglingStar] = useState(false)
   const [isStarred, setIsStarred] = useState(script.starred)
   const [isLiked, setIsLiked] = useState(script.isLiked ?? false)
@@ -84,6 +85,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
 
   const handleDelete = async () => {
     try {
+      setIsDeleting(true)
       const response = await fetch(`/api/scripts/${script.id}`, {
         method: 'DELETE',
       })
@@ -104,7 +106,16 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       alert('Failed to delete script')
     } finally {
       setIsDeleting(false)
+      setShowDeleteConfirm(false)
     }
+  }
+
+  const initiateDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false)
   }
 
   const handleToggleLike = async () => {
@@ -220,10 +231,10 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
                 </span>
               </button>
               <button
-                onClick={handleDelete}
+                onClick={showDeleteConfirm ? handleDelete : initiateDelete}
                 className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
                 disabled={isDeleting}
-                title="Delete script"
+                title={showDeleteConfirm ? 'Confirm delete' : 'Delete script'}
               >
                 {isDeleting ? (
                   <XMarkIcon className="w-5 h-5 animate-spin" />
@@ -231,9 +242,21 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
                   <TrashIcon className="w-5 h-5" />
                 )}
                 <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-                  Delete script
+                  {showDeleteConfirm ? 'Click again to confirm delete' : 'Delete script'}
                 </span>
               </button>
+              {showDeleteConfirm && (
+                <button
+                  onClick={cancelDelete}
+                  className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
+                  title="Cancel delete"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                  <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+                    Cancel delete
+                  </span>
+                </button>
+              )}
             </>
           )}
         </div>

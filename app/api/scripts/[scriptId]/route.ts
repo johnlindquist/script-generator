@@ -3,19 +3,22 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../../auth/[...nextauth]/route'
 
-export async function PUT(req: NextRequest, { params }: { params: { scriptId: string } }) {
+type Context = {
+  params: Promise<{ scriptId: string }>
+}
+
+export async function PUT(request: NextRequest, context: Context) {
+  const params = await context.params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { content } = await req.json()
-    const scriptId = params.scriptId
+    const { content } = await request.json()
 
-    // Verify ownership
     const script = await prisma.script.findUnique({
-      where: { id: scriptId },
+      where: { id: params.scriptId },
     })
 
     if (!script) {
@@ -26,22 +29,23 @@ export async function PUT(req: NextRequest, { params }: { params: { scriptId: st
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Update script
     const updatedScript = await prisma.script.update({
-      where: { id: scriptId },
+      where: { id: params.scriptId },
       data: { content },
     })
 
     return NextResponse.json(updatedScript)
   } catch (error) {
-    console.error('Update script error:', error)
-    return NextResponse.json({ error: 'Failed to update script' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to update script: ${errorMessage}` }, { status: 500 })
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { scriptId: string } }) {
+export async function DELETE(request: NextRequest, context: Context) {
   try {
+    const params = await context.params
     const session = await getServerSession(authOptions)
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
@@ -58,23 +62,27 @@ export async function DELETE(request: Request, { params }: { params: { scriptId:
       return NextResponse.json({ error: 'Not authorized to delete this script' }, { status: 403 })
     }
 
-    await prisma.script.delete({
-      where: { id: params.scriptId },
-    })
+    await prisma.$transaction([
+      prisma.like.deleteMany({
+        where: { scriptId: params.scriptId },
+      }),
+      prisma.script.delete({
+        where: { id: params.scriptId },
+      }),
+    ])
 
     return NextResponse.json({ message: 'Script deleted successfully' })
   } catch (error) {
-    console.error('Failed to delete script:', error)
-    return NextResponse.json({ error: 'Failed to delete script' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to delete script: ${errorMessage}` }, { status: 500 })
   }
 }
 
-export async function GET(req: NextRequest, context: { params: { scriptId: string } }) {
-  const { scriptId } = context.params
-
+export async function GET(request: NextRequest, context: Context) {
   try {
+    const params = await context.params
     const script = await prisma.script.findUnique({
-      where: { id: scriptId },
+      where: { id: params.scriptId },
       include: { owner: true },
     })
 
@@ -84,13 +92,14 @@ export async function GET(req: NextRequest, context: { params: { scriptId: strin
 
     return NextResponse.json(script)
   } catch (error) {
-    console.error('Get script error:', error)
-    return NextResponse.json({ error: 'Failed to get script' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to get script: ${errorMessage}` }, { status: 500 })
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { scriptId: string } }) {
+export async function PATCH(request: NextRequest, context: Context) {
   try {
+    const params = await context.params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -117,7 +126,7 @@ export async function PATCH(request: Request, { params }: { params: { scriptId: 
 
     return NextResponse.json(updatedScript)
   } catch (error) {
-    console.error('Failed to update script:', error)
-    return NextResponse.json({ error: 'Failed to update script' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to update script: ${errorMessage}` }, { status: 500 })
   }
 }
