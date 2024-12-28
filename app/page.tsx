@@ -15,17 +15,18 @@ import {
   ArrowPathIcon 
 } from "@heroicons/react/24/solid"
 import debounce from "lodash.debounce"
+import { toast } from "react-hot-toast"
 
 interface ScriptGenerationFormProps {
   prompt: string
   setPrompt: (prompt: string) => void
   isGenerating: boolean
   error: string | null
-  generatedScript: string
+  generatedScript: string | null
   editableScript: string
   setEditableScript: (script: string) => void
-  onSubmit: (e: React.FormEvent) => Promise<void>
-  onSave: () => Promise<void>
+  onSubmit: (prompt: string, requestId: string) => void
+  onSave: () => void
 }
 
 const LoadingDots = () => (
@@ -61,6 +62,20 @@ const ScriptGenerationForm = ({
 
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
+  };
+
+  // Generate a unique ID for this script generation
+  const generateRequestId = () => {
+    return crypto.randomUUID();
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim() || isGenerating) return;
+
+    const requestId = generateRequestId();
+    onSubmit(prompt, requestId);
   };
 
   // Scroll while generating
@@ -100,7 +115,7 @@ const ScriptGenerationForm = ({
         )}
       </h2>
       {!generatedScript && (
-        <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <div className="mb-6">
             <textarea
               id="prompt"
@@ -109,7 +124,7 @@ const ScriptGenerationForm = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  onSubmit(e as any);
+                  handleSubmit(e as any);
                 }
               }}
               disabled={isGenerating}
@@ -207,7 +222,7 @@ export default function Home() {
   const { data: session, status } = useSession()
   const [prompt, setPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedScript, setGeneratedScript] = useState("")
+  const [generatedScript, setGeneratedScript] = useState<string | null>(null)
   const [editableScript, setEditableScript] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<any[]>([])
@@ -232,111 +247,67 @@ export default function Home() {
     })
   }, [session, status])
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsGenerating(true)
-    setGeneratedScript("")
-    setEditableScript("")
-    setError(null)
-    textBufferRef.current = ""
+  // Handle script generation
+  const handleSubmit = async (prompt: string, requestId: string) => {
+    setIsGenerating(true);
+    setError(null);
+    setGeneratedScript(null);
+    setEditableScript("");
 
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt }),
-      })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, requestId }),
+      });
 
       if (!response.ok) {
-        const contentType = response.headers.get("content-type")
-        const errorData = contentType?.includes("application/json")
-          ? await response.json()
-          : await response.text()
-        throw new Error(
-          errorData.error || errorData.details || "Failed to generate script"
-        )
+        throw new Error("Failed to generate script");
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const text = decoder.decode(value)
-          textBufferRef.current += text
-          updateEditorContent(textBufferRef.current)
-        }
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No reader available");
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error))
+
+      let script = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = new TextDecoder().decode(value);
+        script += text;
+        setEditableScript(prev => prev + text);
+      }
+
+      setGeneratedScript(script);
+    } catch (err) {
+      console.error("Generation error:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
-      // Ensure the final content is set
-      updateEditorContent.flush()
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
+  // Handle saving the script
   const handleSave = async () => {
     try {
-      console.log('Attempting to save script:', {
-        promptLength: prompt.length,
-        codeLength: editableScript.length,
-        userId: session?.user?.id
-      });
-
       const response = await fetch("/api/scripts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt,
-          code: editableScript,
-        }),
-      })
-
-      const responseData = await response.json().catch(e => ({ error: 'Failed to parse response' }));
-      console.log('Save script response:', {
-        status: response.status,
-        ok: response.ok,
-        data: responseData
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, code: editableScript }),
       });
 
       if (!response.ok) {
-        throw new Error(responseData.error || responseData.message || `Failed to save script (Status: ${response.status})`)
+        throw new Error("Failed to save script");
       }
 
-      // Refresh scripts list
-      const scriptsResponse = await fetch("/api/scripts")
-      if (scriptsResponse.ok) {
-        const newScripts = await scriptsResponse.json()
-        setScripts(newScripts)
-      } else {
-        console.error('Failed to refresh scripts list:', {
-          status: scriptsResponse.status,
-          statusText: scriptsResponse.statusText
-        });
-      }
-
-      // Reset state
-      setPrompt("")
-      setGeneratedScript("")
-      setEditableScript("")
-      setShowGenerateForm(true)
-    } catch (error) {
-      console.error('Save script error:', {
-        error,
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      setError(error instanceof Error ? error.message : String(error))
+      toast.success("Script saved successfully!");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to save script");
     }
-  }
+  };
 
   // Fetch scripts on mount
   useEffect(() => {
@@ -370,7 +341,7 @@ export default function Home() {
               generatedScript={generatedScript}
               editableScript={editableScript}
               setEditableScript={setEditableScript}
-              onSubmit={handleGenerate}
+              onSubmit={handleSubmit}
               onSave={handleSave}
             />
 
