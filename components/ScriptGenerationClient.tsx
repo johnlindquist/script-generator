@@ -54,6 +54,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [error, setError] = useState<string | null>(null)
   const editorRef = useRef<EditorRef | null>(null)
   const prevIsGeneratingRef = useRef(isGenerating)
+  const suggestionsRef = useRef<{ refreshSuggestions: () => void } | null>(null)
 
   const handleEditorDidMount = (editor: EditorRef) => {
     editorRef.current = editor
@@ -262,14 +263,32 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               </button>
 
               <div className="mt-8 text-center text-sm">
-                <p className="text-slate-400 mb-4">Or generate from a suggestion</p>
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <p className="text-slate-400">Or generate from a suggestion</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        signIn()
+                        return
+                      }
+                      suggestionsRef.current?.refreshSuggestions()
+                    }}
+                    className="text-sm bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 px-2 py-1 rounded-full transition-colors duration-200 flex items-center gap-1"
+                  >
+                    <ArrowPathIcon className="w-4 h-4" />
+                  </button>
+                </div>
                 <ScriptSuggestions
+                  ref={suggestionsRef}
                   setPrompt={suggestion => {
                     if (!isAuthenticated) {
                       signIn()
                       return
                     }
                     setPrompt(suggestion)
+                    // Generate script immediately after setting the prompt
+                    generateScript(suggestion, generateRequestId())
                   }}
                 />
               </div>
