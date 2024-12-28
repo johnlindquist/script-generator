@@ -228,6 +228,31 @@ export default function Home() {
   const [scripts, setScripts] = useState<any[]>([])
   const [showGenerateForm, setShowGenerateForm] = useState(true)
   const textBufferRef = useRef("")
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(9)
+  const [totalPages, setTotalPages] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch scripts with pagination
+  const fetchScripts = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/scripts?page=${page}&pageSize=${pageSize}`)
+      if (!response.ok) throw new Error("Failed to fetch scripts")
+      const data = await response.json()
+      setScripts(data.scripts)
+      setTotalPages(data.totalPages)
+    } catch (error) {
+      console.error("Error fetching scripts:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch scripts when page changes
+  useEffect(() => {
+    fetchScripts()
+  }, [page])
 
   // Throttled update function
   const updateEditorContent = useRef(
@@ -309,58 +334,73 @@ export default function Home() {
     }
   };
 
-  // Fetch scripts on mount
-  useEffect(() => {
-    fetch("/api/scripts")
-      .then(res => res.json())
-      .then(data => setScripts(data))
-      .catch(console.error)
-  }, [])
-
   return (
-    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
+    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black">
       <NavBar isAuthenticated={!!session} />
-      <main className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         {status === "loading" ? (
-          <div>Loading...</div>
-        ) : !session ? (
-          <div className="mb-12 text-center">
-            <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
-            <p className="text-slate-300 mb-8">Sign in to start generating scripts!</p>
-            <Auth>
-              <div>Sign in to continue</div>
-            </Auth>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-amber-400"></div>
           </div>
+        ) : !session ? (
+          <Auth>
+            <div className="mb-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
+              <p className="text-slate-300 mb-8">Sign in to start generating scripts!</p>
+            </div>
+          </Auth>
         ) : (
           <>
-            <ScriptGenerationForm
-              prompt={prompt}
-              setPrompt={setPrompt}
-              isGenerating={isGenerating}
-              error={error}
-              generatedScript={generatedScript}
-              editableScript={editableScript}
-              setEditableScript={setEditableScript}
-              onSubmit={handleSubmit}
-              onSave={handleSave}
-            />
+            {showGenerateForm && (
+              <ScriptGenerationForm
+                prompt={prompt}
+                setPrompt={setPrompt}
+                isGenerating={isGenerating}
+                error={error}
+                generatedScript={generatedScript}
+                editableScript={editableScript}
+                setEditableScript={setEditableScript}
+                onSubmit={handleSubmit}
+                onSave={handleSave}
+              />
+            )}
 
-            <div className="mt-12">
-              <h2 className="text-2xl font-bold mb-6 text-amber-300">Your Scripts</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {scripts.map((script) => (
-                  <ScriptCard
-                    key={script.id}
-                    script={script}
-                    isAuthenticated={!!session}
-                    currentUserId={session.user?.id}
-                  />
-                ))}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {scripts.map((script) => (
+                <ScriptCard
+                  key={script.id}
+                  script={script}
+                  isAuthenticated={!!session}
+                  currentUserId={session?.user?.id}
+                />
+              ))}
             </div>
+
+            {/* Pagination Controls */}
+            {scripts.length > 0 && (
+              <div className="mt-8 flex justify-center items-center gap-4">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1 || isLoading}
+                  className="px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-slate-300">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages || isLoading}
+                  className="px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }
