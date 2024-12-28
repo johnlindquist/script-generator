@@ -272,9 +272,9 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           </p>
         </Link>
       </div>
-      <div className="flex-grow flex flex-col">
-        <Link href={`/scripts/${script.id}`} className="block flex-grow">
-          <div className="bg-neutral-800/50 rounded-lg overflow-hidden h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
+      <div className="flex-grow flex flex-col overflow-hidden">
+        <Link href={`/scripts/${script.id}`} className="block flex-grow min-h-0">
+          <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight
               theme={nightOwlTheme}
               code={script.content.slice(0, 500)}
@@ -283,7 +283,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             >
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
                 <pre 
-                  className={`${className} p-4 h-full overflow-hidden`} 
+                  className={`${className} p-4 h-full overflow-y-auto`} 
                   style={{ 
                     ...style, 
                     margin: 0, 
@@ -291,7 +291,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
                   }}
                 >
                   {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })}>
+                    <div key={i} {...getLineProps({ line })} className="whitespace-pre break-all">
                       {line.map((token, key) => (
                         <span key={key} {...getTokenProps({ token })} />
                       ))}
