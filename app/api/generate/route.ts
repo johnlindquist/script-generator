@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { prompt } = await req.json()
+    const { prompt, requestId } = await req.json()
     if (!prompt) {
       console.error("No prompt provided in request")
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
@@ -265,6 +265,19 @@ Generate ONLY the script content, no additional explanations or markdown:`
           controller.close()
         }
       }
+    })
+
+    // After streaming is complete, save the script with requestId
+    const script = await prisma.script.upsert({
+      where: { requestId: requestId || "" },
+      update: {},
+      create: {
+        requestId: requestId,
+        title: prompt.slice(0, 100),
+        summary: prompt,
+        content: fullScript,
+        ownerId: dbUser.id,
+      },
     })
 
     return new Response(stream, {

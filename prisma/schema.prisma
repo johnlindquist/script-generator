@@ -17,6 +17,7 @@ model User {
 
 model Script {
   id        String   @id @default(uuid())
+  requestId String?  @unique
   title     String
   summary   String?
   content   String
