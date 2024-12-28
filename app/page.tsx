@@ -28,6 +28,8 @@ interface ScriptGenerationFormProps {
   onSubmit: (prompt: string, requestId: string) => void
   onSave: () => void
   isAuthenticated: boolean
+  setGeneratedScript: (script: string | null) => void
+  setError: (error: string | null) => void
 }
 
 const LoadingDots = () => (
@@ -57,7 +59,9 @@ const ScriptGenerationForm = ({
   setEditableScript,
   onSubmit,
   onSave,
-  isAuthenticated
+  isAuthenticated,
+  setGeneratedScript,
+  setError
 }: ScriptGenerationFormProps) => {
   const editorRef = useRef<any>(null);
   const prevIsGeneratingRef = useRef(isGenerating);
@@ -207,16 +211,6 @@ const ScriptGenerationForm = ({
             </div>
             {!isGenerating && (
               <div className="absolute bottom-4 right-4 flex gap-2">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(editableScript);
-                    toast.success("Script copied to clipboard!");
-                  }}
-                  className="bg-gradient-to-tr from-cyan-300 to-cyan-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                >
-                  <ClipboardIcon className="w-5 h-5" />
-                  Copy Script
-                </button>
                 {isAuthenticated && (
                   <>
                     <button
@@ -230,11 +224,13 @@ const ScriptGenerationForm = ({
                       onClick={() => {
                         setPrompt("")
                         setEditableScript("")
+                        setGeneratedScript(null)
+                        setError(null)
                       }}
                       className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                     >
                       <ArrowPathIcon className="w-5 h-5" />
-                      Generate Another
+                      Start Over
                     </button>
                   </>
                 )}
@@ -430,6 +426,8 @@ export default function Home() {
                 onSubmit={handleSubmit}
                 onSave={handleSave}
                 isAuthenticated={!!session}
+                setGeneratedScript={setGeneratedScript}
+                setError={setError}
               />
             )}
 
