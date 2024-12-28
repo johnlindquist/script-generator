@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession, signIn } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import ScriptCard from "@/components/ScriptCard"
@@ -35,6 +35,23 @@ interface ScriptGenerationFormProps {
   isAuthenticated: boolean
   setGeneratedScript: (script: string | null) => void
   setError: (error: string | null) => void
+}
+
+interface Script {
+  id: string;
+  title: string;
+  content: string;
+  starred: boolean;
+  saved: boolean;
+  createdAt: Date;
+  owner: {
+    id: string;
+    username: string;
+  };
+  _count?: {
+    likes: number;
+  };
+  isLiked?: boolean;
 }
 
 const LoadingDots = () => (
@@ -255,16 +272,15 @@ export default function Home() {
   const [generatedScript, setGeneratedScript] = useState<string | null>(null)
   const [editableScript, setEditableScript] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [scripts, setScripts] = useState<any[]>([])
+  const [scripts, setScripts] = useState<Script[]>([])
   const [showGenerateForm] = useState(true)
-  const textBufferRef = useRef("")
   const [page, setPage] = useState(1)
   const [pageSize] = useState(9)
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
 
   // Fetch scripts with pagination
-  const fetchScripts = async () => {
+  const fetchScripts = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/scripts?page=${page}&pageSize=${pageSize}`)
@@ -279,12 +295,12 @@ export default function Home() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [page, pageSize])
 
   // Fetch scripts when page changes
   useEffect(() => {
     fetchScripts()
-  }, [page, pageSize])
+  }, [fetchScripts])
 
   // Listen for script deletion
   useEffect(() => {
@@ -299,7 +315,7 @@ export default function Home() {
 
     window.addEventListener('scriptDeleted', handleScriptDeleted)
     return () => window.removeEventListener('scriptDeleted', handleScriptDeleted)
-  }, [page])
+  }, [fetchScripts, page])
 
   // Throttled update function
   const updateEditorContent = useRef(
@@ -393,19 +409,6 @@ export default function Home() {
       toast.error(err instanceof Error ? err.message : "Failed to save script");
     }
   };
-
-  useEffect(() => {
-    fetchScripts()
-  }, [session, fetchScripts])
-
-  useEffect(() => {
-    const handleScriptDeleted = () => {
-      fetchScripts()
-    }
-
-    window.addEventListener("scriptDeleted", handleScriptDeleted)
-    return () => window.removeEventListener("scriptDeleted", handleScriptDeleted)
-  }, [fetchScripts])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">

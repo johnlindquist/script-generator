@@ -11,8 +11,7 @@ import {
   TrashIcon, 
   StarIcon as StarIconSolid,
   HeartIcon as HeartIconSolid,
-  XMarkIcon,
-  DocumentCheckIcon
+  XMarkIcon
 } from "@heroicons/react/24/solid"
 import { 
   StarIcon as StarIconOutline,
@@ -120,7 +119,6 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
   const [isLiked, setIsLiked] = useState(script.isLiked ?? false)
   const [likeCount, setLikeCount] = useState(script._count?.likes ?? 0)
   const [isTogglingLike, setIsTogglingLike] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
   const handleStar = async () => {
     if (!isAuthenticated) {
@@ -214,7 +212,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       return
     }
 
-    setIsSaving(true)
+    setIsTogglingLike(true)
     try {
       const response = await fetch(`/api/scripts/${script.id}`, {
         method: "PATCH",
@@ -239,7 +237,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       console.error("Save error:", error)
       alert("Failed to toggle save")
     } finally {
-      setIsSaving(false)
+      setIsTogglingLike(false)
     }
   }
 
