@@ -271,8 +271,10 @@ export default function Home() {
       const data = await response.json()
       setScripts(data.scripts)
       setTotalPages(data.totalPages)
+      return data
     } catch (error) {
       console.error("Error fetching scripts:", error)
+      return null
     } finally {
       setIsLoading(false)
     }
@@ -281,6 +283,21 @@ export default function Home() {
   // Fetch scripts when page changes
   useEffect(() => {
     fetchScripts()
+  }, [page, pageSize])
+
+  // Listen for script deletion
+  useEffect(() => {
+    const handleScriptDeleted = () => {
+      // Re-fetch scripts and reset to first page if current page would be empty
+      fetchScripts().then((data) => {
+        if (data?.scripts?.length === 0 && page > 1) {
+          setPage(1)
+        }
+      })
+    }
+
+    window.addEventListener('scriptDeleted', handleScriptDeleted)
+    return () => window.removeEventListener('scriptDeleted', handleScriptDeleted)
   }, [page])
 
   // Throttled update function

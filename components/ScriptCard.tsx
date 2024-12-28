@@ -10,7 +10,8 @@ import {
   PencilSquareIcon, 
   TrashIcon, 
   StarIcon as StarIconSolid,
-  HeartIcon as HeartIconSolid
+  HeartIcon as HeartIconSolid,
+  XMarkIcon
 } from "@heroicons/react/24/solid"
 import { 
   StarIcon as StarIconOutline,
@@ -159,8 +160,12 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         throw new Error("Failed to delete script")
       }
 
-      const scriptElement = document.querySelector(`[data-script-id="${script.id}"]`)
-      scriptElement?.remove()
+      // Emit a custom event that the parent page can listen to
+      const event = new CustomEvent('scriptDeleted', {
+        detail: { scriptId: script.id }
+      });
+      window.dispatchEvent(event);
+      
       router.refresh()
     } catch (error) {
       console.error("Delete error:", error)
@@ -275,7 +280,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             <>
               <button
                 onClick={handleEdit}
-                className="text-amber-300 hover:text-amber-200 transition ml-4 flex items-center gap-1"
+                className="text-amber-300 hover:text-amber-200 transition ml-4 flex items-center gap-1 h-8"
               >
                 <PencilSquareIcon className="w-4 h-4" />
                 Edit
@@ -283,25 +288,26 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
               {!isDeleting ? (
                 <button
                   onClick={() => setIsDeleting(true)}
-                  className="text-red-400 hover:text-red-300 transition flex items-center gap-1"
+                  className="text-red-400 hover:text-red-300 transition flex items-center gap-1 min-w-[5.5rem] h-8"
                 >
                   <TrashIcon className="w-4 h-4" />
                   Delete
                 </button>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 min-w-[5.5rem]">
                   <button
                     onClick={handleDelete}
-                    className="bg-red-500/20 text-red-300 px-3 py-1.5 rounded-md text-sm hover:bg-red-500/30 transition flex items-center gap-1"
+                    className="bg-red-500/20 text-red-300 w-8 h-8 rounded-md text-sm hover:bg-red-500/30 transition flex items-center justify-center"
+                    title="Confirm Delete"
                   >
                     <TrashIcon className="w-4 h-4" />
-                    Confirm Delete
                   </button>
                   <button
                     onClick={() => setIsDeleting(false)}
-                    className="bg-gray-800 text-amber-300 border border-amber-400/20 px-3 py-1.5 rounded-md text-sm hover:bg-amber-400/10 transition"
+                    className="bg-gray-800 text-amber-300 border border-amber-400/20 w-8 h-8 rounded-md text-sm hover:bg-amber-400/10 transition flex items-center justify-center"
+                    title="Cancel"
                   >
-                    Cancel
+                    <XMarkIcon className="w-4 h-4" />
                   </button>
                 </div>
               )}

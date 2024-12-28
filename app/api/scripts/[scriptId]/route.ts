@@ -42,31 +42,43 @@ export async function PUT(req: NextRequest, { params }: { params: { scriptId: st
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { scriptId: string } }) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: { scriptId: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
-    const scriptId = params.scriptId
+    const scriptId = await Promise.resolve(params.scriptId)
 
     // Verify ownership
     const script = await prisma.script.findUnique({
-      where: { id: scriptId }
+      where: { id: scriptId },
     })
 
     if (!script) {
-      return NextResponse.json({ error: "Script not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Script not found" },
+        { status: 404 }
+      )
     }
 
     if (script.ownerId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
-    // Delete script
+    // Delete the script
     await prisma.script.delete({
-      where: { id: scriptId }
+      where: { id: scriptId },
     })
 
     return NextResponse.json({ success: true })
