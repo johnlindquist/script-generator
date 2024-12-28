@@ -179,11 +179,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       <div className="flex-grow flex flex-col overflow-hidden">
         <Link href={`/scripts/${script.id}`} className="block flex-grow min-h-0">
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
-            <Highlight
-              theme={themes.nightOwl}
-              code={script.content.slice(0, 500)}
-              language="typescript"
-            >
+            <Highlight theme={themes.nightOwl} code={script.content} language="typescript">
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
                 <pre
                   className={`${className} p-4 h-full overflow-y-auto`}

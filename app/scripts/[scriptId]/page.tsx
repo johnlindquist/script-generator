@@ -163,15 +163,17 @@ export default function ScriptPage({ params }: ScriptPageProps) {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <Link
-        href="/"
-        className="inline-block mb-4 px-4 py-2 text-sm font-medium text-amber-300 bg-neutral-800/80 rounded-md hover:bg-neutral-700/80 transition-colors"
-      >
-        ← Back to Home
-      </Link>
-      <main className="container mx-auto px-8 py-4">
-        <div className="max-w-4xl mx-auto">
+    <div className="h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+      <div className="p-4">
+        <Link
+          href="/"
+          className="inline-block mb-4 px-4 py-2 text-sm font-medium text-amber-300 bg-neutral-800/80 rounded-md hover:bg-neutral-700/80 transition-colors"
+        >
+          ← Back to Home
+        </Link>
+      </div>
+      <main className="flex-1 px-8 overflow-hidden">
+        <div className="h-full max-w-4xl mx-auto flex flex-col">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2 text-amber-300">{script.title}</h1>
@@ -250,8 +252,8 @@ export default function ScriptPage({ params }: ScriptPageProps) {
             </div>
           </div>
 
-          <div className="bg-zinc-900/90 rounded-lg shadow-2xl overflow-hidden">
-            <div className="w-full h-[calc(100vh-4rem)] relative">
+          <div className="bg-zinc-900/90 rounded-lg shadow-2xl overflow-hidden flex-1 border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
+            <div className="w-full h-full relative">
               <Editor
                 height="100%"
                 defaultLanguage="typescript"

@@ -121,7 +121,7 @@ const ScriptGenerationForm = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       const requestId = generateRequestId()
-      if (!prompt.trim() || isGenerating) return
+      if (!prompt.trim() || isGenerating || prompt.trim().length < 9) return
       if (!isAuthenticated) {
         signIn()
         return
@@ -167,7 +167,7 @@ const ScriptGenerationForm = ({
           'Enter Your Script Idea'
         )}
       </h2>
-      {!generatedScript && (
+      {!generatedScript && !isGenerating && (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <div className="mb-6">
             <textarea
@@ -185,42 +185,57 @@ const ScriptGenerationForm = ({
               required
               onClick={() => !isAuthenticated && signIn()}
             />
-            <ScriptSuggestions
-              setPrompt={suggestion => {
-                if (!isAuthenticated) {
-                  signIn()
-                  return
-                }
-                setPrompt(suggestion)
-              }}
-            />
+            <div className="mt-2 flex justify-center">
+              <span
+                className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
+              >
+                {prompt.trim().length}/15 characters minimum
+              </span>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={isGenerating}
-            className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-              isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
-            }`}
-            onClick={() => !isAuthenticated && signIn()}
-          >
-            {isGenerating ? (
-              <>
-                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                Generating...
-              </>
-            ) : !isAuthenticated ? (
-              <>
-                <RocketLaunchIcon className="w-5 h-5" />
-                Sign in to Generate
-              </>
-            ) : (
-              <>
-                <RocketLaunchIcon className="w-5 h-5" />
-                Generate Script
-              </>
-            )}
-          </button>
+          {!isGenerating && (
+            <>
+              <button
+                type="submit"
+                disabled={isGenerating || prompt.trim().length < 15}
+                className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
+                  isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => !isAuthenticated && signIn()}
+              >
+                {isGenerating ? (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    Generating...
+                  </>
+                ) : !isAuthenticated ? (
+                  <>
+                    <RocketLaunchIcon className="w-5 h-5" />
+                    Sign in to Generate
+                  </>
+                ) : (
+                  <>
+                    <RocketLaunchIcon className="w-5 h-5" />
+                    Generate Script
+                  </>
+                )}
+              </button>
+
+              <div className="mt-8 text-center text-sm">
+                <p className="text-slate-400 mb-4">Or generate from a suggestion</p>
+                <ScriptSuggestions
+                  setPrompt={suggestion => {
+                    if (!isAuthenticated) {
+                      signIn()
+                      return
+                    }
+                    setPrompt(suggestion)
+                  }}
+                />
+              </div>
+            </>
+          )}
         </form>
       )}
 
@@ -233,8 +248,8 @@ const ScriptGenerationForm = ({
 
       {(isGenerating || generatedScript) && (
         <div className="mt-8">
-          <div className="relative mb-2">
-            <div className="bg-gray-900 rounded-lg overflow-hidden">
+          <div className="relative mb-2 max-w-4xl mx-auto">
+            <div className="bg-zinc-900/90 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
               <div className="w-full h-[600px] relative">
                 <Editor
                   height="100%"
@@ -436,15 +451,7 @@ export default function Home() {
         ) : (
           <>
             <div className="mb-12 text-center">
-              <h2 className="text-2xl font-bold mb-4 text-amber-300">
-                Welcome to Script Generator
-              </h2>
-              {session ? (
-                <p className="text-slate-300 mb-8">
-                  Hello <strong>{session.user?.name || session.user?.email}</strong>!<br />
-                  Feel free to generate new scripts or browse existing ones.
-                </p>
-              ) : (
+              {!session && (
                 <p className="text-slate-300 mb-8">
                   Browse existing scripts below or{' '}
                   <button onClick={() => signIn()} className="text-amber-400 hover:underline">
