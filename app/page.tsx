@@ -366,7 +366,11 @@ export default function Home() {
       const response = await fetch("/api/scripts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, code: editableScript }),
+        body: JSON.stringify({ 
+          prompt, 
+          code: editableScript,
+          saved: true 
+        }),
       });
 
       if (!response.ok) {
@@ -379,6 +383,9 @@ export default function Home() {
       setEditableScript("");
       setGeneratedScript(null);
       setError(null);
+      
+      // Refresh the scripts list
+      fetchScripts();
       
     } catch (err) {
       console.error("Save error:", err);

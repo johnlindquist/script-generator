@@ -30,28 +30,45 @@ export const authOptions: AuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === "github") {
-        console.log("GitHub sign in:", { 
-          user, 
-          providerAccountId: account.providerAccountId 
-        })
-        
-        const githubId = account.providerAccountId
-        const username = user.name || user.email?.split("@")[0] || "user"
+      try {
+        if (account?.provider === "github") {
+          console.log("GitHub sign in:", { 
+            user, 
+            providerAccountId: account.providerAccountId 
+          })
+          
+          if (!account.providerAccountId) {
+            console.error("No providerAccountId found in GitHub account")
+            return false
+          }
 
-        // Create or update user in database
-        const dbUser = await prisma.user.upsert({
-          where: { githubId },
-          update: { username },
-          create: {
-            githubId,
-            username,
-          },
-        })
+          const githubId = account.providerAccountId
+          const username = user.name || user.email?.split("@")[0] || "user"
 
-        console.log("User upserted:", { dbUser })
+          // Create or update user in database
+          const dbUser = await prisma.user.upsert({
+            where: { githubId },
+            update: { username },
+            create: {
+              githubId,
+              username,
+            },
+          })
+
+          console.log("User upserted:", { dbUser })
+          
+          if (!dbUser) {
+            console.error("Failed to upsert user")
+            return false
+          }
+
+          return true
+        }
+        return true
+      } catch (error) {
+        console.error("Error in signIn callback:", error)
+        return false
       }
-      return true
     },
     async jwt({ token, account, profile }) {
       console.log("JWT callback:", { token, account, profile })

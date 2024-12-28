@@ -23,6 +23,7 @@ model Script {
   summary   String?
   content   String
   starred   Boolean  @default(false)
+  saved     Boolean  @default(false)
   ownerId   String
   owner     User     @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())

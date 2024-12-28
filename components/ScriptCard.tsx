@@ -11,7 +11,8 @@ import {
   TrashIcon, 
   StarIcon as StarIconSolid,
   HeartIcon as HeartIconSolid,
-  XMarkIcon
+  XMarkIcon,
+  DocumentCheckIcon
 } from "@heroicons/react/24/solid"
 import { 
   StarIcon as StarIconOutline,
@@ -93,6 +94,7 @@ interface ScriptCardProps {
     title: string
     content: string
     starred: boolean
+    saved: boolean
     createdAt: Date
     owner: {
       username: string
@@ -112,9 +114,11 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
   const [isDeleting, setIsDeleting] = useState(false)
   const [isTogglingStar, setIsTogglingStar] = useState(false)
   const [isStarred, setIsStarred] = useState(script.starred)
+  const [isSaved, setIsSaved] = useState(script.saved)
   const [isLiked, setIsLiked] = useState(script.isLiked ?? false)
   const [likeCount, setLikeCount] = useState(script._count?.likes ?? 0)
   const [isTogglingLike, setIsTogglingLike] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleStar = async () => {
     if (!isAuthenticated) {
@@ -202,6 +206,41 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
     }
   }
 
+  const handleSave = async () => {
+    if (!isAuthenticated) {
+      signIn()
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const response = await fetch(`/api/scripts/${script.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saved: !isSaved }),
+      })
+      if (!response.ok) {
+        throw new Error("Failed to save script")
+      }
+      const data = await response.json()
+      setIsSaved(data.saved)
+
+      // Emit a custom event that the parent page can listen to if unsaving
+      if (!data.saved) {
+        const event = new CustomEvent('scriptDeleted', {
+          detail: { scriptId: script.id }
+        });
+        window.dispatchEvent(event);
+        router.refresh()
+      }
+    } catch (error) {
+      console.error("Save error:", error)
+      alert("Failed to toggle save")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const isOwner = currentUserId === script.owner.id
 
   console.log('ScriptCard Debug Info:', {
@@ -248,14 +287,11 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
                   style={{ 
                     ...style, 
                     margin: 0, 
-                    background: 'transparent',
-                    maxHeight: '300px',
-                    overflow: 'hidden',
-                    display: 'block'
+                    background: "transparent",
                   }}
                 >
-                  {tokens.slice(0, 12).map((line, i) => (
-                    <div key={i} {...getLineProps({ line })} className="whitespace-pre-wrap">
+                  {tokens.map((line, i) => (
+                    <div key={i} {...getLineProps({ line })}>
                       {line.map((token, key) => (
                         <span key={key} {...getTokenProps({ token })} />
                       ))}
@@ -267,84 +303,79 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           </div>
         </Link>
       </div>
-      <div className="mt-4 flex justify-between items-center border-t border-amber-400/10 pt-4">
+      <div className="flex justify-between items-center mt-4 pt-4 border-t border-neutral-700">
         <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="text-amber-300 hover:text-amber-200 transition flex items-center gap-1"
-          >
-            <ClipboardIcon className="w-4 h-4" />
-            Copy Script
-          </button>
           {isOwner && (
             <>
               <button
-                onClick={handleEdit}
-                className="text-amber-300 hover:text-amber-200 transition ml-4 flex items-center gap-1 h-8"
+                onClick={handleCopy}
+                className="text-slate-400 hover:text-amber-300 transition-colors"
+                title="Copy script"
               >
-                <PencilSquareIcon className="w-4 h-4" />
-                Edit
+                <ClipboardIcon className="w-5 h-5" />
               </button>
-              {!isDeleting ? (
-                <button
-                  onClick={() => setIsDeleting(true)}
-                  className="text-red-400 hover:text-red-300 transition flex items-center gap-1 min-w-[5.5rem] h-8"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                  Delete
-                </button>
-              ) : (
-                <div className="flex gap-2 min-w-[5.5rem]">
-                  <button
-                    onClick={handleDelete}
-                    className="bg-red-500/20 text-red-300 w-8 h-8 rounded-md text-sm hover:bg-red-500/30 transition flex items-center justify-center"
-                    title="Confirm Delete"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setIsDeleting(false)}
-                    className="bg-gray-800 text-amber-300 border border-amber-400/20 w-8 h-8 rounded-md text-sm hover:bg-amber-400/10 transition flex items-center justify-center"
-                    title="Cancel"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={handleEdit}
+                className="text-slate-400 hover:text-amber-300 transition-colors"
+                title="Edit script"
+              >
+                <PencilSquareIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="text-slate-400 hover:text-amber-300 transition-colors"
+                disabled={isDeleting}
+                title="Delete script"
+              >
+                {isDeleting ? (
+                  <XMarkIcon className="w-5 h-5 animate-spin" />
+                ) : (
+                  <TrashIcon className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                onClick={handleSave}
+                className={`text-slate-400 hover:text-amber-300 transition-colors ${isSaved ? 'text-amber-300' : ''}`}
+                disabled={isSaving}
+                title={isSaved ? "Unsave script" : "Save script"}
+              >
+                {isSaving ? (
+                  <XMarkIcon className="w-5 h-5 animate-spin" />
+                ) : (
+                  <DocumentCheckIcon className="w-5 h-5" />
+                )}
+              </button>
             </>
           )}
-        </div>
-        <div className="flex items-center gap-4">
+          <button
+            onClick={handleStar}
+            className={`text-slate-400 hover:text-amber-300 transition-colors ${isStarred ? 'text-amber-300' : ''}`}
+            disabled={isTogglingStar}
+            title={isStarred ? "Unstar script" : "Star script"}
+          >
+            {isTogglingStar ? (
+              <XMarkIcon className="w-5 h-5 animate-spin" />
+            ) : isStarred ? (
+              <StarIconSolid className="w-5 h-5" />
+            ) : (
+              <StarIconOutline className="w-5 h-5" />
+            )}
+          </button>
           <button
             onClick={handleToggleLike}
+            className={`text-slate-400 hover:text-amber-300 transition-colors ${isLiked ? 'text-amber-300' : ''}`}
             disabled={isTogglingLike}
-            className={`flex items-center gap-1 text-pink-400 hover:text-pink-300 transition ${
-              isTogglingLike ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            title={isAuthenticated ? undefined : "Sign in to like scripts"}
+            title={isLiked ? "Unlike script" : "Like script"}
           >
-            {isAuthenticated && isLiked ? (
-              <HeartIconSolid className="w-4 h-4" />
+            {isTogglingLike ? (
+              <XMarkIcon className="w-5 h-5 animate-spin" />
+            ) : isLiked ? (
+              <HeartIconSolid className="w-5 h-5" />
             ) : (
-              <HeartIconOutline className="w-4 h-4" />
+              <HeartIconOutline className="w-5 h-5" />
             )}
-            <span>{likeCount}</span>
+            <span className="ml-1 text-sm">{likeCount}</span>
           </button>
-          {isAuthenticated && script.owner.id === currentUserId && (
-            <button
-              onClick={handleStar}
-              disabled={isTogglingStar}
-              className={`text-amber-400 hover:text-amber-300 transition ${
-                isTogglingStar ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {isStarred ? (
-                <StarIconSolid className="w-4 h-4" />
-              ) : (
-                <StarIconOutline className="w-4 h-4" />
-              )}
-            </button>
-          )}
         </div>
       </div>
     </div>

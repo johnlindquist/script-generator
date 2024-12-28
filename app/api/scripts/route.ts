@@ -28,6 +28,9 @@ export async function GET(request: Request) {
 
     // Query the scripts with pagination
     const scripts = await prisma.script.findMany({
+      where: {
+        saved: true
+      },
       skip,
       take: pageSize,
       orderBy: { createdAt: "desc" },
@@ -50,7 +53,11 @@ export async function GET(request: Request) {
     }))
 
     // Get total count for pagination info
-    const totalScripts = await prisma.script.count()
+    const totalScripts = await prisma.script.count({
+      where: {
+        saved: true
+      }
+    })
 
     return NextResponse.json({
       scripts: transformedScripts,
@@ -78,7 +85,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { prompt, code } = await request.json()
+    const { prompt, code, saved } = await request.json()
     
     if (!prompt || !code) {
       return NextResponse.json(
@@ -93,6 +100,7 @@ export async function POST(request: Request) {
         summary: prompt,
         content: code,
         ownerId: session.user.id,
+        saved: saved ?? false,
       },
       include: {
         owner: true,
