@@ -1,19 +1,14 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import { useSession, signIn } from "next-auth/react"
-import NavBar from "@/components/NavBar"
-import ScriptCard from "@/components/ScriptCard"
-import { Editor } from "@monaco-editor/react"
-import ScriptSuggestions from "@/components/ScriptSuggestions"
-import { monacoOptions, initializeTheme } from "@/lib/monaco"
-import { 
-  RocketLaunchIcon, 
-  DocumentCheckIcon, 
-  ArrowPathIcon 
-} from "@heroicons/react/24/solid"
-import debounce from "lodash.debounce"
-import { toast } from "react-hot-toast"
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSession, signIn } from 'next-auth/react'
+import NavBar from '@/components/NavBar'
+import ScriptCard from '@/components/ScriptCard'
+import { Editor } from '@monaco-editor/react'
+import ScriptSuggestions from '@/components/ScriptSuggestions'
+import { monacoOptions, initializeTheme } from '@/lib/monaco'
+import { RocketLaunchIcon, DocumentCheckIcon, ArrowPathIcon } from '@heroicons/react/24/solid'
+import { toast } from 'react-hot-toast'
 
 interface EditorRef {
   getModel: () => {
@@ -38,20 +33,20 @@ interface ScriptGenerationFormProps {
 }
 
 interface Script {
-  id: string;
-  title: string;
-  content: string;
-  starred: boolean;
-  saved: boolean;
-  createdAt: Date;
+  id: string
+  title: string
+  content: string
+  starred: boolean
+  saved: boolean
+  createdAt: Date
   owner: {
-    id: string;
-    username: string;
-  };
+    id: string
+    username: string
+  }
   _count?: {
-    likes: number;
-  };
-  isLiked?: boolean;
+    likes: number
+  }
+  isLiked?: boolean
 }
 
 const LoadingDots = () => (
@@ -62,14 +57,24 @@ const LoadingDots = () => (
         animation: dots 1.5s steps(4, end) infinite;
       }
       @keyframes dots {
-        0%, 20% { content: ''; }
-        40% { content: '.'; }
-        60% { content: '..'; }
-        80%, 100% { content: '...'; }
+        0%,
+        20% {
+          content: '';
+        }
+        40% {
+          content: '.';
+        }
+        60% {
+          content: '..';
+        }
+        80%,
+        100% {
+          content: '...';
+        }
       }
     `}</style>
   </span>
-);
+)
 
 const ScriptGenerationForm = ({
   prompt,
@@ -83,68 +88,83 @@ const ScriptGenerationForm = ({
   onSave,
   isAuthenticated,
   setGeneratedScript,
-  setError
+  setError,
 }: ScriptGenerationFormProps) => {
-  const editorRef = useRef<EditorRef | null>(null);
-  const prevIsGeneratingRef = useRef(isGenerating);
+  const editorRef = useRef<EditorRef | null>(null)
+  const prevIsGeneratingRef = useRef(isGenerating)
 
   const handleEditorDidMount = (editor: EditorRef) => {
-    editorRef.current = editor;
-  };
+    editorRef.current = editor
+  }
 
   // Generate a unique ID for this script generation
   const generateRequestId = () => {
-    return crypto.randomUUID();
-  };
+    return crypto.randomUUID()
+  }
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || isGenerating) return;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!prompt.trim() || isGenerating) return
 
     if (!isAuthenticated) {
-      signIn();
-      return;
+      signIn()
+      return
     }
 
-    const requestId = generateRequestId();
-    onSubmit(prompt, requestId);
-  };
+    const requestId = generateRequestId()
+    onSubmit(prompt, requestId)
+  }
+
+  // Handle keyboard submission
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      const requestId = generateRequestId()
+      if (!prompt.trim() || isGenerating) return
+      if (!isAuthenticated) {
+        signIn()
+        return
+      }
+      onSubmit(prompt, requestId)
+    }
+  }
 
   // Scroll while generating
   useEffect(() => {
     if (editorRef.current && isGenerating) {
-      const model = editorRef.current.getModel();
+      const model = editorRef.current.getModel()
       if (model) {
-        const lineCount = model.getLineCount();
-        editorRef.current.revealLine(lineCount);
+        const lineCount = model.getLineCount()
+        editorRef.current.revealLine(lineCount)
       }
     }
-  }, [editableScript, isGenerating]);
+  }, [editableScript, isGenerating])
 
   // Final scroll when generation completes
   useEffect(() => {
     if (prevIsGeneratingRef.current && !isGenerating && editorRef.current) {
-      const model = editorRef.current.getModel();
+      const model = editorRef.current.getModel()
       if (model) {
-        const lineCount = model.getLineCount();
-        editorRef.current.revealLine(lineCount);
+        const lineCount = model.getLineCount()
+        editorRef.current.revealLine(lineCount)
       }
     }
-    prevIsGeneratingRef.current = isGenerating;
-  }, [isGenerating]);
+    prevIsGeneratingRef.current = isGenerating
+  }, [isGenerating])
 
   return (
     <div className="mb-12">
       <h2 className="text-2xl font-bold mb-6 text-center">
         {isGenerating ? (
           <span>
-            Generating Script<LoadingDots />
+            Generating Script
+            <LoadingDots />
           </span>
         ) : generatedScript ? (
-          "Edit Generated Script"
+          'Edit Generated Script'
         ) : (
-          "Enter Your Script Idea"
+          'Enter Your Script Idea'
         )}
       </h2>
       {!generatedScript && (
@@ -153,33 +173,34 @@ const ScriptGenerationForm = ({
             <textarea
               id="prompt"
               value={prompt}
-              onChange={(e) => isAuthenticated && setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e as any);
-                }
-              }}
+              onChange={e => isAuthenticated && setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
               disabled={isGenerating || !isAuthenticated}
               className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
-              placeholder={isAuthenticated ? "Example: A script that finds all large files in a directory and shows their sizes in human-readable format" : "Sign in to start generating scripts!"}
+              placeholder={
+                isAuthenticated
+                  ? 'Example: A script that finds all large files in a directory and shows their sizes in human-readable format'
+                  : 'Sign in to start generating scripts!'
+              }
               required
               onClick={() => !isAuthenticated && signIn()}
             />
-            <ScriptSuggestions setPrompt={(suggestion) => {
-              if (!isAuthenticated) {
-                signIn();
-                return;
-              }
-              setPrompt(suggestion);
-            }} />
+            <ScriptSuggestions
+              setPrompt={suggestion => {
+                if (!isAuthenticated) {
+                  signIn()
+                  return
+                }
+                setPrompt(suggestion)
+              }}
+            />
           </div>
 
           <button
             type="submit"
             disabled={isGenerating}
             className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-              isGenerating ? "cursor-wait" : !isAuthenticated ? "cursor-pointer" : ""
+              isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
             }`}
             onClick={() => !isAuthenticated && signIn()}
           >
@@ -219,7 +240,7 @@ const ScriptGenerationForm = ({
                   height="100%"
                   defaultLanguage="typescript"
                   value={editableScript}
-                  onChange={(value) => isAuthenticated && setEditableScript(value || "")}
+                  onChange={value => isAuthenticated && setEditableScript(value || '')}
                   options={{
                     ...monacoOptions,
                     readOnly: !isAuthenticated,
@@ -244,8 +265,8 @@ const ScriptGenerationForm = ({
                     </button>
                     <button
                       onClick={() => {
-                        setPrompt("")
-                        setEditableScript("")
+                        setPrompt('')
+                        setEditableScript('')
                         setGeneratedScript(null)
                         setError(null)
                       }}
@@ -267,10 +288,10 @@ const ScriptGenerationForm = ({
 
 export default function Home() {
   const { data: session, status } = useSession()
-  const [prompt, setPrompt] = useState("")
+  const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedScript, setGeneratedScript] = useState<string | null>(null)
-  const [editableScript, setEditableScript] = useState("")
+  const [editableScript, setEditableScript] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
   const [showGenerateForm] = useState(true)
@@ -284,13 +305,13 @@ export default function Home() {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/scripts?page=${page}&pageSize=${pageSize}`)
-      if (!response.ok) throw new Error("Failed to fetch scripts")
+      if (!response.ok) throw new Error('Failed to fetch scripts')
       const data = await response.json()
       setScripts(data.scripts)
       setTotalPages(data.totalPages)
       return data
     } catch (error) {
-      console.error("Error fetching scripts:", error)
+      console.error('Error fetching scripts:', error)
       return null
     } finally {
       setIsLoading(false)
@@ -306,7 +327,7 @@ export default function Home() {
   useEffect(() => {
     const handleScriptDeleted = () => {
       // Re-fetch scripts and reset to first page if current page would be empty
-      fetchScripts().then((data) => {
+      fetchScripts().then(data => {
         if (data?.scripts?.length === 0 && page > 1) {
           setPage(1)
         }
@@ -317,111 +338,104 @@ export default function Home() {
     return () => window.removeEventListener('scriptDeleted', handleScriptDeleted)
   }, [fetchScripts, page])
 
-  // Throttled update function
-  const updateEditorContent = useRef(
-    debounce((content: string) => {
-      setGeneratedScript(content)
-      setEditableScript(content)
-    }, 100)
-  ).current
-
   // Add debug logging for session
   useEffect(() => {
-    console.log("Session Debug Info:", {
+    console.log('Session Debug Info:', {
       session,
       status,
       userId: session?.user?.id,
-      isAuthenticated: !!session
+      isAuthenticated: !!session,
     })
   }, [session, status])
 
   // Handle script generation
   const handleSubmit = async (prompt: string, requestId: string) => {
-    setIsGenerating(true);
-    setError(null);
-    setGeneratedScript(null);
-    setEditableScript("");
+    setIsGenerating(true)
+    setError(null)
+    setGeneratedScript(null)
+    setEditableScript('')
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, requestId }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error("Failed to generate script");
+        throw new Error('Failed to generate script')
       }
 
-      const reader = response.body?.getReader();
+      const reader = response.body?.getReader()
       if (!reader) {
-        throw new Error("No reader available");
+        throw new Error('No reader available')
       }
 
-      let script = "";
+      let script = ''
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        const text = new TextDecoder().decode(value);
-        script += text;
-        setEditableScript(prev => prev + text);
+        const text = new TextDecoder().decode(value)
+        script += text
+        setEditableScript(prev => prev + text)
       }
 
-      setGeneratedScript(script);
+      setGeneratedScript(script)
     } catch (err) {
-      console.error("Generation error:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate script");
+      console.error('Generation error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate script')
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false)
     }
-  };
+  }
 
   // Handle saving the script
   const handleSave = async () => {
     try {
-      const response = await fetch("/api/scripts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          prompt, 
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
           code: editableScript,
-          saved: true 
+          saved: true,
         }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error("Failed to save script");
+        throw new Error('Failed to save script')
       }
 
-      toast.success("Script saved successfully!");
+      toast.success('Script saved successfully!')
       // Reset form state after successful save
-      setPrompt("");
-      setEditableScript("");
-      setGeneratedScript(null);
-      setError(null);
-      
+      setPrompt('')
+      setEditableScript('')
+      setGeneratedScript(null)
+      setError(null)
+
       // Refresh the scripts list
-      fetchScripts();
-      
+      fetchScripts()
     } catch (err) {
-      console.error("Save error:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to save script");
+      console.error('Save error:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to save script')
     }
-  };
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={!!session} />
       <div className="container mx-auto px-4 py-8">
-        {status === "loading" ? (
+        {status === 'loading' ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-amber-400"></div>
           </div>
         ) : (
           <>
             <div className="mb-12 text-center">
-              <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
+              <h2 className="text-2xl font-bold mb-4 text-amber-300">
+                Welcome to Script Generator
+              </h2>
               {session ? (
                 <p className="text-slate-300 mb-8">
                   Hello <strong>{session.user?.name || session.user?.email}</strong>!<br />
@@ -429,7 +443,11 @@ export default function Home() {
                 </p>
               ) : (
                 <p className="text-slate-300 mb-8">
-                  Browse existing scripts below or <button onClick={() => signIn()} className="text-amber-400 hover:underline">sign in</button> to generate your own!
+                  Browse existing scripts below or{' '}
+                  <button onClick={() => signIn()} className="text-amber-400 hover:underline">
+                    sign in
+                  </button>{' '}
+                  to generate your own!
                 </p>
               )}
             </div>
@@ -454,7 +472,7 @@ export default function Home() {
 
             {/* Scripts list visible to everyone */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {scripts.map((script) => (
+              {scripts.map(script => (
                 <ScriptCard
                   key={script.id}
                   script={script}

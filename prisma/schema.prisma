@@ -22,6 +22,7 @@ model Script {
   title     String
   summary   String?
   content   String
+  prompt    String?
   starred   Boolean  @default(false)
   saved     Boolean  @default(false)
   ownerId   String

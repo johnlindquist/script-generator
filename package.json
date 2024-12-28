@@ -10,7 +10,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "prepare": "husky",
-    "check": "tsc --noEmit && eslint . --ext .js,.jsx,.ts,.tsx"
+    "check": "tsc --noEmit && eslint .",
+    "vercel-build": "pnpm check && pnpm build"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
