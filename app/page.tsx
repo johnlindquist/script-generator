@@ -180,11 +180,11 @@ const ScriptGenerationForm = ({
       {error && (
         <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
           <h3 className="font-semibold mb-2">Error</h3>
-          <p className="whitespace-pre-wrap">{error}</p>
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
-      {generatedScript && (
+      {(isGenerating || generatedScript) && (
         <div className="mt-8">
           <div className="relative mb-2">
             <div className="bg-gray-900 rounded-lg overflow-hidden">
@@ -209,7 +209,8 @@ const ScriptGenerationForm = ({
               <div className="absolute bottom-4 right-4 flex gap-2">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(editableScript)
+                    navigator.clipboard.writeText(editableScript);
+                    toast.success("Script copied to clipboard!");
                   }}
                   className="bg-gradient-to-tr from-cyan-300 to-cyan-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                 >
@@ -356,6 +357,12 @@ export default function Home() {
       }
 
       toast.success("Script saved successfully!");
+      // Reset form state after successful save
+      setPrompt("");
+      setEditableScript("");
+      setGeneratedScript(null);
+      setError(null);
+      
     } catch (err) {
       console.error("Save error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to save script");
