@@ -5,6 +5,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 export async function GET(request: Request) {
   try {
+    // Get the current user's session
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+
     // Extract query params from the request URL
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page") || "1"
@@ -27,14 +31,29 @@ export async function GET(request: Request) {
       skip,
       take: pageSize,
       orderBy: { createdAt: "desc" },
-      include: { owner: true },
+      include: {
+        owner: true,
+        _count: {
+          select: { likes: true },
+        },
+        likes: userId ? {
+          where: { userId },
+        } : false,
+      },
     })
+
+    // Transform the scripts to include isLiked
+    const transformedScripts = scripts.map(script => ({
+      ...script,
+      isLiked: script.likes ? script.likes.length > 0 : false,
+      likes: undefined, // Remove the likes array from the response
+    }))
 
     // Get total count for pagination info
     const totalScripts = await prisma.script.count()
 
     return NextResponse.json({
-      scripts,
+      scripts: transformedScripts,
       totalScripts,
       page,
       pageSize,

@@ -8,9 +8,13 @@ import {
   ClipboardIcon, 
   PencilSquareIcon, 
   TrashIcon, 
-  StarIcon as StarIconSolid
+  StarIcon as StarIconSolid,
+  HeartIcon as HeartIconSolid
 } from "@heroicons/react/24/solid"
-import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline"
+import { 
+  StarIcon as StarIconOutline,
+  HeartIcon as HeartIconOutline 
+} from "@heroicons/react/24/outline"
 
 // Initialize Prism with TypeScript support
 (typeof global !== "undefined" ? global : window).Prism = Prism;
@@ -92,39 +96,47 @@ interface ScriptCardProps {
       username: string
       id: string
     }
+    _count?: {
+      likes: number
+    }
+    isLiked?: boolean
   }
   isAuthenticated: boolean
   currentUserId?: string
 }
 
 export default function ScriptCard({ script, isAuthenticated, currentUserId }: ScriptCardProps) {
-  const [isStarred, setIsStarred] = useState(script.starred)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isTogglingStar, setIsTogglingStar] = useState(false)
+  const [isStarred, setIsStarred] = useState(script.starred)
+  const [isLiked, setIsLiked] = useState(script.isLiked ?? false)
+  const [likeCount, setLikeCount] = useState(script._count?.likes ?? 0)
+  const [isTogglingLike, setIsTogglingLike] = useState(false)
 
   const handleStar = async () => {
-    if (!isAuthenticated) return
-    setIsUpdating(true)
+    if (!isAuthenticated) {
+      alert("Please sign in to star scripts.")
+      return
+    }
 
+    setIsTogglingStar(true)
     try {
       const response = await fetch("/api/star", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scriptId: script.id }),
       })
-
       if (!response.ok) {
-        throw new Error("Failed to update star status")
+        throw new Error("Failed to star script")
       }
-
-      setIsStarred(!isStarred)
-      router.refresh()
+      const data = await response.json()
+      setIsStarred(data.script.starred)
     } catch (error) {
       console.error("Star error:", error)
-      alert("Failed to update star status")
+      alert("Failed to toggle star")
     } finally {
-      setIsUpdating(false)
+      setIsTogglingStar(false)
     }
   }
 
@@ -154,6 +166,33 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       alert("Failed to delete script")
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleToggleLike = async () => {
+    if (!isAuthenticated) {
+      alert("Please sign in to like scripts.")
+      return
+    }
+
+    setIsTogglingLike(true)
+    try {
+      const response = await fetch("/api/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scriptId: script.id }),
+      })
+      if (!response.ok) {
+        throw new Error("Failed to like script")
+      }
+      const data = await response.json()
+      setIsLiked(data.isLiked)
+      setLikeCount(data.likeCount)
+    } catch (error) {
+      console.error("Like error:", error)
+      alert("Failed to toggle like")
+    } finally {
+      setIsTogglingLike(false)
     }
   }
 
@@ -268,27 +307,41 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             </>
           )}
         </div>
-        {isAuthenticated && (
-          <button
-            onClick={handleStar}
-            disabled={isUpdating}
-            className={`text-amber-300 hover:text-amber-200 transition flex items-center gap-1 ${
-              isUpdating ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {isStarred ? (
-              <>
-                <StarIconSolid className="w-4 h-4" />
-                Starred
-              </>
-            ) : (
-              <>
-                <StarIconOutline className="w-4 h-4" />
-                Star
-              </>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {isAuthenticated && (
+            <>
+              <button
+                onClick={handleToggleLike}
+                disabled={isTogglingLike}
+                className={`flex items-center gap-1 text-pink-400 hover:text-pink-300 transition ${
+                  isTogglingLike ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {isLiked ? (
+                  <HeartIconSolid className="w-4 h-4" />
+                ) : (
+                  <HeartIconOutline className="w-4 h-4" />
+                )}
+                <span>{likeCount}</span>
+              </button>
+              {script.owner.id === currentUserId && (
+                <button
+                  onClick={handleStar}
+                  disabled={isTogglingStar}
+                  className={`text-amber-400 hover:text-amber-300 transition ${
+                    isTogglingStar ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isStarred ? (
+                    <StarIconSolid className="w-4 h-4" />
+                  ) : (
+                    <StarIconOutline className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

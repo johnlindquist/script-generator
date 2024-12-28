@@ -13,6 +13,7 @@ model User {
   username String
   scripts  Script[]
   usage    Usage[]
+  likes    Like[]
 }
 
 model Script {
@@ -25,6 +26,7 @@ model Script {
   ownerId   String
   owner     User     @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())
+  likes     Like[]
 }
 
 model Usage {
@@ -35,4 +37,15 @@ model Usage {
   count     Int      @default(0)
 
   @@unique([userId, date])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  scriptId  String
+  script    Script   @relation(fields: [scriptId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, scriptId])
 } 
