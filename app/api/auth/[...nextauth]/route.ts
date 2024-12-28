@@ -24,6 +24,22 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  ...(process.env.AUTH_REDIRECT_PROXY_URL
+    ? {
+        // Use the proxy URL for callbacks if specified
+        callbacks: {
+          async redirect({ url }) {
+            // Replace the proxy domain with the actual app domain in the final redirect
+            const finalUrl = url.replace(
+              process.env.AUTH_REDIRECT_PROXY_URL!,
+              process.env.NEXTAUTH_URL!
+            )
+            return finalUrl
+          },
+          // ... rest of your existing callbacks
+        },
+      }
+    : {}),
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -42,18 +58,20 @@ export const authOptions: AuthOptions = {
         'staging-scriptkit.vercel.app',
         'localhost:3000',
         'localhost:3001',
-        'scriptkit-git-main-skillrecordings.vercel.app',
-        'https://script-generator-git-main-skillrecordings.vercel.app',
+        'script-generator-git-main-skillrecordings.vercel.app',
         'script-generator-*.vercel.app',
       ]
 
       const urlObj = new URL(url)
+      // Strip any 'https://' or 'http://' from the host
+      const host = urlObj.host.replace(/^(https?:\/\/)?(www\.)?/, '')
+
       const isAllowedDomain = allowedDomains.some(domain => {
         if (domain.includes('*')) {
           const pattern = domain.replace('*', '.*')
-          return new RegExp(pattern).test(urlObj.host)
+          return new RegExp(`^${pattern}$`).test(host)
         }
-        return urlObj.host === domain
+        return domain === host
       })
 
       if (isAllowedDomain) {
