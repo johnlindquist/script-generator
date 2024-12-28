@@ -1,62 +1,50 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
 model User {
-  id            String   @id @default(uuid())
-  githubId      String   @unique
-  username      String
-  scripts       Script[]
-  usage         Usage[]
-  likes         Like[]
-  requestedBy   Script[] @relation("RequestedBy")
+  id          String   @id @default(uuid())
+  githubId    String   @unique
+  username    String
+  likes       Like[]
+  scripts     Script[]
+  requestedBy Script[] @relation("RequestedBy")
+  usage       Usage[]
 }
 
 model Script {
-  id          String          @id @default(uuid())
-  requestId   String?         @unique
-  title       String
-  summary     String?
-  content     String
-  prompt      String?
-  starred     Boolean         @default(false)
-  saved       Boolean         @default(false)
-  ownerId     String
-  owner       User            @relation(fields: [ownerId], references: [id])
-  createdAt   DateTime        @default(now())
-  likes       Like[]
-  
-  // New fields for script requests
-  isRequest   Boolean         @default(false)
-  status      ScriptStatus    @default(ACTIVE)
+  id            String          @id @default(uuid())
+  requestId     String?         @unique
+  title         String
+  summary       String?
+  content       String
+  starred       Boolean         @default(false)
+  saved         Boolean         @default(false)
+  ownerId       String
+  createdAt     DateTime        @default(now())
+  prompt        String?
+  gistUrl       String?
+  isRequest     Boolean         @default(false)
+  parentId      String?
+  repoUrl       String?
   requestedById String?
-  requestedBy User?          @relation("RequestedBy", fields: [requestedById], references: [id])
-  
-  // Fork relationship
-  parentId    String?
-  parent      Script?         @relation("ScriptForks", fields: [parentId], references: [id])
-  children    Script[]        @relation("ScriptForks")
-  
-  // Versioning
-  versions    ScriptVersion[]
-  
-  // Tags
-  tags        Tag[]           @relation("ScriptTags")
-  
-  // Sponsorship
-  sponsored   Boolean         @default(false)
-  sponsorId   String?
-  sponsor     Sponsor?        @relation(fields: [sponsorId], references: [id])
-  
-  // External links
-  gistUrl     String?
-  repoUrl     String?
+  sponsorId     String?
+  sponsored     Boolean         @default(false)
+  status        ScriptStatus    @default(ACTIVE)
+  likes         Like[]
+  owner         User            @relation(fields: [ownerId], references: [id])
+  parent        Script?         @relation("ScriptForks", fields: [parentId], references: [id])
+  children      Script[]        @relation("ScriptForks")
+  requestedBy   User?           @relation("RequestedBy", fields: [requestedById], references: [id])
+  sponsor       Sponsor?        @relation(fields: [sponsorId], references: [id])
+  versions      ScriptVersion[]
+  tags          Tag[]           @relation("ScriptTags")
 }
 
 model ScriptVersion {
@@ -74,19 +62,19 @@ model Tag {
 }
 
 model Sponsor {
-  id        String   @id @default(uuid())
-  name      String
-  logoUrl   String?
-  website   String?
-  scripts   Script[]
+  id      String   @id @default(uuid())
+  name    String
+  logoUrl String?
+  website String?
+  scripts Script[]
 }
 
 model Usage {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  date      DateTime @default(now()) @db.Date
-  count     Int      @default(0)
+  id     String   @id @default(uuid())
+  userId String
+  date   DateTime @default(now()) @db.Date
+  count  Int      @default(0)
+  user   User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, date])
 }
@@ -94,10 +82,10 @@ model Usage {
 model Like {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   scriptId  String
-  script    Script   @relation(fields: [scriptId], references: [id])
   createdAt DateTime @default(now())
+  script    Script   @relation(fields: [scriptId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
 }
@@ -108,4 +96,4 @@ enum ScriptStatus {
   IN_PROGRESS
   COMPLETED
   ARCHIVED
-} 
+}
