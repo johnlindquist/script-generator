@@ -65,6 +65,23 @@ function getExampleScripts() {
   }
 }
 
+// Function to read docs-mini.md
+function getDocsContent() {
+  const docsPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
+  try {
+    if (!fs.existsSync(docsPath)) {
+      console.warn(`Docs file not found at ${docsPath}`)
+      return ''
+    }
+
+    const content = fs.readFileSync(docsPath, 'utf-8')
+    return content
+  } catch (error) {
+    console.error('Error reading docs content:', error)
+    return '' // Return empty string on error, allowing generation to continue
+  }
+}
+
 // Helper function to clean code fences and language specifiers
 function cleanCodeFences(text: string): string {
   // First, remove code fences with inline language specifiers
@@ -139,14 +156,19 @@ export async function POST(req: NextRequest) {
 
     console.log('Found user:', { userId: dbUser.id, username: dbUser.username })
 
-    // Get example scripts
+    // Get example scripts and docs content
     const exampleScripts = getExampleScripts()
+    const docsContent = getDocsContent()
 
     // Generate script using Gemini with streaming
     console.log('Starting Gemini generation...')
     const finalPrompt = exampleScripts
       ? `You are a TypeScript script generator that creates scripts in the exact style of the examples below.
 Each script should be a standalone TypeScript file that can be run directly.
+
+Here is the documentation for available functions and utilities:
+
+${docsContent}
 
 Here are example scripts that demonstrate the required format and style:
 
@@ -163,9 +185,14 @@ Requirements:
 5. Use the same coding style and patterns shown in the examples
 6. Include all necessary imports at the top
 7. Export a default async function like the examples
+8. Use the appropriate functions and utilities from the documentation
 
 Generate ONLY the script content, no additional explanations or markdown:`
       : `Create a TypeScript script based on this description: ${prompt}
+
+Here is the documentation for available functions and utilities:
+
+${docsContent}
 
 Requirements:
 1. Make it a standalone .ts file that can be run directly
@@ -174,6 +201,7 @@ Requirements:
 4. Include all necessary imports at the top
 5. Export a default async function
 6. The script should be well-documented and production-ready
+7. Use the appropriate functions and utilities from the documentation
 
 Generate ONLY the script content, no additional explanations or markdown:`
 

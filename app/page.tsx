@@ -371,17 +371,20 @@ export default function Home() {
         throw new Error('No reader available')
       }
 
-      let script = ''
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
         const text = new TextDecoder().decode(value)
-        script += text
-        setEditableScript(prev => prev + text)
+        buffer += text
+        // Show progress in editor while generating
+        setEditableScript(buffer)
       }
 
-      setGeneratedScript(script)
+      // Set the final complete text
+      setEditableScript(buffer)
+      setGeneratedScript(buffer)
     } catch (err) {
       console.error('Generation error:', err)
       setError(err instanceof Error ? err.message : 'Failed to generate script')
