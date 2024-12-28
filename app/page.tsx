@@ -460,6 +460,9 @@ export default function Home() {
                   to generate your own!
                 </p>
               )}
+              <p className="text-amber-400/80 text-sm">
+                ⚠️ This is a prototype - please make sure to backup any scripts you'd like to keep!
+              </p>
             </div>
 
             {/* Always show generation form */}

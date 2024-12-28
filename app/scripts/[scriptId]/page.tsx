@@ -115,18 +115,16 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     debouncedSave(newContent)
   }
 
-  const handleShare = async () => {
-    const url = window.location.href
-
+  const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Link copied to clipboard!')
+      await navigator.clipboard.writeText(content)
+      toast.success('Script copied to clipboard!')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to copy'
       console.error('Error copying to clipboard:', {
         error,
         message: errorMessage,
-        url,
+        content: content.slice(0, 100) + '...', // Log only first 100 chars for safety
       })
       toast.error(errorMessage)
     }
@@ -235,7 +233,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
                 </button>
               )}
               <button
-                onClick={handleShare}
+                onClick={handleCopy}
                 className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-colors flex items-center gap-2"
               >
                 <svg
@@ -247,7 +245,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
                   <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
                   <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
                 </svg>
-                Copy
+                Copy Script
               </button>
             </div>
           </div>
