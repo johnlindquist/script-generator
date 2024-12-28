@@ -123,6 +123,12 @@ export async function POST(req: NextRequest) {
       console.error("No prompt provided in request")
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
+
+    if (!requestId || requestId.trim().length === 0) {
+      console.error("No valid requestId provided")
+      return NextResponse.json({ error: "A valid requestId is required" }, { status: 400 })
+    }
+
     console.log("Received prompt:", prompt)
 
     // Get the user from the database using ID
@@ -222,34 +228,7 @@ Generate ONLY the script content, no additional explanations or markdown:`
           
           console.log("Stream processing complete")
 
-          // Save to database after full generation
-          try {
-            console.log("Saving script to database...")
-            await prisma.script.create({
-              data: {
-                title: prompt.slice(0, 100),
-                content: fullScript,
-                owner: {
-                  connect: {
-                    id: dbUser.id
-                  }
-                }
-              },
-            })
-            console.log("Script saved successfully")
-          } catch (dbError) {
-            console.error("Database error details:", {
-              error: dbError instanceof Error ? {
-                message: dbError.message,
-                stack: dbError.stack,
-                name: dbError.name
-              } : dbError,
-              scriptLength: fullScript.length,
-              userId: dbUser.id
-            })
-          }
-
-          // Send a final newline to indicate completion
+          // Remove the database save from here since we'll do it after streaming
           controller.enqueue(new TextEncoder().encode("\n"))
           controller.close()
         } catch (streamError) {
@@ -267,16 +246,14 @@ Generate ONLY the script content, no additional explanations or markdown:`
       }
     })
 
-    // After streaming is complete, save the script with requestId
-    const script = await prisma.script.upsert({
-      where: { requestId: requestId || "" },
-      update: {},
-      create: {
-        requestId: requestId,
+    // After streaming is complete, save the script
+    const script = await prisma.script.create({
+      data: {
         title: prompt.slice(0, 100),
         summary: prompt,
         content: fullScript,
-        ownerId: dbUser.id,
+        ...(requestId ? { requestId } : {}),
+        ownerId: dbUser.id
       },
     })
 
