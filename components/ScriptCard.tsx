@@ -253,7 +253,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
 
   return (
     <div 
-      className="border border-neutral-700 rounded-lg p-6 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90" 
+      className="border border-neutral-700 rounded-lg px-6 py-4 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90" 
       data-script-id={script.id}
     >
       <div className="mb-4">
@@ -277,7 +277,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight
               theme={nightOwlTheme}
-              code={script.content.slice(0, 500)}
+              code={script.content}
               language="typescript"
               prism={Prism}
             >
@@ -303,27 +303,33 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           </div>
         </Link>
       </div>
-      <div className="flex justify-between items-center mt-4 pt-4 border-t border-neutral-700">
+      <div className="flex justify-between items-center mt-6 pt-5 border-t border-neutral-700">
         <div className="flex gap-2">
           {isOwner && (
             <>
               <button
                 onClick={handleCopy}
-                className="text-slate-400 hover:text-amber-300 transition-colors"
+                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
                 title="Copy script"
               >
                 <ClipboardIcon className="w-5 h-5" />
+                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+                  Copy to clipboard
+                </span>
               </button>
               <button
                 onClick={handleEdit}
-                className="text-slate-400 hover:text-amber-300 transition-colors"
+                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
                 title="Edit script"
               >
                 <PencilSquareIcon className="w-5 h-5" />
+                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+                  Edit script
+                </span>
               </button>
               <button
                 onClick={handleDelete}
-                className="text-slate-400 hover:text-amber-300 transition-colors"
+                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
                 disabled={isDeleting}
                 title="Delete script"
               >
@@ -332,26 +338,18 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
                 ) : (
                   <TrashIcon className="w-5 h-5" />
                 )}
-              </button>
-              <button
-                onClick={handleSave}
-                className={`text-slate-400 hover:text-amber-300 transition-colors ${isSaved ? 'text-amber-300' : ''}`}
-                disabled={isSaving}
-                title={isSaved ? "Unsave script" : "Save script"}
-              >
-                {isSaving ? (
-                  <XMarkIcon className="w-5 h-5 animate-spin" />
-                ) : (
-                  <DocumentCheckIcon className="w-5 h-5" />
-                )}
+                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+                  Delete script
+                </span>
               </button>
             </>
           )}
+        </div>
+        <div className="flex gap-2">
           <button
             onClick={handleStar}
-            className={`text-slate-400 hover:text-amber-300 transition-colors ${isStarred ? 'text-amber-300' : ''}`}
+            className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
             disabled={isTogglingStar}
-            title={isStarred ? "Unstar script" : "Star script"}
           >
             {isTogglingStar ? (
               <XMarkIcon className="w-5 h-5 animate-spin" />
@@ -360,12 +358,14 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             ) : (
               <StarIconOutline className="w-5 h-5" />
             )}
+            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+              {isStarred ? "Remove from starred" : "Add to starred"}
+            </span>
           </button>
           <button
             onClick={handleToggleLike}
-            className={`text-slate-400 hover:text-amber-300 transition-colors ${isLiked ? 'text-amber-300' : ''}`}
+            className={`text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5 ${isLiked ? 'text-amber-300' : ''}`}
             disabled={isTogglingLike}
-            title={isLiked ? "Unlike script" : "Like script"}
           >
             {isTogglingLike ? (
               <XMarkIcon className="w-5 h-5 animate-spin" />
@@ -374,7 +374,10 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             ) : (
               <HeartIconOutline className="w-5 h-5" />
             )}
-            <span className="ml-1 text-sm">{likeCount}</span>
+            <span className="ml-1 min-w-[1rem] text-sm text-slate-400">{likeCount}</span>
+            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+              {isLiked ? "Unlike script" : "Like script"}
+            </span>
           </button>
         </div>
       </div>
