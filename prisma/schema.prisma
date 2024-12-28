@@ -8,27 +8,76 @@ generator client {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  githubId String   @unique
-  username String
-  scripts  Script[]
-  usage    Usage[]
-  likes    Like[]
+  id            String   @id @default(uuid())
+  githubId      String   @unique
+  username      String
+  scripts       Script[]
+  usage         Usage[]
+  likes         Like[]
+  requestedBy   Script[] @relation("RequestedBy")
 }
 
 model Script {
+  id          String          @id @default(uuid())
+  requestId   String?         @unique
+  title       String
+  summary     String?
+  content     String
+  prompt      String?
+  starred     Boolean         @default(false)
+  saved       Boolean         @default(false)
+  ownerId     String
+  owner       User            @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime        @default(now())
+  likes       Like[]
+  
+  // New fields for script requests
+  isRequest   Boolean         @default(false)
+  status      ScriptStatus    @default(ACTIVE)
+  requestedById String?
+  requestedBy User?          @relation("RequestedBy", fields: [requestedById], references: [id])
+  
+  // Fork relationship
+  parentId    String?
+  parent      Script?         @relation("ScriptForks", fields: [parentId], references: [id])
+  children    Script[]        @relation("ScriptForks")
+  
+  // Versioning
+  versions    ScriptVersion[]
+  
+  // Tags
+  tags        Tag[]           @relation("ScriptTags")
+  
+  // Sponsorship
+  sponsored   Boolean         @default(false)
+  sponsorId   String?
+  sponsor     Sponsor?        @relation(fields: [sponsorId], references: [id])
+  
+  // External links
+  gistUrl     String?
+  repoUrl     String?
+}
+
+model ScriptVersion {
   id        String   @id @default(uuid())
-  requestId String?  @unique
-  title     String
-  summary   String?
+  scriptId  String
   content   String
-  prompt    String?
-  starred   Boolean  @default(false)
-  saved     Boolean  @default(false)
-  ownerId   String
-  owner     User     @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())
-  likes     Like[]
+  script    Script   @relation(fields: [scriptId], references: [id])
+}
+
+model Tag {
+  id      String   @id @default(uuid())
+  name    String   @unique
+  scripts Script[] @relation("ScriptTags")
+}
+
+model Sponsor {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String?
+  website   String?
+  scripts   Script[]
 }
 
 model Usage {
@@ -50,4 +99,12 @@ model Like {
   createdAt DateTime @default(now())
 
   @@unique([userId, scriptId])
+}
+
+enum ScriptStatus {
+  ACTIVE
+  REQUESTED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
 } 

@@ -11,7 +11,7 @@
     "postinstall": "prisma generate",
     "prepare": "husky",
     "check": "tsc --noEmit && eslint .",
-    "vercel-build": "prisma generate && prisma migrate deploy && pnpm check && pnpm build"
+    "vercel-build": "pnpm check && pnpm build"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
