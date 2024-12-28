@@ -277,7 +277,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight
               theme={nightOwlTheme}
-              code={script.content}
+              code={script.content.slice(0, 500)}
               language="typescript"
               prism={Prism}
             >
