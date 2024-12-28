@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import Link from "next/link"
-import { Highlight, Prism, themes, type PrismTheme } from "prism-react-renderer";
+import { Highlight, Prism, type PrismTheme } from "prism-react-renderer";
 import { 
   ClipboardIcon, 
   PencilSquareIcon, 
@@ -18,10 +18,12 @@ import {
   StarIcon as StarIconOutline,
   HeartIcon as HeartIconOutline 
 } from "@heroicons/react/24/outline"
+import "prismjs/components/prism-typescript"
 
 // Initialize Prism with TypeScript support
-(typeof global !== "undefined" ? global : window).Prism = Prism;
-require("prismjs/components/prism-typescript");
+if (typeof global !== "undefined" ? global : window) {
+  (typeof global !== "undefined" ? global : window).Prism = Prism;
+}
 
 // Custom Night Owl theme
 const nightOwlTheme: PrismTheme = {

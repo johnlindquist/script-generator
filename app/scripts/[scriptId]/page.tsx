@@ -12,10 +12,24 @@ interface ScriptPageProps {
   params: Promise<{ scriptId: string }>;
 }
 
+interface Script {
+  id: string;
+  content: string;
+  title?: string;
+  owner: {
+    id: string;
+    name?: string;
+    email?: string;
+    username?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function ScriptPage({ params }: ScriptPageProps) {
   const { scriptId } = use(params);
   const { data: session } = useSession();
-  const [script, setScript] = useState<any>(null);
+  const [script, setScript] = useState<Script | null>(null);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

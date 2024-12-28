@@ -3,19 +3,24 @@
 import { useState, useEffect, useRef } from "react"
 import { useSession, signIn } from "next-auth/react"
 import NavBar from "@/components/NavBar"
-import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
 import { Editor } from "@monaco-editor/react"
 import ScriptSuggestions from "@/components/ScriptSuggestions"
 import { monacoOptions, initializeTheme } from "@/lib/monaco"
 import { 
   RocketLaunchIcon, 
-  ClipboardIcon, 
   DocumentCheckIcon, 
   ArrowPathIcon 
 } from "@heroicons/react/24/solid"
 import debounce from "lodash.debounce"
 import { toast } from "react-hot-toast"
+
+interface EditorRef {
+  getModel: () => {
+    getLineCount: () => number
+  } | null
+  revealLine: (line: number) => void
+}
 
 interface ScriptGenerationFormProps {
   prompt: string
@@ -63,10 +68,10 @@ const ScriptGenerationForm = ({
   setGeneratedScript,
   setError
 }: ScriptGenerationFormProps) => {
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<EditorRef | null>(null);
   const prevIsGeneratingRef = useRef(isGenerating);
 
-  const handleEditorDidMount = (editor: any) => {
+  const handleEditorDidMount = (editor: EditorRef) => {
     editorRef.current = editor;
   };
 
@@ -251,7 +256,7 @@ export default function Home() {
   const [editableScript, setEditableScript] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<any[]>([])
-  const [showGenerateForm, setShowGenerateForm] = useState(true)
+  const [showGenerateForm] = useState(true)
   const textBufferRef = useRef("")
   const [page, setPage] = useState(1)
   const [pageSize] = useState(9)
@@ -388,6 +393,19 @@ export default function Home() {
       toast.error(err instanceof Error ? err.message : "Failed to save script");
     }
   };
+
+  useEffect(() => {
+    fetchScripts()
+  }, [session, fetchScripts])
+
+  useEffect(() => {
+    const handleScriptDeleted = () => {
+      fetchScripts()
+    }
+
+    window.addEventListener("scriptDeleted", handleScriptDeleted)
+    return () => window.removeEventListener("scriptDeleted", handleScriptDeleted)
+  }, [fetchScripts])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">

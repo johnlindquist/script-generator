@@ -2,7 +2,7 @@ import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { default as BrillanceBlack } from "monaco-themes/themes/Brilliance Black.json";
 
-export const initializeTheme = (monacoInstance: any) => {
+export const initializeTheme = (monacoInstance: typeof monaco) => {
   // Define theme
   monacoInstance.editor.defineTheme("brillance-black", {
     ...BrillanceBlack,

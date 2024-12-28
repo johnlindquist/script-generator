@@ -64,24 +64,6 @@ function getExampleScripts() {
   }
 }
 
-function removeLeadingTrailingCodeFence(script: string): string {
-  let s = script.trim()
-  const codeFenceRegex = /^(`{3,}|~{3,})([a-zA-Z0-9]*)?/
-  const match = s.match(codeFenceRegex)
-  
-  // If match found at start, remove it and any following newline
-  if (match) {
-    s = s.slice(match[0].length).trimStart()
-  }
-  
-  // Now remove trailing fence at the end
-  if (s.endsWith("```") || s.endsWith("~~~")) {
-    s = s.slice(0, -3).trimEnd()
-  }
-  
-  return s
-}
-
 // Helper function to clean code fences and language specifiers
 function cleanCodeFences(text: string): string {
   // First, remove code fences with inline language specifiers
@@ -249,19 +231,19 @@ Generate ONLY the script content, no additional explanations or markdown:`
     // After streaming is complete, save the script
     const script = await prisma.script.create({
       data: {
-        title: prompt.slice(0, 100),
-        summary: prompt,
         content: fullScript,
-        ...(requestId ? { requestId } : {}),
-        ownerId: dbUser.id
-      },
+        prompt,
+        requestId,
+        userId: session.user.id
+      }
     })
 
-    return new Response(stream, {
+    // Return the stream with the script ID
+    return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-      },
+        'X-Script-Id': script.id
+      }
     })
   } catch (error) {
     console.error("Generate error details:", {

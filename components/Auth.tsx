@@ -1,7 +1,6 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { ReactNode } from "react"
 
 interface AuthProps {
@@ -10,7 +9,6 @@ interface AuthProps {
 
 export default function Auth({ children }: AuthProps) {
   const { status } = useSession({ required: true })
-  const router = useRouter()
 
   if (status === "loading") {
     return (
