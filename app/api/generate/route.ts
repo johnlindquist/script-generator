@@ -19,6 +19,7 @@ const model = genAI.getGenerativeModel({
 // Function to read example scripts
 function getExampleScripts() {
   const examplesPath = path.join(process.cwd(), 'examples')
+  const avoidAbusePath = path.join(process.cwd(), 'prompts', 'avoid-abuse.md')
   let allExampleContent = ''
 
   try {
@@ -58,7 +59,10 @@ function getExampleScripts() {
       }
     }
 
-    return allExampleContent
+    return (
+      allExampleContent +
+      (fs.existsSync(avoidAbusePath) ? '\n\n' + fs.readFileSync(avoidAbusePath, 'utf-8') : '')
+    )
   } catch (error) {
     console.error('Error reading example scripts:', error)
     return '' // Return empty string on error, allowing generation to continue
@@ -68,13 +72,21 @@ function getExampleScripts() {
 // Function to read docs-mini.md
 function getDocsContent() {
   const docsPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
+  const promptPath = path.join(process.cwd(), 'prompts', 'prompt.md')
   try {
     if (!fs.existsSync(docsPath)) {
       console.warn(`Docs file not found at ${docsPath}`)
       return ''
     }
 
-    const content = fs.readFileSync(docsPath, 'utf-8')
+    let content = fs.readFileSync(docsPath, 'utf-8')
+
+    // Append prompt.md content if it exists
+    if (fs.existsSync(promptPath)) {
+      const promptContent = fs.readFileSync(promptPath, 'utf-8')
+      content += '\n\n' + promptContent
+    }
+
     return content
   } catch (error) {
     console.error('Error reading docs content:', error)
