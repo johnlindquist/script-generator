@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { Editor } from "@monaco-editor/react";
@@ -13,11 +14,14 @@ interface ScriptPageProps {
 
 export default function ScriptPage({ params }: ScriptPageProps) {
   const { scriptId } = use(params);
+  const { data: session } = useSession();
   const [script, setScript] = useState<any>(null);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const isOwner = session?.user?.id === script?.owner?.id;
 
   useEffect(() => {
     const fetchScript = async () => {
@@ -163,7 +167,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
       >
         ← Back to Home
       </Link>
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-8 py-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -171,6 +175,11 @@ export default function ScriptPage({ params }: ScriptPageProps) {
               <p className="text-slate-400">
                 by {script.owner?.username || "Anonymous"} •{" "}
                 {new Date(script.createdAt).toLocaleDateString()}
+                {!isOwner && (
+                  <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-300">
+                    Read Only
+                  </span>
+                )}
               </p>
             </div>
             <button
@@ -187,8 +196,12 @@ export default function ScriptPage({ params }: ScriptPageProps) {
                 height="100%"
                 defaultLanguage="typescript"
                 value={content}
-                onChange={handleEditorChange}
-                options={monacoOptions}
+                onChange={isOwner ? handleEditorChange : undefined}
+                options={{
+                  ...monacoOptions,
+                  readOnly: !isOwner,
+                  domReadOnly: !isOwner,
+                }}
                 beforeMount={initializeTheme}
                 theme="brillance-black"
               />

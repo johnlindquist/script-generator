@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useSession } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import NavBar from "@/components/NavBar"
 import Auth from "@/components/Auth"
 import ScriptCard from "@/components/ScriptCard"
@@ -27,6 +27,7 @@ interface ScriptGenerationFormProps {
   setEditableScript: (script: string) => void
   onSubmit: (prompt: string, requestId: string) => void
   onSave: () => void
+  isAuthenticated: boolean
 }
 
 const LoadingDots = () => (
@@ -55,7 +56,8 @@ const ScriptGenerationForm = ({
   editableScript,
   setEditableScript,
   onSubmit,
-  onSave
+  onSave,
+  isAuthenticated
 }: ScriptGenerationFormProps) => {
   const editorRef = useRef<any>(null);
   const prevIsGeneratingRef = useRef(isGenerating);
@@ -73,6 +75,11 @@ const ScriptGenerationForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isGenerating) return;
+
+    if (!isAuthenticated) {
+      signIn();
+      return;
+    }
 
     const requestId = generateRequestId();
     onSubmit(prompt, requestId);
@@ -120,32 +127,45 @@ const ScriptGenerationForm = ({
             <textarea
               id="prompt"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => isAuthenticated && setPrompt(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit(e as any);
                 }
               }}
-              disabled={isGenerating}
-              className="w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder="Example: A script that finds all large files in a directory and shows their sizes in human-readable format"
+              disabled={isGenerating || !isAuthenticated}
+              className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
+              placeholder={isAuthenticated ? "Example: A script that finds all large files in a directory and shows their sizes in human-readable format" : "Sign in to start generating scripts!"}
               required
+              onClick={() => !isAuthenticated && signIn()}
             />
-            <ScriptSuggestions setPrompt={setPrompt} />
+            <ScriptSuggestions setPrompt={(suggestion) => {
+              if (!isAuthenticated) {
+                signIn();
+                return;
+              }
+              setPrompt(suggestion);
+            }} />
           </div>
 
           <button
             type="submit"
             disabled={isGenerating}
             className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-              isGenerating ? "cursor-wait" : ""
+              isGenerating ? "cursor-wait" : !isAuthenticated ? "cursor-pointer" : ""
             }`}
+            onClick={() => !isAuthenticated && signIn()}
           >
             {isGenerating ? (
               <>
                 <ArrowPathIcon className="w-5 h-5 animate-spin" />
                 Generating...
+              </>
+            ) : !isAuthenticated ? (
+              <>
+                <RocketLaunchIcon className="w-5 h-5" />
+                Sign in to Generate
               </>
             ) : (
               <>
@@ -173,8 +193,12 @@ const ScriptGenerationForm = ({
                   height="100%"
                   defaultLanguage="typescript"
                   value={editableScript}
-                  onChange={(value) => setEditableScript(value || "")}
-                  options={monacoOptions}
+                  onChange={(value) => isAuthenticated && setEditableScript(value || "")}
+                  options={{
+                    ...monacoOptions,
+                    readOnly: !isAuthenticated,
+                    domReadOnly: !isAuthenticated,
+                  }}
                   beforeMount={initializeTheme}
                   theme="brillance-black"
                   onMount={handleEditorDidMount}
@@ -192,23 +216,27 @@ const ScriptGenerationForm = ({
                   <ClipboardIcon className="w-5 h-5" />
                   Copy Script
                 </button>
-                <button
-                  onClick={onSave}
-                  className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                >
-                  <DocumentCheckIcon className="w-5 h-5" />
-                  Save Script
-                </button>
-                <button
-                  onClick={() => {
-                    setPrompt("")
-                    setEditableScript("")
-                  }}
-                  className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                >
-                  <ArrowPathIcon className="w-5 h-5" />
-                  Generate Another
-                </button>
+                {isAuthenticated && (
+                  <>
+                    <button
+                      onClick={onSave}
+                      className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                    >
+                      <DocumentCheckIcon className="w-5 h-5" />
+                      Save Script
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPrompt("")
+                        setEditableScript("")
+                      }}
+                      className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                    >
+                      <ArrowPathIcon className="w-5 h-5" />
+                      Generate Another
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -335,22 +363,30 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black">
+    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={!!session} />
       <div className="container mx-auto px-4 py-8">
         {status === "loading" ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-amber-400"></div>
           </div>
-        ) : !session ? (
-          <Auth>
-            <div className="mb-12 text-center">
-              <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
-              <p className="text-slate-300 mb-8">Sign in to start generating scripts!</p>
-            </div>
-          </Auth>
         ) : (
           <>
+            <div className="mb-12 text-center">
+              <h2 className="text-2xl font-bold mb-4 text-amber-300">Welcome to Script Generator</h2>
+              {session ? (
+                <p className="text-slate-300 mb-8">
+                  Hello <strong>{session.user?.name || session.user?.email}</strong>!<br />
+                  Feel free to generate new scripts or browse existing ones.
+                </p>
+              ) : (
+                <p className="text-slate-300 mb-8">
+                  Browse existing scripts below or <button onClick={() => signIn()} className="text-amber-400 hover:underline">sign in</button> to generate your own!
+                </p>
+              )}
+            </div>
+
+            {/* Always show generation form */}
             {showGenerateForm && (
               <ScriptGenerationForm
                 prompt={prompt}
@@ -362,9 +398,11 @@ export default function Home() {
                 setEditableScript={setEditableScript}
                 onSubmit={handleSubmit}
                 onSave={handleSave}
+                isAuthenticated={!!session}
               />
             )}
 
+            {/* Scripts list visible to everyone */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {scripts.map((script) => (
                 <ScriptCard

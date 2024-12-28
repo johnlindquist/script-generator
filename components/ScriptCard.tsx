@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Highlight, Prism, themes, type PrismTheme } from "prism-react-renderer";
 import { 
@@ -171,7 +172,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
 
   const handleToggleLike = async () => {
     if (!isAuthenticated) {
-      alert("Please sign in to like scripts.")
+      signIn()
       return
     }
 
@@ -308,38 +309,35 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           )}
         </div>
         <div className="flex items-center gap-4">
-          {isAuthenticated && (
-            <>
-              <button
-                onClick={handleToggleLike}
-                disabled={isTogglingLike}
-                className={`flex items-center gap-1 text-pink-400 hover:text-pink-300 transition ${
-                  isTogglingLike ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                {isLiked ? (
-                  <HeartIconSolid className="w-4 h-4" />
-                ) : (
-                  <HeartIconOutline className="w-4 h-4" />
-                )}
-                <span>{likeCount}</span>
-              </button>
-              {script.owner.id === currentUserId && (
-                <button
-                  onClick={handleStar}
-                  disabled={isTogglingStar}
-                  className={`text-amber-400 hover:text-amber-300 transition ${
-                    isTogglingStar ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {isStarred ? (
-                    <StarIconSolid className="w-4 h-4" />
-                  ) : (
-                    <StarIconOutline className="w-4 h-4" />
-                  )}
-                </button>
+          <button
+            onClick={handleToggleLike}
+            disabled={isTogglingLike}
+            className={`flex items-center gap-1 text-pink-400 hover:text-pink-300 transition ${
+              isTogglingLike ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            title={isAuthenticated ? undefined : "Sign in to like scripts"}
+          >
+            {isAuthenticated && isLiked ? (
+              <HeartIconSolid className="w-4 h-4" />
+            ) : (
+              <HeartIconOutline className="w-4 h-4" />
+            )}
+            <span>{likeCount}</span>
+          </button>
+          {isAuthenticated && script.owner.id === currentUserId && (
+            <button
+              onClick={handleStar}
+              disabled={isTogglingStar}
+              className={`text-amber-400 hover:text-amber-300 transition ${
+                isTogglingStar ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {isStarred ? (
+                <StarIconSolid className="w-4 h-4" />
+              ) : (
+                <StarIconOutline className="w-4 h-4" />
               )}
-            </>
+            </button>
           )}
         </div>
       </div>
