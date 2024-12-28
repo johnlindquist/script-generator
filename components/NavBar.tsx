@@ -1,17 +1,23 @@
-"use client"
+'use client'
 
-import { signOut } from "next-auth/react"
-import Link from "next/link"
-import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid"
+import { signOut, useSession } from 'next-auth/react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid'
 
 interface NavBarProps {
   isAuthenticated: boolean
 }
 
 export default function NavBar({ isAuthenticated }: NavBarProps) {
+  const { data: session } = useSession()
+
   return (
     <nav className="flex justify-between items-center mb-8">
-      <Link href="/" className="text-4xl font-bold text-amber-300 hover:text-amber-200 transition-colors">
+      <Link
+        href="/"
+        className="text-4xl font-bold text-amber-300 hover:text-amber-200 transition-colors"
+      >
         Script Generator
       </Link>
       <div className="flex gap-4">
@@ -22,6 +28,15 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           >
             <ArrowLeftOnRectangleIcon className="w-5 h-5" />
             Sign Out
+            {session?.user?.image && (
+              <Image
+                src={session.user.image}
+                alt="User avatar"
+                width={30}
+                height={30}
+                className="rounded-full -mr-1"
+              />
+            )}
           </button>
         ) : (
           <Link
@@ -35,4 +50,4 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
       </div>
     </nav>
   )
-} 
+}

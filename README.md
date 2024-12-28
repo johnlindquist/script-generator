@@ -37,7 +37,8 @@ An AI-powered shell script generator built with Next.js, Prisma, and Google's Ge
 3. Set up environment variables:
    Create a `.env.local` file with:
    ```
-   DATABASE_URL="your-postgres-url"
+   NEON_POSTGRES_POSTGRES_PRISMA_URL="your-neon-postgres-url"
+   NEON_POSTGRES_POSTGRES_URL_NON_POOLING="your-neon-postgres-url-non-pooling"
    GITHUB_CLIENT_ID="your-github-client-id"
    GITHUB_CLIENT_SECRET="your-github-client-secret"
    GEMINI_API_KEY="your-gemini-api-key"
