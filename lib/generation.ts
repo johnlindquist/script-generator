@@ -142,5 +142,5 @@ Here is the script to verify and improve:
 {script}
 </SCRIPT>
 
-Generate ONLY the improved script content, no additional explanations or markdown.
+Generate improved script content and this time, include the initial markdown and comments explaining the flow and logic of the.
 `
