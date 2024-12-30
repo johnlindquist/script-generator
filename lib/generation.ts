@@ -98,6 +98,10 @@ export const INITIAL_PASS_PROMPT = `You are a TypeScript script generator.
 Create a workable script from the user's prompt with minimal checks.
 Focus on core functionality without extensive error handling or formatting.
 
+<USER_INFO>
+{userInfo}
+</USER_INFO>
+
 <DOCS>
 ${getDocsContent()}
 </DOCS>
@@ -118,6 +122,10 @@ Generate ONLY the script content, no additional explanations or markdown.
 // Second pass prompt - extensive verification and refinement
 export const SECOND_PASS_PROMPT = `You are a TypeScript script generator and code reviewer.
 Your task is to verify, correct, refine, and format the provided script according to best practices.
+
+<USER_INFO>
+{userInfo}
+</USER_INFO>
 
 Review and improve the following aspects:
 1. Code style and formatting

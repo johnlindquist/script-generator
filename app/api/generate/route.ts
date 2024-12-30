@@ -47,7 +47,13 @@ export async function POST(req: NextRequest) {
 
     // Generate refined script using Gemini
     const result = await model.generateContentStream(
-      SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
+      SECOND_PASS_PROMPT.replace('{script}', initialScript.content).replace(
+        '{userInfo}',
+        JSON.stringify({
+          name: session.user.name,
+          image: session.user.image,
+        })
+      )
     )
 
     let fullScript = ''
