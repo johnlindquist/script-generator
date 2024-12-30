@@ -204,16 +204,6 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           {isOwner && (
             <>
               <button
-                onClick={handleCopy}
-                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-                title="Copy script"
-              >
-                <ClipboardIcon className="w-5 h-5" />
-                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-                  Copy to clipboard
-                </span>
-              </button>
-              <button
                 onClick={handleEdit}
                 className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
                 title="Edit script"
@@ -254,6 +244,16 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           )}
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={handleCopy}
+            className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
+            title="Copy script"
+          >
+            <ClipboardIcon className="w-5 h-5" />
+            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
+              Copy to clipboard
+            </span>
+          </button>
           <button
             onClick={handleToggleLike}
             className={`text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5 ${isLiked ? 'text-amber-300' : ''}`}
