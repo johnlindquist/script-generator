@@ -24,6 +24,8 @@ model Script {
   title         String
   summary       String?
   content       String
+  dashedName    String?
+  uppercaseName String?
   starred       Boolean         @default(false)
   saved         Boolean         @default(false)
   ownerId       String

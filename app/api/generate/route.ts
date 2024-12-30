@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { authOptions } from '../auth/[...nextauth]/route'
 import fs from 'fs'
 import path from 'path'
+import { generateDashedName, generateUppercaseName } from '@/lib/names'
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -15,6 +16,20 @@ const model = genAI.getGenerativeModel({
     temperature: 0.7,
   },
 })
+
+// Library search prompt enhancement
+const LIBRARY_SEARCH_PROMPT = `
+Before generating the code, search for and recommend the most suitable npm packages and services for this task. Consider:
+- Package download statistics and popularity
+- GitHub stars and recent activity
+- Maintenance status and last updated date
+- Security vulnerabilities and updates
+- Documentation quality and examples
+- Community support and ecosystem
+
+Format your recommendations before the code implementation.
+Prefer using pnpm for package installation commands.
+`
 
 // Function to read example scripts
 function getExampleScripts() {
@@ -178,6 +193,8 @@ export async function POST(req: NextRequest) {
       ? `You are a TypeScript script generator that creates scripts in the exact style of the examples below.
 Each script should be a standalone TypeScript file that can be run directly.
 
+${LIBRARY_SEARCH_PROMPT}
+
 Here is the documentation for available functions and utilities:
 
 ${docsContent}
@@ -201,6 +218,8 @@ Requirements:
 
 Generate ONLY the script content, no additional explanations or markdown:`
       : `Create a TypeScript script based on this description: ${prompt}
+
+${LIBRARY_SEARCH_PROMPT}
 
 Here is the documentation for available functions and utilities:
 
@@ -289,6 +308,8 @@ Generate ONLY the script content, no additional explanations or markdown:`
         requestId,
         ownerId: session.user.id,
         saved: false,
+        dashedName: generateDashedName(prompt.slice(0, 100)),
+        uppercaseName: generateUppercaseName(prompt.slice(0, 100)),
       },
     })
 

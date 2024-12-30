@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../../auth/[...nextauth]/route'
+import { generateDashedName, generateUppercaseName } from '@/lib/names'
 
 type Context = {
   params: Promise<{ scriptId: string }>
@@ -31,7 +32,11 @@ export async function PUT(request: NextRequest, context: Context) {
 
     const updatedScript = await prisma.script.update({
       where: { id: params.scriptId },
-      data: { content },
+      data: {
+        content,
+        dashedName: generateDashedName(script.title),
+        uppercaseName: generateUppercaseName(script.title),
+      },
     })
 
     return NextResponse.json(updatedScript)

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Editor } from '@monaco-editor/react'
 import debounce from 'lodash.debounce'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
+import { ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 
 interface ScriptPageProps {
   params: Promise<{ scriptId: string }>
@@ -16,6 +17,7 @@ interface Script {
   id: string
   content: string
   title?: string
+  dashedName?: string
   owner: {
     id: string
     name?: string
@@ -265,6 +267,13 @@ export default function ScriptPage({ params }: ScriptPageProps) {
                 </svg>
                 Copy
               </button>
+              <Link
+                href={`/api/new?name=${encodeURIComponent(script.dashedName || 'script.ts')}&url=${encodeURIComponent(`${window.location.origin}/scripts/${script.id}/raw`)}`}
+                className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-colors flex items-center gap-2"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Install
+              </Link>
             </div>
           </div>
 

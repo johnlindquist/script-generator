@@ -14,6 +14,8 @@ export interface Script {
   starred: boolean
   saved: boolean
   createdAt: Date
+  dashedName?: string
+  uppercaseName?: string
   owner: {
     id: string
     username: string

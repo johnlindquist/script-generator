@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { generateDashedName, generateUppercaseName } from '@/lib/names'
 
 export async function GET(request: Request) {
   try {
@@ -11,8 +12,8 @@ export async function GET(request: Request) {
 
     // Extract query params from the request URL
     const { searchParams } = new URL(request.url)
-    const pageParam = searchParams.get("page") || "1"
-    const pageSizeParam = searchParams.get("pageSize") || "9"
+    const pageParam = searchParams.get('page') || '1'
+    const pageSizeParam = searchParams.get('pageSize') || '9'
 
     // Convert to integers and clamp to safe ranges
     let page = parseInt(pageParam, 10)
@@ -29,19 +30,21 @@ export async function GET(request: Request) {
     // Query the scripts with pagination
     const scripts = await prisma.script.findMany({
       where: {
-        saved: true
+        saved: true,
       },
       skip,
       take: pageSize,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         owner: true,
         _count: {
           select: { likes: true },
         },
-        likes: userId ? {
-          where: { userId },
-        } : false,
+        likes: userId
+          ? {
+              where: { userId },
+            }
+          : false,
       },
     })
 
@@ -55,8 +58,8 @@ export async function GET(request: Request) {
     // Get total count for pagination info
     const totalScripts = await prisma.script.count({
       where: {
-        saved: true
-      }
+        saved: true,
+      },
     })
 
     return NextResponse.json({
@@ -67,11 +70,8 @@ export async function GET(request: Request) {
       totalPages: Math.ceil(totalScripts / pageSize),
     })
   } catch (error) {
-    console.error("Failed to fetch scripts:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch scripts" },
-      { status: 500 }
-    )
+    console.error('Failed to fetch scripts:', error)
+    return NextResponse.json({ error: 'Failed to fetch scripts' }, { status: 500 })
   }
 }
 
@@ -79,19 +79,13 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { prompt, code, saved } = await request.json()
-    
+
     if (!prompt || !code) {
-      return NextResponse.json(
-        { error: "Prompt and code are required" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Prompt and code are required' }, { status: 400 })
     }
 
     const script = await prisma.script.create({
@@ -101,6 +95,8 @@ export async function POST(request: Request) {
         content: code,
         ownerId: session.user.id,
         saved: saved ?? false,
+        dashedName: generateDashedName(prompt.split('\n')[0].slice(0, 50)),
+        uppercaseName: generateUppercaseName(prompt.split('\n')[0].slice(0, 50)),
       },
       include: {
         owner: true,
@@ -109,10 +105,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(script)
   } catch (error) {
-    console.error("Failed to create script:", error)
-    return NextResponse.json(
-      { error: "Failed to create script" },
-      { status: 500 }
-    )
+    console.error('Failed to create script:', error)
+    return NextResponse.json({ error: 'Failed to create script' }, { status: 500 })
   }
-} 
+}
