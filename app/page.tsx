@@ -56,12 +56,22 @@ export default async function Home({
     },
   })
 
-  // Transform scripts to include isLiked
-  const transformedScripts = scripts.map(script => ({
-    ...script,
-    isLiked: script.likes ? script.likes.length > 0 : false,
-    likes: undefined, // Remove the likes array from the response
-  }))
+  // Transform scripts to include isLiked and match ScriptCard interface
+  const transformedScripts = scripts.map(script => {
+    const { owner, _count, likes, ...rest } = script
+    return {
+      ...rest,
+      owner: {
+        id: owner.id,
+        username: owner.username,
+      },
+      _count: {
+        likes: _count.likes,
+        installs: 0, // Since we don't track installs yet
+      },
+      isLiked: likes ? likes.length > 0 : false,
+    }
+  })
 
   // Get total count for pagination
   const totalScripts = await prisma.script.count({
@@ -89,7 +99,7 @@ export default async function Home({
         </div>
 
         {/* Client-side script generation form */}
-        <ScriptGenerationClient isAuthenticated={!!session} userId={session?.user?.id} />
+        <ScriptGenerationClient isAuthenticated={!!session} />
 
         {/* Server-rendered scripts list */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
