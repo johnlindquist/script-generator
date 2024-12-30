@@ -216,6 +216,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               onChange={e => isAuthenticated && setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isGenerating || !isAuthenticated}
+              maxLength={10000}
               className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
               placeholder={
                 isAuthenticated
@@ -229,7 +230,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               <span
                 className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
               >
-                {prompt.trim().length}/15 characters minimum
+                {prompt.trim().length}/10,000 characters (minimum 15)
               </span>
             </div>
           </div>
