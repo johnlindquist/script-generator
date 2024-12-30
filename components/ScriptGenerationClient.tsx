@@ -51,6 +51,7 @@ const LoadingDots = () => (
 export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationPass, setGenerationPass] = useState<'initial' | 'refining' | null>(null)
   const [generatedScript, setGeneratedScript] = useState<string | null>(null)
   const [editableScript, setEditableScript] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -113,42 +114,89 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     setError(null)
     setGeneratedScript(null)
     setEditableScript('')
+    setGenerationPass('initial')
 
     try {
-      const response = await fetch('/api/generate', {
+      // First pass - generate initial script
+      const initialResponse = await fetch('/api/generate-initial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, requestId }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to generate script')
+      if (!initialResponse.ok) {
+        throw new Error('Failed to generate initial script')
       }
 
-      const reader = response.body?.getReader()
-      if (!reader) {
+      const initialReader = initialResponse.body?.getReader()
+      if (!initialReader) {
         throw new Error('No reader available')
       }
 
-      let buffer = ''
+      let initialBuffer = ''
+      let scriptId = ''
+
+      // Read the initial script and extract the script ID
       while (true) {
-        const { done, value } = await reader.read()
+        const { done, value } = await initialReader.read()
         if (done) break
 
         const text = new TextDecoder().decode(value)
-        buffer += text
+        initialBuffer += text
+
+        // Check for script ID delimiter
+        const idMatch = initialBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+        if (idMatch) {
+          scriptId = idMatch[1]
+          // Remove the ID delimiter from the buffer
+          initialBuffer = initialBuffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+        }
+
         // Show progress in editor while generating
-        setEditableScript(buffer)
+        setEditableScript(initialBuffer)
+      }
+
+      if (!scriptId) {
+        throw new Error('Failed to get script ID from initial generation')
+      }
+
+      // Second pass - refine and verify the script
+      setGenerationPass('refining')
+      const refinedResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scriptId }),
+      })
+
+      if (!refinedResponse.ok) {
+        throw new Error('Failed to refine script')
+      }
+
+      const refinedReader = refinedResponse.body?.getReader()
+      if (!refinedReader) {
+        throw new Error('No reader available')
+      }
+
+      let refinedBuffer = ''
+      while (true) {
+        const { done, value } = await refinedReader.read()
+        if (done) break
+
+        const text = new TextDecoder().decode(value)
+        refinedBuffer += text
+        // Show progress in editor while refining
+        setEditableScript(refinedBuffer)
       }
 
       // Set the final complete text
-      setEditableScript(buffer)
-      setGeneratedScript(buffer)
+      setEditableScript(refinedBuffer)
+      setGeneratedScript(refinedBuffer)
     } catch (err) {
       console.error('Generation error:', err)
       setError(err instanceof Error ? err.message : 'Failed to generate script')
     } finally {
       setIsGenerating(false)
+      setGenerationPass(null)
     }
   }
 
@@ -226,11 +274,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       <h2 className="text-2xl font-bold mb-6 text-center">
         {isGenerating ? (
           <span>
-            Generating Script
+            {generationPass === 'initial'
+              ? 'Generating Initial Script Idea'
+              : 'Refining Script Idea'}
             <LoadingDots />
           </span>
         ) : generatedScript ? (
-          'Edit Generated Script'
+          'Done ✅. Please Make Final Edits and Save'
         ) : (
           'Enter Your Script Idea'
         )}

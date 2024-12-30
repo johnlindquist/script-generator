@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { authOptions } from '../auth/[...nextauth]/route'
-import { SECOND_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
+import { INITIAL_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -27,27 +27,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { scriptId } = await req.json()
-    if (!scriptId) {
-      return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
+    const { prompt, requestId } = await req.json()
+    if (!prompt) {
+      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
 
-    // Get the initial script from the database
-    const initialScript = await prisma.script.findUnique({
-      where: { id: scriptId },
-    })
-
-    if (!initialScript) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+    if (!requestId || requestId.trim().length === 0) {
+      return NextResponse.json({ error: 'A valid requestId is required' }, { status: 400 })
     }
 
-    if (initialScript.ownerId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-
-    // Generate refined script using Gemini
+    // Generate initial script using Gemini
     const result = await model.generateContentStream(
-      SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
+      INITIAL_PASS_PROMPT.replace('{prompt}', prompt)
     )
 
     let fullScript = ''
@@ -62,22 +53,21 @@ export async function POST(req: NextRequest) {
             controller.enqueue(new TextEncoder().encode(text))
           }
 
-          // Update the script in the database
-          await prisma.script.update({
-            where: { id: scriptId },
+          // Save the raw script to the database
+          const script = await prisma.script.create({
             data: {
               content: fullScript,
-              status: 'ACTIVE', // Mark as active now that it's complete
+              title: prompt.slice(0, 100),
+              summary: prompt,
+              requestId,
+              ownerId: session.user.id,
+              saved: false,
+              status: 'IN_PROGRESS', // Mark as in progress until second pass
             },
           })
 
-          // Save the original version
-          await prisma.scriptVersion.create({
-            data: {
-              scriptId,
-              content: initialScript.content,
-            },
-          })
+          // Add a special delimiter to indicate the script ID
+          controller.enqueue(new TextEncoder().encode(`\n__SCRIPT_ID__${script.id}__SCRIPT_ID__\n`))
 
           controller.close()
         } catch (streamError) {
@@ -90,14 +80,13 @@ export async function POST(req: NextRequest) {
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'X-Script-Id': scriptId,
       },
     })
   } catch (error) {
-    console.error('Generate error:', error)
+    console.error('Generate initial error:', error)
     return NextResponse.json(
       {
-        error: 'Failed to generate script',
+        error: 'Failed to generate initial script',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

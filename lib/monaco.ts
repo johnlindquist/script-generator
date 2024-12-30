@@ -105,6 +105,6 @@ export const monacoOptions = {
   inlayHints: {
     enabled: 'off',
   },
-  formatOnPaste: true,
-  formatOnType: true,
+  //   formatOnPaste: true,
+  //   formatOnType: true,
 } as const
