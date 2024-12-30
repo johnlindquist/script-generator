@@ -148,6 +148,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
         const text = new TextDecoder().decode(value)
         initialBuffer += text
+        // trim
+        initialBuffer = initialBuffer.trim()
 
         // Check for script ID delimiter
         const idMatch = initialBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
@@ -189,6 +191,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
         const text = new TextDecoder().decode(value)
         refinedBuffer += text
+        // trim
+        refinedBuffer = refinedBuffer.trim()
         // Show progress in editor while refining
         setEditableScript(refinedBuffer)
       }
