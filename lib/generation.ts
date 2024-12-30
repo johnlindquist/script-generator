@@ -86,10 +86,11 @@ export function cleanCodeFences(text: string): string {
   // Remove closing code fences
   cleaned = cleaned.replace(/^```\s*$/gm, '')
 
-  // Clean up any triple or more newlines
+  // Clean up any triple or more newlines while preserving exactly two
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
 
-  return cleaned.trim()
+  // Return without trimming to preserve whitespace
+  return cleaned
 }
 
 // Initial pass prompt - minimal instructions for raw script generation
