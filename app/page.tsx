@@ -5,6 +5,9 @@ import NavBar from '@/components/NavBar'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ScriptCard from '@/components/ScriptCard'
 import SignInButton from '@/components/SignInButton'
+import { redirect } from 'next/navigation'
+
+export const dynamic = 'force-dynamic'
 
 // Define types
 export interface Script {
@@ -29,11 +32,55 @@ export interface Script {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { page?: string; pageSize?: string }
+  searchParams: { [key: string]: string | string[] | undefined }
 }) {
   const session = await getServerSession(authOptions)
-  const page = Number(searchParams.page) || 1
-  const pageSize = Number(searchParams.pageSize) || 9
+  const { page: pageStr = '1', pageSize: pageSizeStr = '9' } = await searchParams
+  const page = Number(pageStr)
+  const pageSize = Number(pageSizeStr)
+
+  // Get total count first
+  const totalScripts = await prisma.script.count({
+    where: {
+      saved: true,
+    },
+  })
+
+  const totalPages = Math.ceil(totalScripts / pageSize)
+
+  // Redirect to page 1 if the requested page is beyond totalPages
+  if (totalScripts > 0 && page > totalPages) {
+    redirect('/?page=1')
+  }
+
+  // If no scripts, return early with empty array
+  if (totalScripts === 0) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
+        <NavBar isAuthenticated={!!session} />
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-12 text-center">
+            {!session && (
+              <p className="text-slate-300 mb-8">
+                Browse existing scripts below or <SignInButton /> to generate your own!
+              </p>
+            )}
+            <p className="text-amber-400/80 text-sm">
+              ⚠️ This is a prototype - Don't expect scripts to work perfectly and backup your
+              favorites!
+            </p>
+          </div>
+
+          {/* Client-side script generation form */}
+          <ScriptGenerationClient isAuthenticated={!!session} />
+
+          <p className="text-center text-slate-300 mt-8">
+            No scripts found. Create one to get started!
+          </p>
+        </div>
+      </main>
+    )
+  }
 
   // Server-side fetch of scripts
   const scripts = await prisma.script.findMany({
@@ -72,15 +119,6 @@ export default async function Home({
       isLiked: likes ? likes.length > 0 : false,
     }
   })
-
-  // Get total count for pagination
-  const totalScripts = await prisma.script.count({
-    where: {
-      saved: true,
-    },
-  })
-
-  const totalPages = Math.ceil(totalScripts / pageSize)
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
