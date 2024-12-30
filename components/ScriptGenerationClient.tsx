@@ -208,6 +208,19 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     prevIsGeneratingRef.current = isGenerating
   }, [isGenerating, editableScript])
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && generatedScript && !isGenerating) {
+        e.preventDefault()
+        handleSave()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [generatedScript, isGenerating])
+
   return (
     <div className="mb-12">
       <h2 className="text-2xl font-bold mb-6 text-center">

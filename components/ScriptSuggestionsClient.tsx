@@ -32,7 +32,7 @@ const ScriptSuggestionsClient = forwardRef<{ refreshSuggestions: () => void }, P
             key={idx}
             onClick={() =>
               setPrompt(
-                `Title: ${suggestion.title}\nDescription: ${suggestion.description}\nKey Features: ${suggestion.keyFeatures.join(', ')}`
+                `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures.join(', ')}`
               )
             }
             className="text-sm bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full transition-colors duration-200"

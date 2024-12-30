@@ -111,6 +111,19 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     }
   }, [debouncedSave])
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && !saving) {
+        e.preventDefault()
+        saveScript(content)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [content, saving])
+
   const handleEditorChange = (value: string | undefined) => {
     const newContent = value || ''
     setContent(newContent)
