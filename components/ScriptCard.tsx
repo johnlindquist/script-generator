@@ -1,18 +1,11 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
-import {
-  ClipboardIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  XMarkIcon,
-  ArrowDownTrayIcon,
-  HandThumbUpIcon as HandThumbUpIconSolid,
-} from '@heroicons/react/24/solid'
-import { HandThumbUpIcon as HandThumbUpIconOutline } from '@heroicons/react/24/outline'
+
+import CopyButtonClient from './CopyButtonClient'
+import LikeButtonClient from './LikeButtonClient'
+import InstallButtonClient from './InstallButtonClient'
+import DeleteButtonClient from './DeleteButtonClient'
+import EditButtonClient from './EditButtonClient'
 
 interface ScriptCardProps {
   script: {
@@ -37,119 +30,7 @@ interface ScriptCardProps {
 }
 
 export default function ScriptCard({ script, isAuthenticated, currentUserId }: ScriptCardProps) {
-  const router = useRouter()
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isLiked, setIsLiked] = useState(script.isLiked ?? false)
-  const [likeCount, setLikeCount] = useState(script._count?.likes ?? 0)
-  const [isTogglingLike, setIsTogglingLike] = useState(false)
-  const [installCount, setInstallCount] = useState(script._count?.installs ?? 0)
-  const [isTogglingInstall, setIsTogglingInstall] = useState(false)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(script.content)
-  }
-
-  const handleEdit = () => {
-    router.push(`/scripts/${script.id}`)
-  }
-
-  const handleDelete = async () => {
-    try {
-      setIsDeleting(true)
-      const response = await fetch(`/api/scripts/${script.id}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete script')
-      }
-
-      // Emit a custom event that the parent page can listen to
-      const event = new CustomEvent('scriptDeleted', {
-        detail: { scriptId: script.id },
-      })
-      window.dispatchEvent(event)
-
-      router.refresh()
-    } catch (error) {
-      console.error('Delete error:', error)
-      alert('Failed to delete script')
-    } finally {
-      setIsDeleting(false)
-      setShowDeleteConfirm(false)
-    }
-  }
-
-  const initiateDelete = () => {
-    setShowDeleteConfirm(true)
-  }
-
-  const cancelDelete = () => {
-    setShowDeleteConfirm(false)
-  }
-
-  const handleToggleLike = async () => {
-    if (!isAuthenticated) {
-      signIn()
-      return
-    }
-
-    setIsTogglingLike(true)
-    try {
-      const response = await fetch('/api/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scriptId: script.id }),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to like script')
-      }
-      const data = await response.json()
-      setIsLiked(data.isLiked)
-      setLikeCount(data.likeCount)
-    } catch (error) {
-      console.error('Like error:', error)
-      alert('Failed to toggle like')
-    } finally {
-      setIsTogglingLike(false)
-    }
-  }
-
-  const handleInstall = async () => {
-    setIsTogglingInstall(true)
-    try {
-      const response = await fetch('/api/install', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scriptId: script.id }),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to track install')
-      }
-      const data = await response.json()
-      setInstallCount(data.installCount)
-
-      // Continue with the actual install
-      window.location.href = `/api/new?name=${encodeURIComponent(script.dashedName || 'script.ts')}&url=${encodeURIComponent(`${baseUrl}/scripts/${script.id}/raw`)}`
-    } catch (error) {
-      console.error('Install error:', error)
-      alert('Failed to track install')
-    } finally {
-      setIsTogglingInstall(false)
-    }
-  }
-
   const isOwner = currentUserId === script.owner.id
-
-  console.log('ScriptCard Debug Info:', {
-    currentUserId,
-    ownerId: script.owner.id,
-    ownerUsername: script.owner.username,
-    isOwner,
-    scriptId: script.id,
-  })
 
   return (
     <div
@@ -200,91 +81,29 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
       </div>
       <div className="flex justify-between items-center mt-6 pt-5 border-t border-neutral-700">
         <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-            title="Copy script"
-          >
-            <ClipboardIcon className="w-5 h-5" />
-            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-              Copy to clipboard
-            </span>
-          </button>
+          <CopyButtonClient content={script.content} />
+
           {isOwner && (
             <>
-              <button
-                onClick={handleEdit}
-                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-                title="Edit script"
-              >
-                <PencilSquareIcon className="w-5 h-5" />
-                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-                  Edit script
-                </span>
-              </button>
-              <button
-                onClick={showDeleteConfirm ? handleDelete : initiateDelete}
-                className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-                disabled={isDeleting}
-                title={showDeleteConfirm ? 'Confirm delete' : 'Delete script'}
-              >
-                {isDeleting ? (
-                  <XMarkIcon className="w-5 h-5 animate-spin" />
-                ) : (
-                  <TrashIcon className="w-5 h-5" />
-                )}
-                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-                  {showDeleteConfirm ? 'Click again to confirm delete' : 'Delete script'}
-                </span>
-              </button>
-              {showDeleteConfirm && (
-                <button
-                  onClick={cancelDelete}
-                  className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-                  title="Cancel delete"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                  <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-                    Cancel delete
-                  </span>
-                </button>
-              )}
+              <EditButtonClient scriptId={script.id} />
+              <DeleteButtonClient scriptId={script.id} />
             </>
           )}
         </div>
+
         <div className="flex gap-2">
-          <button
-            onClick={handleToggleLike}
-            className={`text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5 ${isLiked ? 'text-amber-300' : ''}`}
-            disabled={isTogglingLike}
-          >
-            {isTogglingLike ? (
-              <XMarkIcon className="w-5 h-5 animate-spin" />
-            ) : isLiked ? (
-              <HandThumbUpIconSolid className="w-5 h-5" />
-            ) : (
-              <HandThumbUpIconOutline className="w-5 h-5" />
-            )}
-            <span className="ml-1 min-w-[1rem] text-sm text-slate-400">{likeCount}</span>
-            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-              {isLiked ? 'Unlike script' : 'Like script'}
-            </span>
-          </button>
-          <button
-            onClick={handleInstall}
-            className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-            disabled={isTogglingInstall}
-          >
-            {isTogglingInstall ? (
-              <XMarkIcon className="w-5 h-5 animate-spin" />
-            ) : (
-              <ArrowDownTrayIcon className="w-5 h-5" />
-            )}
-            <span className="ml-1 min-w-[1rem] text-sm text-slate-400">{installCount}</span>
-            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-              Install script
-            </span>
-          </button>
+          <LikeButtonClient
+            scriptId={script.id}
+            initialIsLiked={script.isLiked ?? false}
+            initialLikeCount={script._count?.likes ?? 0}
+            isAuthenticated={isAuthenticated}
+          />
+
+          <InstallButtonClient
+            scriptId={script.id}
+            dashedName={script.dashedName}
+            initialInstallCount={script._count?.installs ?? 0}
+          />
         </div>
       </div>
     </div>
