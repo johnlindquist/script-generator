@@ -11,6 +11,8 @@ import { toast } from 'react-hot-toast'
 interface EditorRef {
   getModel: () => {
     getLineCount: () => number
+    getValue: () => string
+    setValue: (value: string) => void
   } | null
   revealLine: (line: number) => void
 }
@@ -63,6 +65,18 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   // Generate a unique ID for this script generation
   const generateRequestId = () => {
     return crypto.randomUUID()
+  }
+
+  // Format the editor content
+  const formatEditorContent = () => {
+    const model = editorRef.current?.getModel()
+    if (model && editableScript) {
+      const formatted = editableScript
+        .split('\n')
+        .map(line => line.trimEnd()) // Remove trailing spaces
+        .join('\n')
+      model.setValue(formatted)
+    }
   }
 
   // Handle form submission
@@ -188,10 +202,11 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       if (model) {
         const lineCount = model.getLineCount()
         editorRef.current.revealLine(lineCount)
+        formatEditorContent()
       }
     }
     prevIsGeneratingRef.current = isGenerating
-  }, [isGenerating])
+  }, [isGenerating, editableScript])
 
   return (
     <div className="mb-12">

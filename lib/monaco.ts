@@ -10,6 +10,32 @@ export const initializeTheme = (monacoInstance: typeof monaco) => {
   } as monaco.editor.IStandaloneThemeData)
   monacoInstance.editor.setTheme('brillance-black')
 
+  // Register TypeScript formatter
+  monacoInstance.languages.registerDocumentFormattingEditProvider('typescript', {
+    async provideDocumentFormattingEdits(model) {
+      const worker = await monacoInstance.languages.typescript.getTypeScriptWorker()
+      const client = await worker(model.uri)
+      const edits = await client.getFormattingEditsForDocument(model.uri.toString(), {
+        insertSpaces: true,
+        tabSize: 1,
+        placeOpenBraceOnNewLineForFunctions: false,
+        placeOpenBraceOnNewLineForControlBlocks: false,
+        insertSpaceAfterCommaDelimiter: true,
+        insertSpaceAfterSemicolonInForStatements: true,
+        insertSpaceBeforeAndAfterBinaryOperators: true,
+        insertSpaceAfterKeywordsInControlFlowStatements: true,
+        insertSpaceAfterFunctionKeywordForAnonymousFunctions: true,
+        insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
+        insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
+        insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
+        insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces: false,
+        insertSpaceAfterTypeAssertion: true,
+        semicolons: 'insert',
+      })
+      return edits
+    },
+  })
+
   // Configure TypeScript defaults
   monacoInstance.languages.typescript.typescriptDefaults.setCompilerOptions({
     target: monacoInstance.languages.typescript.ScriptTarget.Latest,
@@ -79,4 +105,6 @@ export const monacoOptions = {
   inlayHints: {
     enabled: 'off',
   },
+  formatOnPaste: true,
+  formatOnType: true,
 } as const
