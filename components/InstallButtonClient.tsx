@@ -32,7 +32,7 @@ export default function InstallButtonClient({
       setInstallCount(data.installCount)
 
       // Continue with the actual install
-      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script.ts')}&url=${encodeURIComponent(`${baseUrl}/scripts/${scriptId}/raw`)}`
+      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${scriptId}/raw/${dashedName || 'script'}.ts`)}`
     } catch (error) {
       console.error('Install error:', error)
       alert('Failed to track install')
