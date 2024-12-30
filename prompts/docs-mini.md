@@ -12,10 +12,8 @@
    - Receive dropped files (array) or text (string).
 6. **fields**: `await fields(["Name", "Age"])`
    - Rapid form generation returning an array or object of values.
-7. **selectFile / selectFolder**: 
+7. **path**: `await path()`
    - System file/folder pickers.
-8. **path**: `await path()`
-   - Terminal-like navigation to pick a path.
 9. **term**: `await term(commandString)`
    - Embedded terminal session for interactive CLI usage.
 10. **template**: `await template("Hello $1!")`

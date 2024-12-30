@@ -34,7 +34,6 @@ Prefer using pnpm for package installation commands.
 // Function to read example scripts
 function getExampleScripts() {
   const examplesPath = path.join(process.cwd(), 'examples')
-  const avoidAbusePath = path.join(process.cwd(), 'prompts', 'avoid-abuse.md')
   let allExampleContent = ''
 
   try {
@@ -74,10 +73,7 @@ function getExampleScripts() {
       }
     }
 
-    return (
-      allExampleContent +
-      (fs.existsSync(avoidAbusePath) ? '\n\n' + fs.readFileSync(avoidAbusePath, 'utf-8') : '')
-    )
+    return allExampleContent
   } catch (error) {
     console.error('Error reading example scripts:', error)
     return '' // Return empty string on error, allowing generation to continue
@@ -189,24 +185,43 @@ export async function POST(req: NextRequest) {
 
     // Generate script using Gemini with streaming
     console.log('Starting Gemini generation...')
-    const finalPrompt = exampleScripts
-      ? `You are a TypeScript script generator that creates scripts in the exact style of the examples below.
+
+    if (!exampleScripts) {
+      throw new Error('No example scripts found')
+    }
+
+    if (!docsContent) {
+      throw new Error('No docs content found')
+    }
+
+    const avoidAbusePath = path.join(process.cwd(), 'prompts', 'avoid-abuse.md')
+
+    const finalPrompt = `You are a TypeScript script generator that creates scripts in the exact style of the examples below.
 Each script should be a standalone TypeScript file that can be run directly.
 
+<LIBRARY>
 ${LIBRARY_SEARCH_PROMPT}
+</LIBRARY>
 
 Here is the documentation for available functions and utilities:
 
+<DOCS>
 ${docsContent}
+</DOCS>
 
 Here are example scripts that demonstrate the required format and style:
 
+<EXAMPLES>
 ${exampleScripts}
+</EXAMPLES>
 
-Based on these examples, create a new script that follows the EXACT SAME format and style for this prompt:
+Based on these <EXAMPLES> and <DOCS>, create a new script that follows the EXACT SAME format and style for this prompt:
 ${prompt}
 
+${fs.existsSync(avoidAbusePath) ? '\n\n' + fs.readFileSync(avoidAbusePath, 'utf-8') : ''}
+
 Requirements:
+0. Never use a "main" function
 1. Follow the EXACT same format as the examples
 2. Include proper error handling like the examples
 3. Include clear comments explaining the code
@@ -215,26 +230,9 @@ Requirements:
 6. Include all necessary imports at the top
 7. Export a default async function like the examples
 8. Use the appropriate functions and utilities from the documentation
+9. Always prefer top-level await
 
-Generate ONLY the script content, no additional explanations or markdown:`
-      : `Create a TypeScript script based on this description: ${prompt}
-
-${LIBRARY_SEARCH_PROMPT}
-
-Here is the documentation for available functions and utilities:
-
-${docsContent}
-
-Requirements:
-1. Make it a standalone .ts file that can be run directly
-2. Include proper error handling
-3. Include clear comments explaining the code
-4. Include all necessary imports at the top
-5. Export a default async function
-6. The script should be well-documented and production-ready
-7. Use the appropriate functions and utilities from the documentation
-
-Generate ONLY the script content, no additional explanations or markdown:`
+Generate ONLY the script content, no additional explanations or markdown`
 
     const result = await model.generateContentStream(finalPrompt)
     console.log('Gemini stream initialized')
