@@ -22,7 +22,7 @@ interface ScriptCardProps {
     content: string
     saved: boolean
     createdAt: Date
-    dashedName?: string
+    dashedName?: string | null
     owner: {
       username: string
       id: string

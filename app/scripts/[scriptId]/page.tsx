@@ -17,7 +17,7 @@ interface Script {
   id: string
   content: string
   title?: string
-  dashedName?: string
+  dashedName?: string | null
   owner: {
     id: string
     name?: string
