@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { authOptions } from '../auth/[...nextauth]/route'
 import fs from 'fs'
+import { promises as fsPromises } from 'fs'
 import path from 'path'
 import { generateDashedName, generateUppercaseName } from '@/lib/names'
 
@@ -12,8 +13,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.0-flash-exp',
   generationConfig: {
-    maxOutputTokens: 2048,
-    temperature: 0.7,
+    maxOutputTokens: 8192,
   },
 })
 
@@ -119,9 +119,13 @@ function cleanCodeFences(text: string): string {
   return cleaned.trim()
 }
 
-// Helper function to detect partial code fences at the end
+// Helper function to detect partial code fences and language specifiers at the end
 function getPartialFence(text: string): string {
-  const match = text.match(/(`+$|~+$)/)
+  // This regex tries to match:
+  // 1) One to three backticks/tildes at the end (with optional space)
+  // 2) Followed by optional partial "ts" or "typescript"
+  // 3) Possibly incomplete if the text ended mid-chunk
+  const match = text.match(/(`{1,3}|~{1,3})[ ]?(t?s?|t?y?p?e?s?c?r?i?p?t?)*$/i)
   return match ? match[0] : ''
 }
 
@@ -216,12 +220,19 @@ ${exampleScripts}
 </EXAMPLES>
 
 Based on these <EXAMPLES> and <DOCS>, create a new script that follows the EXACT SAME format and style for this prompt:
+
+<USER_PROMPT>
 ${prompt}
+</USER_PROMPT>
 
+<AVOID_ABUSE>
 ${fs.existsSync(avoidAbusePath) ? '\n\n' + fs.readFileSync(avoidAbusePath, 'utf-8') : ''}
+</AVOID_ABUSE>
 
-Requirements:
-0. Never use a "main" function
+ABSOLUTE ESSENTIAL REQUIREMENTS. NEVER BREAK THESE RULES:
+
+<REQUIREMENTS>
+0. Avoid using a top-level "main" function, prefer top-level await!
 1. Follow the EXACT same format as the examples
 2. Include proper error handling like the examples
 3. Include clear comments explaining the code
@@ -231,9 +242,19 @@ Requirements:
 7. Export a default async function like the examples
 8. Use the appropriate functions and utilities from the documentation
 9. Always prefer top-level await
+10. Avoid using a "main" function, prefer top-level await!
+</REQUIREMENTS>
 
-Generate ONLY the script content, no additional explanations or markdown`
+Generate ONLY the script content, no additional explanations or markdown.
 
+<CRITICAL_REQUIREMENTS>
+1. Avoid using a "main" function, instead, make all logic follow top-level await!
+</CRITICAL_REQUIREMENTS>
+`
+
+    const tmpPath = `/tmp/script-generator-prompt-${Date.now()}.txt`
+    await fsPromises.writeFile(tmpPath, finalPrompt, 'utf-8')
+    console.log('Debug prompt path:', tmpPath)
     const result = await model.generateContentStream(finalPrompt)
     console.log('Gemini stream initialized')
 
@@ -250,17 +271,19 @@ Generate ONLY the script content, no additional explanations or markdown`
             // Combine carryover with new chunk
             let combined = carryover + chunk.text()
 
-            // Clean code fences and language specifiers
-            combined = cleanCodeFences(combined)
-
             // Check for partial fences at the end
             const partialFence = getPartialFence(combined)
             if (partialFence) {
+              // Remove those fence characters from the "combined"
+              combined = combined.slice(0, -partialFence.length)
+              // Remember them for the next iteration
               carryover = partialFence
-              combined = combined.slice(0, -carryover.length)
             } else {
               carryover = ''
             }
+
+            // Clean code fences from the combined chunk
+            combined = cleanCodeFences(combined)
 
             // Add to full script and send to client
             fullScript += combined
@@ -269,12 +292,16 @@ Generate ONLY the script content, no additional explanations or markdown`
 
           // Handle any remaining carryover
           if (carryover.length > 0) {
+            const finalChunk = cleanCodeFences(carryover)
+            if (finalChunk) {
+              fullScript += finalChunk
+              controller.enqueue(new TextEncoder().encode(finalChunk))
+            }
             carryover = ''
           }
 
           console.log('Stream processing complete')
 
-          // Remove the database save from here since we'll do it after streaming
           controller.enqueue(new TextEncoder().encode('\n'))
           controller.close()
         } catch (streamError) {
