@@ -5,7 +5,12 @@ import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import ScriptSuggestions from '@/components/ScriptSuggestions'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
-import { RocketLaunchIcon, DocumentCheckIcon, ArrowPathIcon } from '@heroicons/react/24/solid'
+import {
+  RocketLaunchIcon,
+  DocumentCheckIcon,
+  ArrowPathIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
 
 interface EditorRef {
@@ -232,6 +237,55 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     }
   }
 
+  // Handle save and install
+  const handleSaveAndInstall = async () => {
+    try {
+      // Save the script first
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          code: editableScript,
+          saved: true,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save script')
+      }
+
+      const { id, dashedName } = await response.json()
+
+      // Track the install after successful save
+      const installResponse = await fetch('/api/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scriptId: id }),
+      })
+
+      if (!installResponse.ok) {
+        throw new Error('Failed to track install')
+      }
+
+      toast.success('Script saved and installed successfully!')
+
+      // Reset form state
+      setPrompt('')
+      setEditableScript('')
+      setGeneratedScript(null)
+      setError(null)
+
+      // Redirect to the install URL - the script is ready since we got the id and dashedName
+      const baseUrl =
+        typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
+      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${id}/raw/${dashedName || 'script'}.ts`)}`
+    } catch (err) {
+      console.error('Save and install error:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to save and install script')
+    }
+  }
+
   // Scroll while generating
   useEffect(() => {
     if (editorRef.current && isGenerating) {
@@ -414,6 +468,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                     >
                       <DocumentCheckIcon className="w-5 h-5" />
                       Save Script
+                    </button>
+                    <button
+                      onClick={handleSaveAndInstall}
+                      className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                    >
+                      <ArrowDownTrayIcon className="w-5 h-5" />
+                      Save & Install
                     </button>
                     <button
                       onClick={() => {
