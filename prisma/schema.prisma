@@ -16,6 +16,7 @@ model User {
   scripts     Script[]
   requestedBy Script[] @relation("RequestedBy")
   usage       Usage[]
+  installs    Install[]
 }
 
 model Script {
@@ -40,6 +41,7 @@ model Script {
   sponsored     Boolean         @default(false)
   status        ScriptStatus    @default(ACTIVE)
   likes         Like[]
+  installs      Install[]
   owner         User            @relation(fields: [ownerId], references: [id])
   parent        Script?         @relation("ScriptForks", fields: [parentId], references: [id])
   children      Script[]        @relation("ScriptForks")
@@ -90,6 +92,16 @@ model Like {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
+}
+
+model Install {
+  id        String   @id @default(uuid())
+  userId    String?
+  scriptId  String
+  ip        String
+  createdAt DateTime @default(now())
+  script    Script   @relation(fields: [scriptId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 enum ScriptStatus {
