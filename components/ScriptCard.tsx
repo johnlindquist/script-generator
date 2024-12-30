@@ -10,13 +10,13 @@ import {
   PencilSquareIcon,
   TrashIcon,
   StarIcon as StarIconSolid,
-  HeartIcon as HeartIconSolid,
   XMarkIcon,
   ArrowDownTrayIcon,
+  HandThumbUpIcon as HandThumbUpIconSolid,
 } from '@heroicons/react/24/solid'
 import {
   StarIcon as StarIconOutline,
-  HeartIcon as HeartIconOutline,
+  HandThumbUpIcon as HandThumbUpIconOutline,
 } from '@heroicons/react/24/outline'
 
 interface ScriptCardProps {
@@ -284,9 +284,9 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
             {isTogglingLike ? (
               <XMarkIcon className="w-5 h-5 animate-spin" />
             ) : isLiked ? (
-              <HeartIconSolid className="w-5 h-5" />
+              <HandThumbUpIconSolid className="w-5 h-5" />
             ) : (
-              <HeartIconOutline className="w-5 h-5" />
+              <HandThumbUpIconOutline className="w-5 h-5" />
             )}
             <span className="ml-1 min-w-[1rem] text-sm text-slate-400">{likeCount}</span>
             <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
