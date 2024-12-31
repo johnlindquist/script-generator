@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
+import { STRINGS } from '@/lib/strings'
 
 interface InstallButtonClientProps {
   scriptId: string
@@ -28,7 +29,7 @@ export default function InstallButtonClient({
       })
 
       if (!response.ok) {
-        throw new Error('Failed to install script')
+        throw new Error(STRINGS.INSTALL_BUTTON.error)
       }
 
       setInstallCount(installCount + 1)
@@ -44,7 +45,7 @@ export default function InstallButtonClient({
   }
 
   return (
-    <Tooltip content="Install script">
+    <Tooltip content={STRINGS.INSTALL_BUTTON.tooltip}>
       <button
         onClick={handleInstall}
         disabled={isInstalling}

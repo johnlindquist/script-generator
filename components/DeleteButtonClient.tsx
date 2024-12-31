@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tooltip } from '@nextui-org/react'
 import { toast } from 'react-hot-toast'
+import { STRINGS } from '@/lib/strings'
 
 interface DeleteButtonClientProps {
   scriptId: string
@@ -22,15 +23,20 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}))
-        const errorMsg = errorBody?.error || `Failed to delete script (HTTP ${response.status})`
+        const errorMsg =
+          errorBody?.error ||
+          STRINGS.DELETE_BUTTON.errorMessageWithStatus.replace(
+            '{status}',
+            response.status.toString()
+          )
         throw new Error(errorMsg)
       }
 
-      toast.success('Script deleted successfully')
+      toast.success(STRINGS.DELETE_BUTTON.successMessage)
       router.refresh()
     } catch (error: unknown) {
       console.error('Error deleting script:', error)
-      toast.error(error instanceof Error ? error.message : 'Unexpected error deleting script')
+      toast.error(error instanceof Error ? error.message : STRINGS.DELETE_BUTTON.errorMessage)
     } finally {
       setIsDeleting(false)
       setIsConfirming(false)
@@ -41,7 +47,7 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps
     <>
       {isConfirming ? (
         <div className="inline-flex items-center gap-2">
-          <Tooltip content="Confirm delete">
+          <Tooltip content={STRINGS.DELETE_BUTTON.tooltipConfirm}>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
@@ -57,7 +63,7 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps
               </svg>
             </button>
           </Tooltip>
-          <Tooltip content="Cancel">
+          <Tooltip content={STRINGS.DELETE_BUTTON.tooltipCancel}>
             <button
               onClick={() => setIsConfirming(false)}
               disabled={isDeleting}
@@ -75,7 +81,7 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps
           </Tooltip>
         </div>
       ) : (
-        <Tooltip content="Delete script">
+        <Tooltip content={STRINGS.DELETE_BUTTON.tooltipDelete}>
           <button
             onClick={() => setIsConfirming(true)}
             disabled={isDeleting}

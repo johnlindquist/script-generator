@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
 import { motion } from 'framer-motion'
+import { STRINGS } from '@/lib/strings'
 
 interface EditorRef {
   getModel: () => {
@@ -355,14 +356,14 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           <AnimatedText
             text={
               generationPass === 'initial'
-                ? 'Generating Initial Script Idea'
-                : 'Refining Script Idea'
+                ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
+                : STRINGS.SCRIPT_GENERATION.headingWhileRefining
             }
           />
         ) : generatedScript ? (
-          'Done ✅. Please Make Final Edits and Save'
+          STRINGS.SCRIPT_GENERATION.headingDone
         ) : (
-          'What Would You Like to Automate?'
+          STRINGS.SCRIPT_GENERATION.headingDefault
         )}
       </h2>
       {!generatedScript && !isGenerating && (
@@ -380,10 +381,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
               placeholder={
                 !isAuthenticated
-                  ? 'Sign in to start generating scripts!'
+                  ? STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
                   : usage && usage.count >= usage.limit
-                    ? 'Daily generation limit reached. Try again tomorrow!'
-                    : 'Example: A script that finds all large files in a directory and shows their sizes in human-readable format'
+                    ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
+                    : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
               }
               required
               onClick={() => !isAuthenticated && signIn()}
@@ -392,13 +393,18 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               <span
                 className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
               >
-                {prompt.trim().length}/10,000 characters (minimum 15)
+                {STRINGS.SCRIPT_GENERATION.characterCount.replace(
+                  '{count}',
+                  prompt.trim().length.toString()
+                )}
               </span>
               {isAuthenticated && usage && (
                 <span
                   className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
                 >
-                  {usage.count} / {usage.limit} generations used today
+                  {STRINGS.SCRIPT_GENERATION.generationUsage
+                    .replace('{count}', usage.count.toString())
+                    .replace('{limit}', usage.limit.toString())}
                 </span>
               )}
             </div>
@@ -420,22 +426,22 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               {isGenerating ? (
                 <>
                   <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                  Generating...
+                  {STRINGS.SCRIPT_GENERATION.generating}
                 </>
               ) : !isAuthenticated ? (
                 <>
                   <RocketLaunchIcon className="w-5 h-5" />
-                  Sign in to Generate
+                  {STRINGS.SCRIPT_GENERATION.signInToGenerate}
                 </>
               ) : usage && usage.count >= usage.limit ? (
                 <>
                   <RocketLaunchIcon className="w-5 h-5" />
-                  Daily Limit Reached
+                  {STRINGS.SCRIPT_GENERATION.dailyLimitReached}
                 </>
               ) : (
                 <>
                   <RocketLaunchIcon className="w-5 h-5" />
-                  Generate Script
+                  {STRINGS.SCRIPT_GENERATION.generateScript}
                 </>
               )}
             </button>
@@ -445,7 +451,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
       {error && (
         <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
-          <h3 className="font-semibold mb-2">Error</h3>
+          <h3 className="font-semibold mb-2">{STRINGS.SCRIPT_GENERATION.errorHeading}</h3>
           <p className="text-red-400">{error}</p>
         </div>
       )}
@@ -480,14 +486,14 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                       className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                     >
                       <DocumentCheckIcon className="w-5 h-5" />
-                      Save Script
+                      {STRINGS.SCRIPT_GENERATION.saveScript}
                     </button>
                     <button
                       onClick={handleSaveAndInstall}
                       className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                     >
                       <ArrowDownTrayIcon className="w-5 h-5" />
-                      Save & Install
+                      {STRINGS.SCRIPT_GENERATION.saveAndInstall}
                     </button>
                     <button
                       onClick={() => {
@@ -499,7 +505,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                       className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                     >
                       <ArrowPathIcon className="w-5 h-5" />
-                      Start Over
+                      {STRINGS.SCRIPT_GENERATION.startOver}
                     </button>
                   </>
                 )}

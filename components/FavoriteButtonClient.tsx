@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
+import { STRINGS } from '@/lib/strings'
 
 interface FavoriteButtonClientProps {
   scriptId: string
@@ -21,7 +22,7 @@ export default function FavoriteButtonClient({
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
-      alert('Please sign in to favorite scripts')
+      alert(STRINGS.FAVORITE_BUTTON.signInRequired)
       return
     }
 
@@ -36,7 +37,7 @@ export default function FavoriteButtonClient({
       })
 
       if (!response.ok) {
-        throw new Error('Failed to favorite script')
+        throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
       setIsFavorited(!isFavorited)
@@ -49,7 +50,11 @@ export default function FavoriteButtonClient({
   }
 
   return (
-    <Tooltip content={isFavorited ? 'Remove from favorites' : 'Add to favorites'}>
+    <Tooltip
+      content={
+        isFavorited ? STRINGS.FAVORITE_BUTTON.tooltipRemove : STRINGS.FAVORITE_BUTTON.tooltipAdd
+      }
+    >
       <button
         onClick={handleFavorite}
         disabled={isLoading}

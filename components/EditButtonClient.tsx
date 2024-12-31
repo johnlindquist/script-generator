@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { Tooltip } from '@nextui-org/react'
+import { STRINGS } from '@/lib/strings'
 
 interface EditButtonClientProps {
   scriptId: string
@@ -14,7 +15,7 @@ export default function EditButtonClient({ scriptId }: EditButtonClientProps) {
   }
 
   return (
-    <Tooltip content="Edit script">
+    <Tooltip content={STRINGS.EDIT_BUTTON.tooltip}>
       <button
         onClick={handleEdit}
         className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors"

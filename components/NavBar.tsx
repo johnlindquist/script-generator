@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid'
+import { STRINGS } from '@/lib/strings'
 
 interface NavBarProps {
   isAuthenticated: boolean
@@ -18,7 +19,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         href="/"
         className="text-4xl font-bold text-amber-300 hover:text-amber-200 transition-colors"
       >
-        Script Kit
+        {STRINGS.NAVBAR.homeLinkLabel}
       </Link>
       <div className="flex gap-4">
         {isAuthenticated ? (
@@ -27,18 +28,18 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
               href="/scripts/new"
               className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition flex items-center gap-2"
             >
-              + Add Script
+              {STRINGS.NAVBAR.addScript}
             </Link>
             <button
               onClick={() => signOut()}
               className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition flex items-center gap-2"
             >
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              Sign Out
+              {STRINGS.NAVBAR.signOut}
               {session?.user?.image && (
                 <Image
                   src={session.user.image}
-                  alt="User avatar"
+                  alt={STRINGS.NAVBAR.userAvatarAlt}
                   width={30}
                   height={30}
                   className="rounded-full -mr-1"
@@ -52,7 +53,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
             className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition flex items-center gap-2"
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            Sign in to Generate
+            {STRINGS.NAVBAR.signInToGenerate}
           </Link>
         )}
       </div>

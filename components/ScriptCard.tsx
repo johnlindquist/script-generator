@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
+import { STRINGS } from '@/lib/strings'
 
 import CopyButtonClient from './CopyButtonClient'
 import VerifyButtonClient from './VerifyButtonClient'
@@ -44,7 +45,9 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
           <h2 className="text-xl font-lexend font-semibold mb-2 text-amber-300">{script.title}</h2>
           <p className="text-slate-400 text-sm">
-            by {script.owner.username} • {new Date(script.createdAt).toLocaleDateString()}
+            {STRINGS.SCRIPT_CARD.byAuthorDate
+              .replace('{username}', script.owner.username)
+              .replace('{date}', new Date(script.createdAt).toLocaleDateString())}
             {!isOwner && (
               <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-300">
                 <svg className="w-4 h-4 mr-1" viewBox="0 0 16 16" fill="currentColor">

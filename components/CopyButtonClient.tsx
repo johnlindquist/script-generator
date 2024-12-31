@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
+import { STRINGS } from '@/lib/strings'
 
 interface CopyButtonClientProps {
   content: string
@@ -16,7 +17,9 @@ export default function CopyButtonClient({ content }: CopyButtonClientProps) {
   }
 
   return (
-    <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+    <Tooltip
+      content={copied ? STRINGS.COPY_BUTTON.tooltipCopied : STRINGS.COPY_BUTTON.tooltipDefault}
+    >
       <button
         onClick={handleCopy}
         className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors"

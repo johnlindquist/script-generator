@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
+import { STRINGS } from '@/lib/strings'
 
 interface VerifyButtonClientProps {
   scriptId: string
@@ -21,7 +22,7 @@ export default function VerifyButtonClient({
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
-      alert('Please sign in to verify scripts')
+      alert(STRINGS.VERIFY_BUTTON.signInRequired)
       return
     }
 
@@ -36,7 +37,7 @@ export default function VerifyButtonClient({
       })
 
       if (!response.ok) {
-        throw new Error('Failed to verify script')
+        throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
       setIsVerified(!isVerified)
@@ -49,7 +50,9 @@ export default function VerifyButtonClient({
   }
 
   return (
-    <Tooltip content={isVerified ? 'Remove verification' : 'Verify script'}>
+    <Tooltip
+      content={isVerified ? STRINGS.VERIFY_BUTTON.tooltipRemove : STRINGS.VERIFY_BUTTON.tooltipAdd}
+    >
       <button
         onClick={handleVerify}
         disabled={isLoading}
