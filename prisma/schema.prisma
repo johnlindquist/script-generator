@@ -12,7 +12,8 @@ model User {
   id          String   @id @default(uuid())
   githubId    String   @unique
   username    String
-  likes       Like[]
+  verifications Verification[]
+  favorites   Favorite[]
   scripts     Script[]
   requestedBy Script[] @relation("RequestedBy")
   usage       Usage[]
@@ -40,7 +41,8 @@ model Script {
   sponsorId     String?
   sponsored     Boolean         @default(false)
   status        ScriptStatus    @default(ACTIVE)
-  likes         Like[]
+  verifications Verification[]
+  favorites     Favorite[]
   installs      Install[]
   owner         User            @relation(fields: [ownerId], references: [id])
   parent        Script?         @relation("ScriptForks", fields: [parentId], references: [id])
@@ -83,7 +85,7 @@ model Usage {
   @@unique([userId, date])
 }
 
-model Like {
+model Verification {
   id        String   @id @default(uuid())
   userId    String
   scriptId  String
@@ -92,6 +94,7 @@ model Like {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
+  @@map("Like")
 }
 
 model Install {
@@ -102,6 +105,17 @@ model Install {
   createdAt DateTime @default(now())
   script    Script   @relation(fields: [scriptId], references: [id])
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  scriptId  String
+  createdAt DateTime @default(now())
+  script    Script   @relation(fields: [scriptId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, scriptId])
 }
 
 enum ScriptStatus {

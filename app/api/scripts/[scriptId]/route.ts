@@ -68,7 +68,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     }
 
     await prisma.$transaction([
-      prisma.like.deleteMany({
+      prisma.verification.deleteMany({
         where: { scriptId: params.scriptId },
       }),
       prisma.script.delete({

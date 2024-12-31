@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
 
 import CopyButtonClient from './CopyButtonClient'
-import LikeButtonClient from './LikeButtonClient'
+import VerifyButtonClient from './VerifyButtonClient'
+import FavoriteButtonClient from './FavoriteButtonClient'
 import InstallButtonClient from './InstallButtonClient'
 import DeleteButtonClient from './DeleteButtonClient'
 import EditButtonClient from './EditButtonClient'
@@ -20,10 +21,12 @@ interface ScriptCardProps {
       id: string
     }
     _count?: {
-      likes: number
+      verifications: number
+      favorites: number
       installs: number
     }
-    isLiked?: boolean
+    isVerified?: boolean
+    isFavorited?: boolean
   }
   isAuthenticated: boolean
   currentUserId?: string
@@ -92,17 +95,24 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
         </div>
 
         <div className="flex gap-2">
-          <LikeButtonClient
-            scriptId={script.id}
-            initialIsLiked={script.isLiked ?? false}
-            initialLikeCount={script._count?.likes ?? 0}
-            isAuthenticated={isAuthenticated}
-          />
-
           <InstallButtonClient
             scriptId={script.id}
             dashedName={script.dashedName}
             initialInstallCount={script._count?.installs ?? 0}
+          />
+
+          <VerifyButtonClient
+            scriptId={script.id}
+            initialIsVerified={script.isVerified ?? false}
+            initialVerifiedCount={script._count?.verifications ?? 0}
+            isAuthenticated={isAuthenticated}
+          />
+
+          <FavoriteButtonClient
+            scriptId={script.id}
+            initialIsFavorited={script.isFavorited ?? false}
+            initialFavoriteCount={script._count?.favorites ?? 0}
+            isAuthenticated={isAuthenticated}
           />
         </div>
       </div>

@@ -14,19 +14,20 @@ export interface Script {
   id: string
   title: string
   content: string
-  starred: boolean
   saved: boolean
   createdAt: Date
-  dashedName?: string
-  uppercaseName?: string
+  dashedName?: string | null
   owner: {
-    id: string
     username: string
+    id: string
   }
-  _count?: {
-    likes: number
+  _count: {
+    verifications: number
+    favorites: number
+    installs: number
   }
-  isLiked?: boolean
+  isVerified?: boolean
+  isFavorited?: boolean
 }
 
 export default async function Home({
@@ -85,38 +86,52 @@ export default async function Home({
   // Server-side fetch of scripts
   const scripts = await prisma.script.findMany({
     where: {
-      saved: true,
+      status: 'ACTIVE',
     },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-    orderBy: { createdAt: 'desc' },
+    orderBy: {
+      createdAt: 'desc',
+    },
     include: {
       owner: true,
       _count: {
-        select: { likes: true },
+        select: {
+          verifications: true,
+          favorites: true,
+        },
       },
-      likes: session?.user?.id
+      verifications: session?.user?.id
         ? {
-            where: { userId: session.user.id },
+            where: {
+              userId: session.user.id,
+            },
+          }
+        : false,
+      favorites: session?.user?.id
+        ? {
+            where: {
+              userId: session.user.id,
+            },
           }
         : false,
     },
   })
 
-  // Transform scripts to include isLiked and match ScriptCard interface
+  // Transform scripts to include isVerified and match ScriptCard interface
   const transformedScripts = scripts.map(script => {
-    const { owner, _count, likes, ...rest } = script
+    const { owner, _count, verifications, favorites, ...rest } = script
     return {
       ...rest,
       owner: {
-        id: owner.id,
         username: owner.username,
+        id: owner.id,
       },
       _count: {
-        likes: _count.likes,
-        installs: 0, // Since we don't track installs yet
+        verifications: _count.verifications,
+        favorites: _count.favorites,
+        installs: 0,
       },
-      isLiked: likes ? likes.length > 0 : false,
+      isVerified: verifications ? verifications.length > 0 : false,
+      isFavorited: favorites ? favorites.length > 0 : false,
     }
   })
 

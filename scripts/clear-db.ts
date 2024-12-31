@@ -1,30 +1,20 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
-async function clearDatabase() {
-  const prisma = new PrismaClient()
+async function main() {
+  console.log('Clearing database...')
 
-  try {
-    // Delete in order of dependencies
-    console.log('Clearing database...')
+  await prisma.scriptVersion.deleteMany()
+  await prisma.install.deleteMany()
+  await prisma.verification.deleteMany()
+  await prisma.favorite.deleteMany()
+  await prisma.script.deleteMany()
+  await prisma.user.deleteMany()
+  await prisma.sponsor.deleteMany()
+  await prisma.tag.deleteMany()
 
-    // First, clear tables with no dependencies
-    await prisma.like.deleteMany()
-    await prisma.install.deleteMany()
-    await prisma.usage.deleteMany()
-    await prisma.scriptVersion.deleteMany()
-
-    // Clear main tables
-    await prisma.tag.deleteMany()
-    await prisma.script.deleteMany()
-    await prisma.sponsor.deleteMany()
-    await prisma.user.deleteMany()
-
-    console.log('Database cleared successfully!')
-  } catch (error) {
-    console.error('Error clearing database:', error)
-  } finally {
-    await prisma.$disconnect()
-  }
+  console.log('Database cleared')
 }
 
-clearDatabase()
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect())

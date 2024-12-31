@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     // Query the scripts with pagination
     const scripts = await prisma.script.findMany({
       where: {
-        saved: true,
+        status: 'ACTIVE',
       },
       skip,
       take: pageSize,
@@ -38,27 +38,41 @@ export async function GET(request: Request) {
       include: {
         owner: true,
         _count: {
-          select: { likes: true },
+          select: {
+            verifications: true,
+            favorites: true,
+          },
         },
-        likes: userId
+        verifications: userId
           ? {
-              where: { userId },
+              where: {
+                userId,
+              },
+            }
+          : false,
+        favorites: userId
+          ? {
+              where: {
+                userId,
+              },
             }
           : false,
       },
     })
 
-    // Transform the scripts to include isLiked
+    // Transform the scripts to include isVerified and isFavorited
     const transformedScripts = scripts.map(script => ({
       ...script,
-      isLiked: script.likes ? script.likes.length > 0 : false,
-      likes: undefined, // Remove the likes array from the response
+      isVerified: script.verifications ? script.verifications.length > 0 : false,
+      isFavorited: script.favorites ? script.favorites.length > 0 : false,
+      verifications: undefined, // Remove the verifications array from the response
+      favorites: undefined, // Remove the favorites array from the response
     }))
 
     // Get total count for pagination info
     const totalScripts = await prisma.script.count({
       where: {
-        saved: true,
+        status: 'ACTIVE',
       },
     })
 
