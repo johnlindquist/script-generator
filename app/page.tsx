@@ -33,10 +33,11 @@ export interface Script {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const session = await getServerSession(authOptions)
-  const { page: pageStr = '1' } = searchParams
+  const params = await searchParams
+  const { page: pageStr = '1' } = params
   const currentPage = Math.max(1, Number(pageStr))
   const PAGE_SIZE = 12
 
