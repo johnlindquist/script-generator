@@ -35,11 +35,15 @@ export async function withTiming<T extends TimedResponse>(
   }
 }
 
+export interface RouteContext {
+  params: Record<string, string>
+}
+
 export function wrapApiHandler<T extends TimedResponse>(
   operation: string,
-  handler: (req: NextRequest, ...args: unknown[]) => Promise<T>
+  handler: (req: NextRequest, context?: RouteContext) => Promise<T>
 ) {
-  return async (req: NextRequest, ...args: unknown[]): Promise<T> => {
-    return withTiming(operation, () => handler(req, ...args))
+  return async (req: NextRequest, context?: RouteContext): Promise<T> => {
+    return withTiming(operation, () => handler(req, context))
   }
 }
