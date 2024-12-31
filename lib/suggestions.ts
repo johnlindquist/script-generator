@@ -1,4 +1,10 @@
-export const SUGGESTIONS = [
+export interface Suggestion {
+  title: string
+  description: string
+  keyFeatures: string[]
+}
+
+export const SUGGESTIONS: Suggestion[] = [
   {
     title: 'Clipboard Summarizer',
     description:
@@ -1099,18 +1105,28 @@ export const SUGGESTIONS = [
       'Instant speech generator',
     ],
   },
-] as const
+]
 
-export type Suggestion = (typeof SUGGESTIONS)[number]
+let suggestionsPromise: Promise<Suggestion[]> | null = null
 
-export function getRandomSuggestions(count: number = 8): Suggestion[] {
-  // Create an array of indices and shuffle them using Math.random
-  const indices = Array.from({ length: SUGGESTIONS.length }, (_, i) => i)
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[indices[i], indices[j]] = [indices[j], indices[i]]
+export function getRandomSuggestions(): Promise<Suggestion[]> {
+  if (!suggestionsPromise) {
+    suggestionsPromise = new Promise(resolve => {
+      // Simulate network delay in development
+      const delay = process.env.NODE_ENV === 'development' ? 1000 : 0
+      setTimeout(() => {
+        const suggestions = [...SUGGESTIONS]
+        for (let i = suggestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[suggestions[i], suggestions[j]] = [suggestions[j], suggestions[i]]
+        }
+        resolve(suggestions.slice(0, 7))
+      }, delay)
+    })
   }
+  return suggestionsPromise
+}
 
-  // Get the first 'count' suggestions using the shuffled indices
-  return indices.slice(0, count).map(i => SUGGESTIONS[i])
+export function resetSuggestionsCache() {
+  suggestionsPromise = null
 }
