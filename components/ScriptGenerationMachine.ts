@@ -21,6 +21,9 @@ interface GenerateInitialResponse {
 type ScriptGenerationEvent =
   | { type: 'SET_PROMPT'; prompt: string }
   | { type: 'GENERATE_INITIAL' }
+  | { type: 'START_STREAMING_INITIAL' }
+  | { type: 'START_STREAMING_REFINED' }
+  | { type: 'START_REFINING' }
   | { type: 'GENERATE_REFINED' }
   | { type: 'CANCEL_GENERATION' }
   | { type: 'SAVE_SCRIPT' }
@@ -180,7 +183,7 @@ export const scriptGenerationMachine = setup({
         },
         GENERATE_INITIAL: [
           {
-            target: 'generatingInitial',
+            target: 'thinkingInitial',
             guard: ({ context }) =>
               context.prompt.trim().length >= 15 && context.usageCount < context.usageLimit,
           },
@@ -200,18 +203,37 @@ export const scriptGenerationMachine = setup({
       },
     },
 
-    generatingInitial: {
+    thinkingInitial: {
       entry: assign({
         error: () => null,
         generatedScript: () => null,
         requestId: () => crypto.randomUUID(),
       }),
+      on: {
+        START_STREAMING_INITIAL: 'generatingInitial',
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: assign({
+            error: null,
+            editableScript: '',
+          }),
+        },
+        SET_ERROR: {
+          actions: assign({
+            error: ({ event }) => String(event.error),
+          }),
+        },
+      },
+    },
+
+    generatingInitial: {
       invoke: {
         src: 'generateInitialScript',
         input: ({ context }) => context,
         onDone: {
-          target: 'generatingRefined',
+          target: 'thinkingRefined',
           actions: assign({
+            error: null,
             scriptId: ({ event }) => (event.output as GenerateInitialResponse).scriptId,
           }),
         },
@@ -246,6 +268,24 @@ export const scriptGenerationMachine = setup({
       },
     },
 
+    thinkingRefined: {
+      on: {
+        START_STREAMING_REFINED: 'generatingRefined',
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: assign({
+            error: null,
+            editableScript: '',
+          }),
+        },
+        SET_ERROR: {
+          actions: assign({
+            error: ({ event }) => String(event.error),
+          }),
+        },
+      },
+    },
+
     generatingRefined: {
       invoke: {
         src: 'generateRefinedScript',
@@ -253,6 +293,7 @@ export const scriptGenerationMachine = setup({
         onDone: {
           target: 'done',
           actions: assign({
+            error: null,
             editableScript: ({ event }) => (event.output as { script: string }).script,
             generatedScript: ({ event }) => (event.output as { script: string }).script,
           }),

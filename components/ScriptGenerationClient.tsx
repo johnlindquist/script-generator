@@ -82,8 +82,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
   // Attach the handler to the state machine
   useEffect(() => {
-    // Only start streaming if we're in a generating state
-    if (!state.matches('generatingInitial') && !state.matches('generatingRefined')) {
+    // Only start streaming if we're in a thinking state
+    if (!state.matches('thinkingInitial') && !state.matches('thinkingRefined')) {
       return
     }
 
@@ -92,7 +92,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     const fetchWithStreaming = async () => {
       try {
-        const url = state.matches('generatingInitial') ? '/api/generate-initial' : '/api/generate'
+        const url = state.matches('thinkingInitial') ? '/api/generate-initial' : '/api/generate'
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -120,6 +120,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
         try {
           let buffer = ''
+          // Transition to streaming state
+          send({
+            type: state.matches('thinkingInitial')
+              ? 'START_STREAMING_INITIAL'
+              : 'START_STREAMING_REFINED',
+          })
+
           while (true) {
             try {
               const { done, value } = await reader.read()
@@ -152,16 +159,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
           // Only proceed if we have a valid buffer and haven't been aborted
           if (buffer && !signal.aborted) {
-            // Generation complete, move to next state
-            if (state.matches('generatingInitial')) {
-              // Make sure we preserve the final buffer before transitioning
-              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-              send({ type: 'GENERATE_REFINED' })
-            } else {
-              // Ensure final buffer is set before completing
-              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-              send({ type: 'COMPLETE_GENERATION', script: buffer })
-            }
+            // Make sure we preserve the final buffer
+            send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
           }
         } finally {
           if (!signal.aborted) {
@@ -183,7 +182,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     return () => {
       // Only abort if we're not transitioning between generation phases
-      if (state.matches('generatingInitial') && !state.matches('generatingRefined')) {
+      if (
+        (state.matches('thinkingInitial') && !state.matches('generatingInitial')) ||
+        (state.matches('thinkingRefined') && !state.matches('generatingRefined'))
+      ) {
         controller.abort()
       }
     }
@@ -269,11 +271,16 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   }
 
   const isGenerating = state.matches('generatingInitial') || state.matches('generatingRefined')
-  const generationPass = state.matches('generatingInitial')
-    ? 'initial'
-    : state.matches('generatingRefined')
-      ? 'refining'
-      : null
+  const isThinking = state.matches('thinkingInitial') || state.matches('thinkingRefined')
+  const generationPhase = state.matches('thinkingInitial')
+    ? 'thinkingInitial'
+    : state.matches('generatingInitial')
+      ? 'generatingInitial'
+      : state.matches('thinkingRefined')
+        ? 'thinkingRefined'
+        : state.matches('generatingRefined')
+          ? 'generatingRefined'
+          : null
 
   useEffect(() => {
     if (
@@ -288,12 +295,16 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   return (
     <div className="mb-12">
       <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
-        {isGenerating ? (
+        {isGenerating || isThinking ? (
           <AnimatedText
             text={
-              generationPass === 'initial'
-                ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
-                : STRINGS.SCRIPT_GENERATION.headingWhileRefining
+              generationPhase === 'thinkingInitial'
+                ? STRINGS.SCRIPT_GENERATION.headingThinkingInitial
+                : generationPhase === 'generatingInitial'
+                  ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
+                  : generationPhase === 'thinkingRefined'
+                    ? STRINGS.SCRIPT_GENERATION.headingThinkingRefined
+                    : STRINGS.SCRIPT_GENERATION.headingWhileRefining
             }
           />
         ) : state.context.generatedScript ? (
@@ -302,7 +313,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           STRINGS.SCRIPT_GENERATION.headingDefault
         )}
       </h2>
-      {!state.context.generatedScript && !isGenerating && (
+      {!state.context.generatedScript && !isGenerating && !isThinking && (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <textarea
             value={state.context.prompt}
@@ -375,7 +386,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         </form>
       )}
 
-      {isAuthenticated && !state.context.generatedScript && !isGenerating && (
+      {isAuthenticated && !state.context.generatedScript && !isGenerating && !isThinking && (
         <div className="pt-4">
           <hr className="border-amber-400/20 my-4" />
           <h3 className="text-lg mb-4 text-center">
@@ -401,7 +412,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         </div>
       )}
 
-      {(isGenerating || state.context.generatedScript) && (
+      {(isGenerating || isThinking || state.context.generatedScript) && (
         <div className="mt-8">
           <div className="relative mb-2 max-w-4xl mx-auto">
             <div className="bg-zinc-900/90 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
@@ -411,12 +422,14 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                   defaultLanguage="typescript"
                   value={state.context.editableScript}
                   onChange={value =>
-                    isAuthenticated && send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
+                    isAuthenticated &&
+                    state.matches('done') &&
+                    send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
                   }
                   options={{
                     ...monacoOptions,
-                    readOnly: !isAuthenticated,
-                    domReadOnly: !isAuthenticated,
+                    readOnly: !isAuthenticated || !state.matches('done'),
+                    domReadOnly: !isAuthenticated || !state.matches('done'),
                   }}
                   onMount={handleEditorDidMount}
                   beforeMount={initializeTheme}
@@ -424,7 +437,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 />
               </div>
             </div>
-            {!isGenerating && (
+            {state.matches('done') && (
               <div className="absolute bottom-4 right-4 flex gap-2">
                 {isAuthenticated && (
                   <>
