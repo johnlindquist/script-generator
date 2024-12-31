@@ -10,12 +10,12 @@
 // Description: Update to the Latest Script Kit Examples
 // Recent: false
 
-import "@johnlindquist/kit";
+import '@johnlindquist/kit'
 
-let examplesDir: string = kenvPath("kenvs", "examples");
-cd(examplesDir);
+let examplesDir: string = kenvPath('kenvs', 'examples')
+cd(examplesDir)
 
-await $`git stash`;
-await $`git pull`;
+await $`git stash`
+await $`git pull`
 
-await mainScript();
+await mainScript()

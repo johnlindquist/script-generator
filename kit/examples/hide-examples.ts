@@ -13,10 +13,10 @@ You can remove that line anytime to show the examples again.
 
 // Name: Hide Example Scripts
 
-import "@johnlindquist/kit";
+import '@johnlindquist/kit'
 
 // Add to the `~/.kenv/.env`
-await appendFile(kenvPath(".env"), `\nKIT_EXCLUDE_KENVS=examples`);
+await appendFile(kenvPath('.env'), `\nKIT_EXCLUDE_KENVS=examples`)
 
 // You can write a script path to `kitPath('run.txt')` to trigger a new script instance
-await writeFile(kitPath("run.txt"), kitPath("main", "index.js"));
+await writeFile(kitPath('run.txt'), kitPath('main', 'index.js'))

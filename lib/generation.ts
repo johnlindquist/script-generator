@@ -1,9 +1,57 @@
 import fs from 'fs'
 import path from 'path'
 
+export function getKitTypes() {
+  const typesPath = path.join(process.cwd(), 'kit', 'types')
+  let allTypesContent = ''
+
+  try {
+    if (!fs.existsSync(typesPath)) {
+      console.warn(`Types directory not found at ${typesPath}`)
+      return ''
+    }
+
+    const files = fs
+      .readdirSync(typesPath)
+      .filter(file => file.endsWith('.ts') || file.endsWith('.d.ts'))
+      .sort() // Ensure consistent ordering
+
+    if (files.length === 0) {
+      console.warn('No TypeScript files found in types directory')
+      return ''
+    }
+
+    console.log(`Found ${files.length} type definition files`)
+
+    for (const file of files) {
+      try {
+        const filePath = path.join(typesPath, file)
+        const stats = fs.statSync(filePath)
+
+        // Skip if not a file or too large (> 100KB)
+        if (!stats.isFile() || stats.size > 100 * 1024) {
+          console.warn(`Skipping ${file}: ${!stats.isFile() ? 'Not a file' : 'Too large'}`)
+          continue
+        }
+
+        const content = fs.readFileSync(filePath, 'utf-8')
+        allTypesContent += `\n---\nFile: ${file}\n${content}\n`
+      } catch (fileError) {
+        console.error(`Error reading file ${file}:`, fileError)
+        // Continue with other files
+      }
+    }
+
+    return allTypesContent
+  } catch (error) {
+    console.error('Error reading type files:', error)
+    return '' // Return empty string on error, allowing generation to continue
+  }
+}
+
 // Function to read example scripts
 export function getExampleScripts() {
-  const examplesPath = path.join(process.cwd(), 'examples')
+  const examplesPath = path.join(process.cwd(), 'kit', 'examples')
   let allExampleContent = ''
 
   try {
@@ -149,6 +197,12 @@ Here is the script to verify and improve:
 <SCRIPT>
 {script}
 </SCRIPT>
+
+
+Here are all the global types included with Script Kit:
+<TYPES>
+${getKitTypes()}
+</TYPES>
 
 Generate improved script content and this time, include inline comments explaining the flow and logic of the, but only generate the script.
 `

@@ -10,111 +10,111 @@
 // Author: John Lindquist
 // Twitter: @johnlindquist
 
-import "@johnlindquist/kit";
+import '@johnlindquist/kit'
 
 interface Todo {
-  name: string;
-  done: boolean;
-  id: string;
+  name: string
+  done: boolean
+  id: string
 }
 
 // "kv" is a key/value store
 // The name "todos" will map to ~/.kenv/db/todos.json
 // The object will be the initial value
-let kv = await store("todos", { todos: [] });
-let defaultChoiceId: string = "";
+let kv = await store('todos', { todos: [] })
+let defaultChoiceId: string = ''
 
 // The input allows you to maintain input when switching tabs
-let toggleTab = async (input: string = "") => {
-  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>("todos"))?.todos || [];
-  let toggleTodos = todos.map((t) => {
+let toggleTab = async (input: string = '') => {
+  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
+  let toggleTodos = todos.map(t => {
     return {
       ...t,
-      enter: "Toggle Todo",
-      name: `${t.done ? "✅" : "❌"} ${t.name}`,
-    };
-  });
+      enter: 'Toggle Todo',
+      name: `${t.done ? '✅' : '❌'} ${t.name}`,
+    }
+  })
   let choices = [
     ...toggleTodos,
     {
-      name: "Add Todo",
+      name: 'Add Todo',
       miss: true,
       info: true,
     },
-  ];
+  ]
   let todo = await micro<Todo>(
     {
       input,
-      placeholder: todos.length ? "Add Todo" : "Toggle Todo",
+      placeholder: todos.length ? 'Add Todo' : 'Toggle Todo',
       defaultChoiceId,
       // disabling "strict" allows you to submit the input when no choices are available
       strict: false,
       onChoiceFocus: (input: string, { focused }) => {
         // defaultValue allows you to maintain the selected choice when switching tabs
-        defaultChoiceId = focused?.id || "";
-        setEnter("Toggle Todo");
+        defaultChoiceId = focused?.id || ''
+        setEnter('Toggle Todo')
       },
       onNoChoices: (input: string) => {
-        setEnter("Add Todo");
+        setEnter('Add Todo')
       },
     },
     choices
-  );
+  )
 
   // "todo" was the string input
-  if (typeof todo === "string") {
+  if (typeof todo === 'string') {
     todos.push({
       name: todo,
       done: false,
       id: uuid(),
-    });
+    })
   }
   // "todo" was the selected object
   else if (todo?.id) {
-    let foundTodo = todos.find(({ id }) => id === todo.id);
+    let foundTodo = todos.find(({ id }) => id === todo.id)
     if (foundTodo) {
-      foundTodo.done = !foundTodo.done;
+      foundTodo.done = !foundTodo.done
     }
   }
 
-  await kv.set("todos", { todos });
-  await toggleTab();
-};
+  await kv.set('todos', { todos })
+  await toggleTab()
+}
 
-let removeTab = async (input: string = "") => {
-  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>("todos"))?.todos || [];
+let removeTab = async (input: string = '') => {
+  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
   let todo = await micro<Todo>(
     {
       input,
       defaultChoiceId,
-      placeholder: "Remove Todo",
-      enter: "Remove Todo",
+      placeholder: 'Remove Todo',
+      enter: 'Remove Todo',
       onChoiceFocus: (input: string, { focused }) => {
-        defaultChoiceId = focused?.id || "";
+        defaultChoiceId = focused?.id || ''
       },
     },
     [
-      ...todos.map((t) => {
+      ...todos.map(t => {
         return {
           ...t,
-          enter: "Toggle Todo",
-          name: `${t.done ? "✅" : "❌"} ${t.name}`,
-        };
+          enter: 'Toggle Todo',
+          name: `${t.done ? '✅' : '❌'} ${t.name}`,
+        }
       }),
       {
-        name: todos.length ? "No Matches" : "No Todos",
+        name: todos.length ? 'No Matches' : 'No Todos',
         miss: true,
         info: true,
       },
     ]
-  );
+  )
   // Remove the todo from the array
-  let index = todos.findIndex((t) => t.id === todo.id);
+  let index = todos.findIndex(t => t.id === todo.id)
 
-  todos.splice(index, 1);
-  await kv.set("todos", { todos });
-  await removeTab();
-};
+  todos.splice(index, 1)
+  await kv.set('todos', { todos })
+  await removeTab()
+}
 
-onTab("Toggle", toggleTab);
-onTab("Remove", removeTab);
+onTab('Toggle', toggleTab)
+onTab('Remove', removeTab)

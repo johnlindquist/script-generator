@@ -8,7 +8,7 @@
 // Description: List of Main Menu Features
 // Index: 0
 
-import "@johnlindquist/kit";
+import '@johnlindquist/kit'
 
 let cheatSheet: string = `
 # Main Menu Cheat Sheet
@@ -51,10 +51,10 @@ let cheatSheet: string = `
 | Create/Edit Script Docs   | ${cmd}+.       |
 | Reveal Script in Finder   | ${cmd}+shift+f |
 | Manage Running Processes  | ${cmd}+p       |
-`.trim();
+`.trim()
 
-let { workArea } = await getActiveScreen();
+let { workArea } = await getActiveScreen()
 
 await widget(md(cheatSheet), {
   height: workArea.height,
-});
+})

@@ -10,7 +10,7 @@
 // Author: John Lindquist
 // Twitter: @johnlindquist
 
-import "@johnlindquist/kit";
+import '@johnlindquist/kit'
 
 // Templates use the same variable syntax as VS Code templates
 // Templates pair very nicely with snippets!
@@ -32,8 +32,8 @@ Have a \${3|wonderful,great,okay,bad|} day!
   {
     height: PROMPT.HEIGHT.XXS,
   }
-);
+)
 
 // You can think of `setSelectedText` as "paste this text" in the
 // active app behind Kit.app
-await setSelectedText(result);
+await setSelectedText(result)
