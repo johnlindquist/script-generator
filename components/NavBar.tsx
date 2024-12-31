@@ -18,7 +18,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         href="/"
         className="text-4xl font-bold text-amber-300 hover:text-amber-200 transition-colors"
       >
-        Script Generator
+        Script Kit
       </Link>
       <div className="flex gap-4">
         {isAuthenticated ? (

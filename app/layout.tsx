@@ -10,7 +10,7 @@ import { authOptions } from './api/auth/[...nextauth]/route'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Script Generator',
+  title: 'Script Kit',
   description: 'Generate shell scripts using AI',
 }
 

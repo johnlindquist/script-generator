@@ -362,7 +362,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         ) : generatedScript ? (
           'Done ✅. Please Make Final Edits and Save'
         ) : (
-          'Enter Your Script Idea'
+          'What Would You Like to Automate?'
         )}
       </h2>
       {!generatedScript && !isGenerating && (
