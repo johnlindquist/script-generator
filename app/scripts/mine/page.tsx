@@ -106,7 +106,7 @@ export default async function MyScriptsPage({
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={true} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto px-2 sm:px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-300 mb-8">My Scripts</h1>
 
         {/* Server-rendered scripts list */}
