@@ -388,8 +388,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
       {isAuthenticated && !state.context.generatedScript && !isGenerating && !isThinking && (
         <div className="pt-4">
-          <hr className="border-amber-400/20 my-4" />
-          <h3 className="text-lg mb-4 text-center">
+          <h3 className="text-lg my-4 text-center">
             {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
           </h3>
           {isAuthenticated && (

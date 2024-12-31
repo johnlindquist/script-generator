@@ -140,6 +140,13 @@ export default async function Home({
         {/* Client-side script generation form */}
         <ScriptGenerationClient isAuthenticated={!!session} />
 
+        <hr className="my-8 border-zinc-800" />
+
+        {/* Community Scripts Header */}
+        <h2 className="text-3xl font-bold text-gray-300 mb-8 mt-12 text-center">
+          Community Scripts
+        </h2>
+
         {/* Server-rendered scripts list */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {transformedScripts.map(script => (
