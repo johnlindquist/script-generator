@@ -1,3 +1,4 @@
 ## TypeScript
 
-- Avoid "any" type. My build will fail if I use it.
+- Avoid "any" type or my build will fail
+- Always remove unused imports, parameters, variables, etc, or my build will fail

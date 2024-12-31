@@ -13,27 +13,25 @@ export async function GET(request: Request) {
     // Extract query params from the request URL
     const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get('page') || '1'
-    const pageSizeParam = searchParams.get('pageSize') || '9'
 
     // Convert to integers and clamp to safe ranges
     let page = parseInt(pageParam, 10)
-    let pageSize = parseInt(pageSizeParam, 10)
+    const PAGE_SIZE = 12 // Fixed page size of 12
 
     // Basic validation and clamping
     if (isNaN(page) || page < 1) page = 1
-    if (isNaN(pageSize) || pageSize < 1) pageSize = 9
-    if (pageSize > 50) pageSize = 50
 
     // Calculate the skip value for Prisma
-    const skip = (page - 1) * pageSize
+    const skip = (page - 1) * PAGE_SIZE
 
     // Query the scripts with pagination
     const scripts = await prisma.script.findMany({
       where: {
         status: 'ACTIVE',
+        saved: true, // Only return saved scripts
       },
       skip,
-      take: pageSize,
+      take: PAGE_SIZE,
       orderBy: { createdAt: 'desc' },
       include: {
         owner: true,
@@ -73,6 +71,7 @@ export async function GET(request: Request) {
     const totalScripts = await prisma.script.count({
       where: {
         status: 'ACTIVE',
+        saved: true, // Only count saved scripts
       },
     })
 
@@ -80,8 +79,8 @@ export async function GET(request: Request) {
       scripts: transformedScripts,
       totalScripts,
       page,
-      pageSize,
-      totalPages: Math.ceil(totalScripts / pageSize),
+      pageSize: PAGE_SIZE,
+      totalPages: Math.ceil(totalScripts / PAGE_SIZE),
     })
   } catch (error) {
     console.error('Failed to fetch scripts:', error)

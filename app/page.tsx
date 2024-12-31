@@ -36,21 +36,22 @@ export default async function Home({
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
   const session = await getServerSession(authOptions)
-  const { page: pageStr = '1', pageSize: pageSizeStr = '9' } = await searchParams
-  const page = Number(pageStr)
-  const pageSize = Number(pageSizeStr)
+  const { page: pageStr = '1' } = searchParams
+  const currentPage = Math.max(1, Number(pageStr))
+  const PAGE_SIZE = 12
 
   // Get total count first
   const totalScripts = await prisma.script.count({
     where: {
+      status: 'ACTIVE',
       saved: true,
     },
   })
 
-  const totalPages = Math.ceil(totalScripts / pageSize)
+  const totalPages = Math.ceil(totalScripts / PAGE_SIZE)
 
   // Redirect to page 1 if the requested page is beyond totalPages
-  if (totalScripts > 0 && page > totalPages) {
+  if (totalScripts > 0 && currentPage > totalPages) {
     redirect('/?page=1')
   }
 
@@ -87,10 +88,13 @@ export default async function Home({
   const scripts = await prisma.script.findMany({
     where: {
       status: 'ACTIVE',
+      saved: true,
     },
     orderBy: {
       createdAt: 'desc',
     },
+    skip: (currentPage - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
     include: {
       owner: true,
       _count: {
@@ -170,20 +174,20 @@ export default async function Home({
         {transformedScripts.length > 0 && (
           <div className="mt-8 flex justify-center items-center gap-4">
             <a
-              href={`/?page=${Math.max(1, page - 1)}&pageSize=${pageSize}`}
+              href={`/?page=${Math.max(1, currentPage - 1)}`}
               className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
-                page === 1 ? 'pointer-events-none opacity-50' : ''
+                currentPage === 1 ? 'pointer-events-none opacity-50' : ''
               }`}
             >
               Previous
             </a>
             <span className="text-slate-300">
-              Page {page} of {totalPages}
+              Page {currentPage} of {totalPages}
             </span>
             <a
-              href={`/?page=${Math.min(totalPages, page + 1)}&pageSize=${pageSize}`}
+              href={`/?page=${Math.min(totalPages, currentPage + 1)}`}
               className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
-                page === totalPages ? 'pointer-events-none opacity-50' : ''
+                currentPage === totalPages ? 'pointer-events-none opacity-50' : ''
               }`}
             >
               Next
