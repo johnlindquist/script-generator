@@ -117,6 +117,7 @@ export default function ScriptCard({
             initialIsVerified={script.isVerified ?? false}
             initialVerifiedCount={script._count?.verifications ?? 0}
             isAuthenticated={isAuthenticated}
+            isOwner={isOwner}
           />
 
           <FavoriteButtonClient

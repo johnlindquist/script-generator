@@ -8,6 +8,7 @@ interface VerifyButtonClientProps {
   initialIsVerified: boolean
   initialVerifiedCount: number
   isAuthenticated: boolean
+  isOwner: boolean
 }
 
 export default function VerifyButtonClient({
@@ -15,11 +16,17 @@ export default function VerifyButtonClient({
   initialIsVerified,
   initialVerifiedCount,
   isAuthenticated,
+  isOwner,
 }: VerifyButtonClientProps) {
   const [isVerified, setIsVerified] = useState(initialIsVerified)
   const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Hide button if not logged in OR is the script owner
+  if (!isAuthenticated || isOwner) {
+    return null
+  }
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
@@ -74,7 +81,7 @@ export default function VerifyButtonClient({
         }`}
       >
         <svg
-          className={`w-4 h-4 ${isVerified ? 'text-amber-300' : ''} ${error ? 'text-red-500' : ''}`}
+          className={`w-4 h-4 ${isVerified ? 'text-green-400' : ''} ${error ? 'text-red-500' : ''}`}
           fill={isVerified ? 'currentColor' : 'none'}
           viewBox="0 0 24 24"
           stroke="currentColor"
