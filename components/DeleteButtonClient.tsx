@@ -1,20 +1,21 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TrashIcon, XMarkIcon } from '@heroicons/react/24/solid'
+import { Tooltip } from '@nextui-org/react'
 
-interface DeleteButtonProps {
+interface DeleteButtonClientProps {
   scriptId: string
 }
 
-export default function DeleteButtonClient({ scriptId }: DeleteButtonProps) {
-  const router = useRouter()
+export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps) {
   const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const router = useRouter()
 
   const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this script?')) return
+
+    setIsDeleting(true)
     try {
-      setIsDeleting(true)
       const response = await fetch(`/api/scripts/${scriptId}`, {
         method: 'DELETE',
       })
@@ -23,59 +24,29 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonProps) {
         throw new Error('Failed to delete script')
       }
 
-      // Emit a custom event that the parent page can listen to
-      const event = new CustomEvent('scriptDeleted', {
-        detail: { scriptId },
-      })
-      window.dispatchEvent(event)
-
       router.refresh()
     } catch (error) {
-      console.error('Delete error:', error)
-      alert('Failed to delete script')
+      console.error('Error deleting script:', error)
     } finally {
       setIsDeleting(false)
-      setShowDeleteConfirm(false)
     }
   }
 
-  const initiateDelete = () => {
-    setShowDeleteConfirm(true)
-  }
-
-  const cancelDelete = () => {
-    setShowDeleteConfirm(false)
-  }
-
   return (
-    <>
+    <Tooltip content="Delete script">
       <button
-        onClick={showDeleteConfirm ? handleDelete : initiateDelete}
-        className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
+        onClick={handleDelete}
         disabled={isDeleting}
-        title={showDeleteConfirm ? 'Confirm delete' : 'Delete script'}
+        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-red-400/10 text-red-300 hover:bg-red-400/20 transition-colors disabled:opacity-50"
       >
-        {isDeleting ? (
-          <XMarkIcon className="w-5 h-5 animate-spin" />
-        ) : (
-          <TrashIcon className="w-5 h-5" />
-        )}
-        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-          {showDeleteConfirm ? 'Click again to confirm delete' : 'Delete script'}
-        </span>
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
-      {showDeleteConfirm && (
-        <button
-          onClick={cancelDelete}
-          className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-          title="Cancel delete"
-        >
-          <XMarkIcon className="w-5 h-5" />
-          <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-            Cancel delete
-          </span>
-        </button>
-      )}
-    </>
+    </Tooltip>
   )
 }

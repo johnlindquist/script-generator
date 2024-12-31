@@ -1,10 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline'
+import { Tooltip } from '@nextui-org/react'
 
-interface FavoriteButtonProps {
+interface FavoriteButtonClientProps {
   scriptId: string
   initialIsFavorited: boolean
   initialFavoriteCount: number
@@ -16,54 +14,62 @@ export default function FavoriteButtonClient({
   initialIsFavorited,
   initialFavoriteCount,
   isAuthenticated,
-}: FavoriteButtonProps) {
+}: FavoriteButtonClientProps) {
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited)
   const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount)
-  const [isToggling, setIsToggling] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleToggleFavorite = async () => {
+  const handleFavorite = async () => {
     if (!isAuthenticated) {
-      signIn()
+      alert('Please sign in to favorite scripts')
       return
     }
 
-    setIsToggling(true)
+    setIsLoading(true)
     try {
       const response = await fetch('/api/favorite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ scriptId }),
       })
+
       if (!response.ok) {
         throw new Error('Failed to favorite script')
       }
-      const data = await response.json()
-      setIsFavorited(data.isFavorited)
-      setFavoriteCount(data.favoriteCount)
+
+      setIsFavorited(!isFavorited)
+      setFavoriteCount(favoriteCount + (isFavorited ? -1 : 1))
     } catch (error) {
-      console.error('Favorite error:', error)
-      alert('Failed to toggle favorite')
+      console.error('Error favoriting script:', error)
     } finally {
-      setIsToggling(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <button
-      onClick={handleToggleFavorite}
-      disabled={isToggling}
-      className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-      title={isFavorited ? 'Unfavorite script' : 'Favorite script'}
-    >
-      {isFavorited ? (
-        <StarIconSolid className={`w-5 h-5 ${isToggling ? 'animate-pulse' : ''}`} />
-      ) : (
-        <StarIconOutline className={`w-5 h-5 ${isToggling ? 'animate-pulse' : ''}`} />
-      )}
-      <span className="ml-1">{favoriteCount}</span>
-      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-        {isFavorited ? 'Unfavorite script' : 'Favorite script'}
-      </span>
-    </button>
+    <Tooltip content={isFavorited ? 'Remove from favorites' : 'Add to favorites'}>
+      <button
+        onClick={handleFavorite}
+        disabled={isLoading}
+        className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+      >
+        <svg
+          className={`w-4 h-4 ${isFavorited ? 'text-amber-300' : ''}`}
+          fill={isFavorited ? 'currentColor' : 'none'}
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+          />
+        </svg>
+        <span>{favoriteCount}</span>
+      </button>
+    </Tooltip>
   )
 }

@@ -1,10 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid'
-import { CheckCircleIcon as CheckCircleIconOutline } from '@heroicons/react/24/outline'
+import { Tooltip } from '@nextui-org/react'
 
-interface VerifyButtonProps {
+interface VerifyButtonClientProps {
   scriptId: string
   initialIsVerified: boolean
   initialVerifiedCount: number
@@ -16,58 +14,62 @@ export default function VerifyButtonClient({
   initialIsVerified,
   initialVerifiedCount,
   isAuthenticated,
-}: VerifyButtonProps) {
+}: VerifyButtonClientProps) {
   const [isVerified, setIsVerified] = useState(initialIsVerified)
   const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount)
-  const [isTogglingVerification, setIsTogglingVerification] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleToggleVerification = async () => {
+  const handleVerify = async () => {
     if (!isAuthenticated) {
-      signIn()
+      alert('Please sign in to verify scripts')
       return
     }
 
-    setIsTogglingVerification(true)
+    setIsLoading(true)
     try {
       const response = await fetch('/api/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ scriptId }),
       })
+
       if (!response.ok) {
         throw new Error('Failed to verify script')
       }
-      const data = await response.json()
-      setIsVerified(data.isVerified)
-      setVerifiedCount(data.verifiedCount)
+
+      setIsVerified(!isVerified)
+      setVerifiedCount(verifiedCount + (isVerified ? -1 : 1))
     } catch (error) {
-      console.error('Verification error:', error)
-      alert('Failed to toggle verification')
+      console.error('Error verifying script:', error)
     } finally {
-      setIsTogglingVerification(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <button
-      onClick={handleToggleVerification}
-      disabled={isTogglingVerification}
-      className="text-slate-400 hover:text-green-500 transition-colors group relative flex items-center h-5"
-      title={isVerified ? 'Unverify script' : 'Verify script'}
-    >
-      {isVerified ? (
-        <CheckCircleIconSolid
-          className={`w-5 h-5 ${isTogglingVerification ? 'animate-pulse' : ''}`}
-        />
-      ) : (
-        <CheckCircleIconOutline
-          className={`w-5 h-5 ${isTogglingVerification ? 'animate-pulse' : ''}`}
-        />
-      )}
-      <span className="ml-1">{verifiedCount}</span>
-      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-        {isVerified ? 'Unverify script' : 'Verify script'}
-      </span>
-    </button>
+    <Tooltip content={isVerified ? 'Remove verification' : 'Verify script'}>
+      <button
+        onClick={handleVerify}
+        disabled={isLoading}
+        className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+      >
+        <svg
+          className={`w-4 h-4 ${isVerified ? 'text-amber-300' : ''}`}
+          fill={isVerified ? 'currentColor' : 'none'}
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span>{verifiedCount}</span>
+      </button>
+    </Tooltip>
   )
 }

@@ -1,21 +1,31 @@
 'use client'
-import { ClipboardIcon } from '@heroicons/react/24/solid'
+import { useState } from 'react'
+import { Tooltip } from '@nextui-org/react'
 
-export default function CopyButtonClient({ content }: { content: string }) {
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content)
+interface CopyButtonClientProps {
+  content: string
+}
+
+export default function CopyButtonClient({ content }: CopyButtonClientProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-      title="Copy script"
-    >
-      <ClipboardIcon className="w-5 h-5" />
-      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-        Copy to clipboard
-      </span>
-    </button>
+    <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+      <button
+        onClick={handleCopy}
+        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+          <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+        </svg>
+      </button>
+    </Tooltip>
   )
 }

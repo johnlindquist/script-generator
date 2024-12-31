@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { ArrowDownTrayIcon } from '@heroicons/react/24/solid'
+import { Tooltip } from '@nextui-org/react'
 
-interface InstallButtonProps {
+interface InstallButtonClientProps {
   scriptId: string
   dashedName: string | null | undefined
   initialInstallCount: number
@@ -12,47 +12,53 @@ export default function InstallButtonClient({
   scriptId,
   dashedName,
   initialInstallCount,
-}: InstallButtonProps) {
+}: InstallButtonClientProps) {
   const [installCount, setInstallCount] = useState(initialInstallCount)
-  const [isTogglingInstall, setIsTogglingInstall] = useState(false)
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
+  const [isInstalling, setIsInstalling] = useState(false)
 
   const handleInstall = async () => {
-    setIsTogglingInstall(true)
+    setIsInstalling(true)
     try {
       const response = await fetch('/api/install', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ scriptId }),
       })
-      if (!response.ok) {
-        throw new Error('Failed to track install')
-      }
-      const data = await response.json()
-      setInstallCount(data.installCount)
 
-      // Continue with the actual install
-      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${scriptId}/raw/${dashedName || 'script'}.ts`)}`
+      if (!response.ok) {
+        throw new Error('Failed to install script')
+      }
+
+      setInstallCount(installCount + 1)
+
+      if (dashedName) {
+        window.open(`kit://script/install/${dashedName}`, '_blank')
+      }
     } catch (error) {
-      console.error('Install error:', error)
-      alert('Failed to track install')
+      console.error('Error installing script:', error)
     } finally {
-      setIsTogglingInstall(false)
+      setIsInstalling(false)
     }
   }
 
   return (
-    <button
-      onClick={handleInstall}
-      disabled={isTogglingInstall}
-      className="text-slate-400 hover:text-amber-300 transition-colors group relative flex items-center h-5"
-      title="Install script"
-    >
-      <ArrowDownTrayIcon className={`w-5 h-5 ${isTogglingInstall ? 'animate-pulse' : ''}`} />
-      <span className="ml-1">{installCount}</span>
-      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-sm text-slate-200 opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-black before:content-[''] group-hover:opacity-100">
-        Install script
-      </span>
-    </button>
+    <Tooltip content="Install script">
+      <button
+        onClick={handleInstall}
+        disabled={isInstalling}
+        className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <span>{installCount}</span>
+      </button>
+    </Tooltip>
   )
 }
