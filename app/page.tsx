@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 import NavBar from '@/components/NavBar'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ScriptCard from '@/components/ScriptCard'
-import SignInButton from '@/components/SignInButton'
 import { redirect } from 'next/navigation'
+import { STRINGS } from '@/lib/strings'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,23 +62,13 @@ export default async function Home({
         <NavBar isAuthenticated={!!session} />
         <div className="container mx-auto px-4 py-8">
           <div className="mb-4 text-center">
-            {!session && (
-              <p className="text-slate-300 mb-8">
-                Browse existing scripts below or <SignInButton /> to generate your own!
-              </p>
-            )}
-            <p className="text-amber-400/80 text-sm">
-              ⚠️ This is a prototype - Don't expect scripts to work perfectly and backup your
-              favorites!
-            </p>
+            <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
           </div>
 
           {/* Client-side script generation form */}
           <ScriptGenerationClient isAuthenticated={!!session} />
 
-          <p className="text-center text-slate-300 mt-8">
-            No scripts found. Create one to get started!
-          </p>
+          <p className="text-center text-slate-300 mt-8">{STRINGS.HOME.noScripts}</p>
         </div>
       </main>
     )
@@ -144,15 +134,7 @@ export default async function Home({
       <NavBar isAuthenticated={!!session} />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-4 text-center">
-          {!session && (
-            <p className="text-slate-300 mb-8">
-              Browse existing scripts below or <SignInButton /> to generate your own!
-            </p>
-          )}
-          <p className="text-amber-400/80 text-sm">
-            ⚠️ This is a prototype - Don't expect scripts to work perfectly and backup your
-            favorites!
-          </p>
+          <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
         </div>
 
         {/* Client-side script generation form */}
@@ -179,10 +161,12 @@ export default async function Home({
                 currentPage === 1 ? 'pointer-events-none opacity-50' : ''
               }`}
             >
-              Previous
+              {STRINGS.HOME.pagination.previous}
             </a>
             <span className="text-slate-300">
-              Page {currentPage} of {totalPages}
+              {STRINGS.HOME.pagination.pageInfo
+                .replace('{currentPage}', String(currentPage))
+                .replace('{totalPages}', String(totalPages))}
             </span>
             <a
               href={`/?page=${Math.min(totalPages, currentPage + 1)}`}
@@ -190,7 +174,7 @@ export default async function Home({
                 currentPage === totalPages ? 'pointer-events-none opacity-50' : ''
               }`}
             >
-              Next
+              {STRINGS.HOME.pagination.next}
             </a>
           </div>
         )}

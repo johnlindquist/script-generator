@@ -82,4 +82,17 @@ export const STRINGS = {
     // Error messages
     errorHeading: 'Error',
   },
+
+  HOME: {
+    prototype: {
+      warning:
+        "⚠️ This is a prototype - Don't expect scripts to work perfectly and backup your favorites!",
+    },
+    noScripts: 'No scripts found. Create one to get started!',
+    pagination: {
+      previous: 'Previous',
+      next: 'Next',
+      pageInfo: 'Page {currentPage} of {totalPages}',
+    },
+  },
 } as const

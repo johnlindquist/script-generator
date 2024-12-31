@@ -61,14 +61,17 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [editableScript, setEditableScript] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<{ count: number; limit: number } | null>(null)
-  const [isLoadingUsage, setIsLoadingUsage] = useState(true)
+  const [isLoadingUsage, setIsLoadingUsage] = useState(isAuthenticated)
   const [isFromSuggestion, setIsFromSuggestion] = useState(false)
   const editorRef = useRef<EditorRef | null>(null)
   const prevIsGeneratingRef = useRef(isGenerating)
 
   // Fetch usage on mount and after each generation
   const fetchUsage = async () => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {
+      setIsLoadingUsage(false)
+      return
+    }
     try {
       setIsLoadingUsage(true)
       const response = await fetch('/api/usage')
@@ -403,11 +406,11 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                   ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
                   : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
             }
-            className="w-full h-32 p-4 mb-2 bg-black/20 border border-amber-400/20 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none"
+            className="w-full h-32 p-4 bg-black/20 border border-amber-400/20 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none"
             disabled={!isAuthenticated || (!isLoadingUsage && usage?.count === usage?.limit)}
           />
 
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-8 px-2 opacity-90">
             <span
               className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
             >
@@ -416,8 +419,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 prompt.trim().length.toString()
               )}
             </span>
-            {isAuthenticated &&
-              (isLoadingUsage ? (
+            {isAuthenticated ? (
+              isLoadingUsage ? (
                 <span className="text-sm text-slate-400 bg-amber-400/5 rounded-full px-3 py-1 animate-pulse w-32 h-5" />
               ) : (
                 usage && (
@@ -429,7 +432,14 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                       .replace('{limit}', usage.limit.toString())}
                   </span>
                 )
-              ))}
+              )
+            ) : (
+              <span className="text-sm text-slate-400">
+                {STRINGS.SCRIPT_GENERATION.generationUsage
+                  .replace('{count}', '0')
+                  .replace('{limit}', '0')}
+              </span>
+            )}
           </div>
           <div className="flex justify-center mt-4">
             <button
@@ -462,7 +472,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         </form>
       )}
 
-      {!generatedScript && !isGenerating && (
+      {isAuthenticated && !generatedScript && !isGenerating && (
         <div className="pt-4">
           <hr className="border-amber-400/20 my-4" />
           <h3 className="text-lg mb-4 text-center">
