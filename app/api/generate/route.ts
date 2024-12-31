@@ -14,6 +14,8 @@ const model = genAI.getGenerativeModel({
   },
 })
 
+const DAILY_LIMIT = 25
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -31,6 +33,52 @@ export async function POST(req: NextRequest) {
     if (!scriptId) {
       return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
     }
+
+    // Check and increment usage count
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    let usage = await prisma.usage.findUnique({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: now,
+        },
+      },
+    })
+
+    if (!usage) {
+      usage = await prisma.usage.create({
+        data: {
+          userId: session.user.id,
+          date: now,
+          count: 0,
+        },
+      })
+    }
+
+    if (usage.count >= DAILY_LIMIT) {
+      return NextResponse.json(
+        {
+          error: 'Daily generation limit reached',
+          details: `You have used all ${DAILY_LIMIT} generations for today. Try again tomorrow!`,
+        },
+        { status: 429 }
+      )
+    }
+
+    // Increment usage count
+    await prisma.usage.update({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: now,
+        },
+      },
+      data: {
+        count: { increment: 1 },
+      },
+    })
 
     // Get the initial script from the database
     const initialScript = await prisma.script.findUnique({

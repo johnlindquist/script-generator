@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
-import ScriptSuggestions from '@/components/ScriptSuggestions'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
 import {
   RocketLaunchIcon,
@@ -62,7 +61,6 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [usage, setUsage] = useState<{ count: number; limit: number } | null>(null)
   const editorRef = useRef<EditorRef | null>(null)
   const prevIsGeneratingRef = useRef(isGenerating)
-  const suggestionsRef = useRef<{ refreshSuggestions: () => void } | null>(null)
 
   // Fetch usage on mount and after each generation
   const fetchUsage = async () => {
@@ -376,7 +374,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               onChange={e => isAuthenticated && setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={
-                isGenerating || !isAuthenticated || (usage?.count ?? 0) >= (usage?.limit ?? 50)
+                isGenerating || !isAuthenticated || (usage?.count ?? 0) >= (usage?.limit ?? 25)
               }
               maxLength={10000}
               className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
@@ -407,73 +405,40 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           </div>
 
           {!isGenerating && (
-            <>
-              <button
-                type="submit"
-                disabled={
-                  isGenerating ||
-                  prompt.trim().length < 15 ||
-                  (usage?.count ?? 0) >= (usage?.limit ?? 50)
-                }
-                className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-                  isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
-                }`}
-                onClick={() => !isAuthenticated && signIn()}
-              >
-                {isGenerating ? (
-                  <>
-                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    Generating...
-                  </>
-                ) : !isAuthenticated ? (
-                  <>
-                    <RocketLaunchIcon className="w-5 h-5" />
-                    Sign in to Generate
-                  </>
-                ) : usage && usage.count >= usage.limit ? (
-                  <>
-                    <RocketLaunchIcon className="w-5 h-5" />
-                    Daily Limit Reached
-                  </>
-                ) : (
-                  <>
-                    <RocketLaunchIcon className="w-5 h-5" />
-                    Generate Script
-                  </>
-                )}
-              </button>
-
-              <div className="mt-8 text-center text-sm">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <p className="text-slate-400">Or generate from a suggestion</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        signIn()
-                        return
-                      }
-                      suggestionsRef.current?.refreshSuggestions()
-                    }}
-                    className="text-sm bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 px-2 py-1 rounded-full transition-colors duration-200 flex items-center gap-1"
-                  >
-                    <ArrowPathIcon className="w-4 h-4" />
-                  </button>
-                </div>
-                <ScriptSuggestions
-                  ref={suggestionsRef}
-                  setPrompt={suggestion => {
-                    if (!isAuthenticated) {
-                      signIn()
-                      return
-                    }
-                    setPrompt(suggestion)
-                    // Generate script immediately after setting the prompt
-                    generateScript(suggestion, generateRequestId())
-                  }}
-                />
-              </div>
-            </>
+            <button
+              type="submit"
+              disabled={
+                isGenerating ||
+                prompt.trim().length < 15 ||
+                (usage?.count ?? 0) >= (usage?.limit ?? 25)
+              }
+              className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
+                isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => !isAuthenticated && signIn()}
+            >
+              {isGenerating ? (
+                <>
+                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                  Generating...
+                </>
+              ) : !isAuthenticated ? (
+                <>
+                  <RocketLaunchIcon className="w-5 h-5" />
+                  Sign in to Generate
+                </>
+              ) : usage && usage.count >= usage.limit ? (
+                <>
+                  <RocketLaunchIcon className="w-5 h-5" />
+                  Daily Limit Reached
+                </>
+              ) : (
+                <>
+                  <RocketLaunchIcon className="w-5 h-5" />
+                  Generate Script
+                </>
+              )}
+            </button>
           )}
         </form>
       )}

@@ -14,6 +14,8 @@ const model = genAI.getGenerativeModel({
   },
 })
 
+const DAILY_LIMIT = 25
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -37,45 +39,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Check and increment usage count
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
 
-    // Get or create today's usage record
-    const usage = await prisma.usage.findUnique({
+    let usage = await prisma.usage.findUnique({
       where: {
         userId_date: {
           userId: session.user.id,
-          date: today,
+          date: now,
         },
       },
     })
 
-    // If no usage record exists, create one starting at 0
     if (!usage) {
-      await prisma.usage.create({
+      usage = await prisma.usage.create({
         data: {
           userId: session.user.id,
-          date: today,
+          date: now,
           count: 0,
         },
       })
     }
 
-    // Get current usage count
-    const currentUsage = await prisma.usage.findUnique({
-      where: {
-        userId_date: {
-          userId: session.user.id,
-          date: today,
-        },
-      },
-    })
-
-    if (currentUsage && currentUsage.count >= 50) {
+    if (usage.count >= DAILY_LIMIT) {
       return NextResponse.json(
         {
           error: 'Daily generation limit reached',
-          details: 'You have used all 50 generations for today. Try again tomorrow!',
+          details: `You have used all ${DAILY_LIMIT} generations for today. Try again tomorrow!`,
         },
         { status: 429 }
       )
@@ -86,7 +76,7 @@ export async function POST(req: NextRequest) {
       where: {
         userId_date: {
           userId: session.user.id,
-          date: today,
+          date: now,
         },
       },
       data: {
