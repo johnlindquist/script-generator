@@ -293,7 +293,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
   return (
-    <div className="mb-12">
+    <div className="mb-4">
       <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
         {isGenerating || isThinking ? (
           <AnimatedText

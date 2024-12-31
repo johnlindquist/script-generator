@@ -9,14 +9,16 @@ interface Props {
 
 function SuggestionsLoadingSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex flex-nowrap justify-center gap-2 ${className}`}>
-      {Array.from({ length: 7 }).map((_, idx) => (
-        <div
-          key={idx}
-          className="text-sm bg-amber-400/5 px-3 py-1 rounded-full animate-pulse w-24 h-7 shrink-0"
-          aria-hidden="true"
-        />
-      ))}
+    <div className="flex justify-center">
+      <div className={`max-w-full flex flex-nowrap gap-2 overflow-x-auto ${className}`}>
+        {Array.from({ length: 7 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="text-sm bg-amber-400/5 px-3 py-1 rounded-full animate-pulse w-48 h-7 shrink-0"
+            aria-hidden="true"
+          />
+        ))}
+      </div>
     </div>
   )
 }

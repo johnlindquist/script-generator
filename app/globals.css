@@ -47,6 +47,22 @@ body {
   }
 }
 
+/* Scrollbar Styling */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+  background-color: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(38, 38, 38, 0.8);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 38, 38, 0.8) transparent;
+}
+
 .js-focus-visible :focus:not(.focus-visible) {
   outline: none;
 }
