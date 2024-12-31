@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { model } from '@/lib/gemini'
 import { SECOND_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
-
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash-exp',
-  generationConfig: {
-    maxOutputTokens: 8192,
-  },
-})
+import { wrapApiHandler } from '@/lib/timing'
 
 const DAILY_LIMIT = 25
 
-export async function POST(req: NextRequest) {
+const generateScript = async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -175,3 +167,5 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+export const POST = wrapApiHandler('generate_script', generateScript)

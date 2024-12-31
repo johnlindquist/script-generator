@@ -1,52 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
-import { authOptions } from '../../auth/[...nextauth]/route'
-import { generateDashedName, generateUppercaseName } from '@/lib/names'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { wrapApiHandler } from '@/lib/timing'
 
-type Context = {
-  params: Promise<{ scriptId: string }>
-}
-
-export async function PUT(request: NextRequest, context: Context) {
-  const params = await context.params
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { content } = await request.json()
-
-    const script = await prisma.script.findUnique({
-      where: { id: params.scriptId },
-    })
-
-    if (!script) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 })
-    }
-
-    if (script.ownerId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    const updatedScript = await prisma.script.update({
-      where: { id: params.scriptId },
-      data: {
-        content,
-        dashedName: generateDashedName(script.title),
-        uppercaseName: generateUppercaseName(script.title),
-      },
-    })
-
-    return NextResponse.json(updatedScript)
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: `Failed to update script: ${errorMessage}` }, { status: 500 })
+interface Context {
+  params: {
+    scriptId: string
   }
 }
 
-export async function DELETE(request: NextRequest, context: Context) {
+const deleteScript = async (request: NextRequest, context: Context) => {
   try {
     const params = await context.params
     const session = await getServerSession(authOptions)
@@ -86,7 +50,7 @@ export async function DELETE(request: NextRequest, context: Context) {
   }
 }
 
-export async function GET(request: NextRequest, context: Context) {
+const getScript = async (request: NextRequest, context: Context) => {
   try {
     const params = await context.params
     const script = await prisma.script.findUnique({
@@ -105,7 +69,7 @@ export async function GET(request: NextRequest, context: Context) {
   }
 }
 
-export async function PATCH(request: NextRequest, context: Context) {
+const updateScript = async (request: NextRequest, context: Context) => {
   try {
     const params = await context.params
     const session = await getServerSession(authOptions)
@@ -138,3 +102,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     return NextResponse.json({ error: `Failed to update script: ${errorMessage}` }, { status: 500 })
   }
 }
+
+export const DELETE = wrapApiHandler('delete_script', deleteScript)
+export const GET = wrapApiHandler('get_script', getScript)
+export const PATCH = wrapApiHandler('update_script', updateScript)

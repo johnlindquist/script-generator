@@ -19,6 +19,7 @@ export default function VerifyButtonClient({
   const [isVerified, setIsVerified] = useState(initialIsVerified)
   const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
@@ -26,7 +27,13 @@ export default function VerifyButtonClient({
       return
     }
 
-    setIsLoading(true)
+    // Optimistically update UI
+    const wasOriginallyVerified = isVerified
+    const originalCount = verifiedCount
+    setIsVerified(!wasOriginallyVerified)
+    setVerifiedCount(originalCount + (wasOriginallyVerified ? -1 : 1))
+    setError(null)
+
     try {
       const response = await fetch('/api/verify', {
         method: 'POST',
@@ -40,10 +47,13 @@ export default function VerifyButtonClient({
         throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
-      setIsVerified(!isVerified)
-      setVerifiedCount(verifiedCount + (isVerified ? -1 : 1))
+      // Server confirmed the change, no need to do anything
     } catch (error) {
+      // Revert optimistic update on error
       console.error('Error verifying script:', error)
+      setIsVerified(wasOriginallyVerified)
+      setVerifiedCount(originalCount)
+      setError(error instanceof Error ? error.message : STRINGS.VERIFY_BUTTON.error)
     } finally {
       setIsLoading(false)
     }
@@ -51,15 +61,20 @@ export default function VerifyButtonClient({
 
   return (
     <Tooltip
-      content={isVerified ? STRINGS.VERIFY_BUTTON.tooltipRemove : STRINGS.VERIFY_BUTTON.tooltipAdd}
+      content={
+        error ||
+        (isVerified ? STRINGS.VERIFY_BUTTON.tooltipRemove : STRINGS.VERIFY_BUTTON.tooltipAdd)
+      }
     >
       <button
         onClick={handleVerify}
         disabled={isLoading}
-        className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
+          error ? 'border-red-500 border' : ''
+        }`}
       >
         <svg
-          className={`w-4 h-4 ${isVerified ? 'text-amber-300' : ''}`}
+          className={`w-4 h-4 ${isVerified ? 'text-amber-300' : ''} ${error ? 'text-red-500' : ''}`}
           fill={isVerified ? 'currentColor' : 'none'}
           viewBox="0 0 24 24"
           stroke="currentColor"

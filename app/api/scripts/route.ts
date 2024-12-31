@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { generateDashedName, generateUppercaseName } from '@/lib/names'
+import { wrapApiHandler } from '@/lib/timing'
 
-export async function GET(request: Request) {
+const getScripts = async (request: Request) => {
   try {
     // Get the current user's session
     const session = await getServerSession(authOptions)
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+const createScript = async (request: Request) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -122,3 +123,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create script' }, { status: 500 })
   }
 }
+
+export const GET = wrapApiHandler('get_scripts', getScripts)
+export const POST = wrapApiHandler('create_script', createScript)

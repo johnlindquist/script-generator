@@ -7,9 +7,10 @@ import { STRINGS } from '@/lib/strings'
 
 interface DeleteButtonClientProps {
   scriptId: string
+  onDeleted?: (scriptId: string) => void
 }
 
-export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps) {
+export default function DeleteButtonClient({ scriptId, onDeleted }: DeleteButtonClientProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const router = useRouter()
@@ -33,6 +34,7 @@ export default function DeleteButtonClient({ scriptId }: DeleteButtonClientProps
       }
 
       toast.success(STRINGS.DELETE_BUTTON.successMessage)
+      onDeleted?.(scriptId)
       router.refresh()
     } catch (error: unknown) {
       console.error('Error deleting script:', error)

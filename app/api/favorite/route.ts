@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { wrapApiHandler } from '@/lib/timing'
 
-export async function POST(req: NextRequest) {
+const toggleFavorite = async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -63,3 +64,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to toggle favorite' }, { status: 500 })
   }
 }
+
+export const POST = wrapApiHandler('toggle_favorite', toggleFavorite)

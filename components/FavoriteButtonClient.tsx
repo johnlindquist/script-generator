@@ -19,6 +19,7 @@ export default function FavoriteButtonClient({
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited)
   const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
@@ -26,7 +27,13 @@ export default function FavoriteButtonClient({
       return
     }
 
-    setIsLoading(true)
+    // Optimistically update UI
+    const wasOriginallyFavorited = isFavorited
+    const originalCount = favoriteCount
+    setIsFavorited(!wasOriginallyFavorited)
+    setFavoriteCount(originalCount + (wasOriginallyFavorited ? -1 : 1))
+    setError(null)
+
     try {
       const response = await fetch('/api/favorite', {
         method: 'POST',
@@ -40,10 +47,13 @@ export default function FavoriteButtonClient({
         throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
-      setIsFavorited(!isFavorited)
-      setFavoriteCount(favoriteCount + (isFavorited ? -1 : 1))
+      // Server confirmed the change, no need to do anything
     } catch (error) {
+      // Revert optimistic update on error
       console.error('Error favoriting script:', error)
+      setIsFavorited(wasOriginallyFavorited)
+      setFavoriteCount(originalCount)
+      setError(error instanceof Error ? error.message : STRINGS.FAVORITE_BUTTON.error)
     } finally {
       setIsLoading(false)
     }
@@ -52,16 +62,21 @@ export default function FavoriteButtonClient({
   return (
     <Tooltip
       content={
-        isFavorited ? STRINGS.FAVORITE_BUTTON.tooltipRemove : STRINGS.FAVORITE_BUTTON.tooltipAdd
+        error ||
+        (isFavorited ? STRINGS.FAVORITE_BUTTON.tooltipRemove : STRINGS.FAVORITE_BUTTON.tooltipAdd)
       }
     >
       <button
         onClick={handleFavorite}
         disabled={isLoading}
-        className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
+        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
+          error ? 'border-red-500 border' : ''
+        }`}
       >
         <svg
-          className={`w-4 h-4 ${isFavorited ? 'text-amber-300' : ''}`}
+          className={`w-4 h-4 ${isFavorited ? 'text-amber-300' : ''} ${
+            error ? 'text-red-500' : ''
+          }`}
           fill={isFavorited ? 'currentColor' : 'none'}
           viewBox="0 0 24 24"
           stroke="currentColor"

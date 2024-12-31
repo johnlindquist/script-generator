@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
 import { STRINGS } from '@/lib/strings'
@@ -31,9 +33,15 @@ interface ScriptCardProps {
   }
   isAuthenticated: boolean
   currentUserId?: string
+  onDeleted?: (scriptId: string) => void
 }
 
-export default function ScriptCard({ script, isAuthenticated, currentUserId }: ScriptCardProps) {
+export default function ScriptCard({
+  script,
+  isAuthenticated,
+  currentUserId,
+  onDeleted,
+}: ScriptCardProps) {
   const isOwner = currentUserId === script.owner.id
 
   return (
@@ -92,7 +100,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
           {isOwner && (
             <>
               <EditButtonClient scriptId={script.id} />
-              <DeleteButtonClient scriptId={script.id} />
+              <DeleteButtonClient scriptId={script.id} onDeleted={() => onDeleted?.(script.id)} />
             </>
           )}
         </div>

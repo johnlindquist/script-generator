@@ -2,9 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import NavBar from '@/components/NavBar'
-import ScriptCard from '@/components/ScriptCard'
+import ScriptsListClient from '@/components/ScriptsListClient'
 import { redirect } from 'next/navigation'
-import { STRINGS } from '@/lib/strings'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,44 +108,13 @@ export default async function MyScriptsPage({
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-300 mb-8">My Scripts</h1>
 
-        {/* Server-rendered scripts list */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {transformedScripts.map(script => (
-            <ScriptCard
-              key={script.id}
-              script={script}
-              isAuthenticated={true}
-              currentUserId={session.user.id}
-            />
-          ))}
-        </div>
-
-        {/* Pagination Controls */}
-        {transformedScripts.length > 0 && (
-          <div className="mt-8 flex justify-center items-center gap-4">
-            <a
-              href={`/scripts/mine?page=${Math.max(1, currentPage - 1)}`}
-              className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
-                currentPage === 1 ? 'pointer-events-none opacity-50' : ''
-              }`}
-            >
-              {STRINGS.HOME.pagination.previous}
-            </a>
-            <span className="text-slate-300">
-              {STRINGS.HOME.pagination.pageInfo
-                .replace('{currentPage}', String(currentPage))
-                .replace('{totalPages}', String(totalPages))}
-            </span>
-            <a
-              href={`/scripts/mine?page=${Math.min(totalPages, currentPage + 1)}`}
-              className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
-                currentPage === totalPages ? 'pointer-events-none opacity-50' : ''
-              }`}
-            >
-              {STRINGS.HOME.pagination.next}
-            </a>
-          </div>
-        )}
+        <ScriptsListClient
+          initialScripts={transformedScripts}
+          isAuthenticated={true}
+          currentUserId={session.user.id}
+          currentPage={currentPage}
+          totalPages={totalPages}
+        />
       </div>
     </main>
   )

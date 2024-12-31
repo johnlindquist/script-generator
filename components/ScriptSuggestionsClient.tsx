@@ -10,7 +10,8 @@ interface Props {
 }
 
 const ScriptSuggestionsClient = forwardRef<{ refreshSuggestions: () => void }, Props>(
-  ({ setPrompt, setIsFromSuggestion, className = '' }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ({ setPrompt, setIsFromSuggestion, className = '' }, _ref) => {
     const suggestions = use(getRandomSuggestions())
 
     return (
