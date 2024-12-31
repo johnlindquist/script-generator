@@ -61,6 +61,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [editableScript, setEditableScript] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [usage, setUsage] = useState<{ count: number; limit: number } | null>(null)
+  const [isLoadingUsage, setIsLoadingUsage] = useState(true)
+  const [isFromSuggestion, setIsFromSuggestion] = useState(false)
   const editorRef = useRef<EditorRef | null>(null)
   const prevIsGeneratingRef = useRef(isGenerating)
 
@@ -68,6 +70,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const fetchUsage = async () => {
     if (!isAuthenticated) return
     try {
+      setIsLoadingUsage(true)
       const response = await fetch('/api/usage')
       if (response.ok) {
         const data = await response.json()
@@ -75,6 +78,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       }
     } catch (error) {
       console.error('Failed to fetch usage:', error)
+    } finally {
+      setIsLoadingUsage(false)
     }
   }
 
@@ -350,6 +355,21 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [generatedScript, isGenerating])
 
+  // Auto-generate when prompt is set from suggestions
+  useEffect(() => {
+    if (
+      isFromSuggestion &&
+      prompt.trim().length >= 15 &&
+      !isGenerating &&
+      isAuthenticated &&
+      (!isLoadingUsage || usage?.count !== usage?.limit)
+    ) {
+      const requestId = generateRequestId()
+      generateScript(prompt, requestId)
+      setIsFromSuggestion(false)
+    }
+  }, [prompt, isFromSuggestion])
+
   return (
     <div className="mb-12">
       <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
@@ -371,17 +391,20 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <textarea
             value={prompt}
-            onChange={e => setPrompt(e.target.value)}
+            onChange={e => {
+              setIsFromSuggestion(false)
+              setPrompt(e.target.value)
+            }}
             onKeyDown={handleKeyDown}
             placeholder={
               !isAuthenticated
                 ? STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
-                : usage?.count === usage?.limit
+                : !isLoadingUsage && usage?.count === usage?.limit
                   ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
                   : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
             }
             className="w-full h-32 p-4 mb-2 bg-black/20 border border-amber-400/20 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none"
-            disabled={!isAuthenticated || usage?.count === usage?.limit}
+            disabled={!isAuthenticated || (!isLoadingUsage && usage?.count === usage?.limit)}
           />
 
           <div className="flex justify-between items-center mb-4">
@@ -393,15 +416,20 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 prompt.trim().length.toString()
               )}
             </span>
-            {isAuthenticated && usage && (
-              <span
-                className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
-              >
-                {STRINGS.SCRIPT_GENERATION.generationUsage
-                  .replace('{count}', usage.count.toString())
-                  .replace('{limit}', usage.limit.toString())}
-              </span>
-            )}
+            {isAuthenticated &&
+              (isLoadingUsage ? (
+                <span className="text-sm text-slate-400 bg-amber-400/5 rounded-full px-3 py-1 animate-pulse w-32 h-5" />
+              ) : (
+                usage && (
+                  <span
+                    className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
+                  >
+                    {STRINGS.SCRIPT_GENERATION.generationUsage
+                      .replace('{count}', usage.count.toString())
+                      .replace('{limit}', usage.limit.toString())}
+                  </span>
+                )
+              ))}
           </div>
           <div className="flex justify-center mt-4">
             <button
@@ -410,13 +438,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 !isAuthenticated ||
                 isGenerating ||
                 prompt.trim().length < 15 ||
-                usage?.count === usage?.limit
+                (!isLoadingUsage && usage?.count === usage?.limit)
               }
               className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {!isAuthenticated ? (
                 STRINGS.SCRIPT_GENERATION.signInToGenerate
-              ) : usage?.count === usage?.limit ? (
+              ) : !isLoadingUsage && usage?.count === usage?.limit ? (
                 STRINGS.SCRIPT_GENERATION.dailyLimitReached
               ) : isGenerating ? (
                 <>
@@ -440,7 +468,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           <h3 className="text-lg mb-4 text-center">
             {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
           </h3>
-          {isAuthenticated && <ScriptSuggestions setPrompt={setPrompt} className="mb-4" />}
+          {isAuthenticated && (
+            <ScriptSuggestions
+              setPrompt={setPrompt}
+              setIsFromSuggestion={setIsFromSuggestion}
+              className="mb-4"
+            />
+          )}
         </div>
       )}
 

@@ -3,12 +3,20 @@ import ScriptSuggestionsClient from '@/components/ScriptSuggestionsClient'
 
 interface Props {
   setPrompt: (prompt: string) => void
+  setIsFromSuggestion: (value: boolean) => void
   className?: string
 }
 
 const ScriptSuggestions = forwardRef<{ refreshSuggestions: () => void }, Props>(
-  ({ setPrompt, className }, ref) => {
-    return <ScriptSuggestionsClient ref={ref} setPrompt={setPrompt} className={className} />
+  ({ setPrompt, setIsFromSuggestion, className }, ref) => {
+    return (
+      <ScriptSuggestionsClient
+        ref={ref}
+        setPrompt={setPrompt}
+        setIsFromSuggestion={setIsFromSuggestion}
+        className={className}
+      />
+    )
   }
 )
 
