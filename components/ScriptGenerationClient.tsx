@@ -127,6 +127,16 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       ? 'refining'
       : null
 
+  useEffect(() => {
+    if (
+      state.context.isFromSuggestion &&
+      state.context.prompt.trim().length >= 15 &&
+      isAuthenticated
+    ) {
+      send({ type: 'GENERATE_INITIAL' })
+    }
+  }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
+
   return (
     <div className="mb-12">
       <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
