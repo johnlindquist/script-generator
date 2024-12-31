@@ -36,6 +36,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A valid requestId is required' }, { status: 400 })
     }
 
+    // Check and increment usage count
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Get or create today's usage record
+    const usage = await prisma.usage.findUnique({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: today,
+        },
+      },
+    })
+
+    // If no usage record exists, create one starting at 0
+    if (!usage) {
+      await prisma.usage.create({
+        data: {
+          userId: session.user.id,
+          date: today,
+          count: 0,
+        },
+      })
+    }
+
+    // Get current usage count
+    const currentUsage = await prisma.usage.findUnique({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: today,
+        },
+      },
+    })
+
+    if (currentUsage && currentUsage.count >= 50) {
+      return NextResponse.json(
+        {
+          error: 'Daily generation limit reached',
+          details: 'You have used all 50 generations for today. Try again tomorrow!',
+        },
+        { status: 429 }
+      )
+    }
+
+    // Increment usage count
+    await prisma.usage.update({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date: today,
+        },
+      },
+      data: {
+        count: { increment: 1 },
+      },
+    })
+
     // Generate initial script using Gemini
     const result = await model.generateContentStream(
       INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(

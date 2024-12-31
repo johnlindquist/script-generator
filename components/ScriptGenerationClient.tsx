@@ -59,9 +59,28 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [generatedScript, setGeneratedScript] = useState<string | null>(null)
   const [editableScript, setEditableScript] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [usage, setUsage] = useState<{ count: number; limit: number } | null>(null)
   const editorRef = useRef<EditorRef | null>(null)
   const prevIsGeneratingRef = useRef(isGenerating)
   const suggestionsRef = useRef<{ refreshSuggestions: () => void } | null>(null)
+
+  // Fetch usage on mount and after each generation
+  const fetchUsage = async () => {
+    if (!isAuthenticated) return
+    try {
+      const response = await fetch('/api/usage')
+      if (response.ok) {
+        const data = await response.json()
+        setUsage(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsage()
+  }, [isAuthenticated])
 
   const handleEditorDidMount = (editor: EditorRef) => {
     editorRef.current = editor
@@ -129,7 +148,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       })
 
       if (!initialResponse.ok) {
-        throw new Error('Failed to generate initial script')
+        const errorData = await initialResponse.json()
+        throw new Error(errorData.details || 'Failed to generate initial script')
       }
 
       const initialReader = initialResponse.body?.getReader()
@@ -175,7 +195,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       })
 
       if (!refinedResponse.ok) {
-        throw new Error('Failed to refine script')
+        const errorData = await refinedResponse.json()
+        throw new Error(errorData.details || 'Failed to refine script')
       }
 
       const refinedReader = refinedResponse.body?.getReader()
@@ -199,6 +220,9 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       // Set the final complete text
       setEditableScript(refinedBuffer)
       setGeneratedScript(refinedBuffer)
+
+      // Refresh usage after successful generation
+      await fetchUsage()
     } catch (err) {
       console.error('Generation error:', err)
       setError(err instanceof Error ? err.message : 'Failed to generate script')
@@ -351,23 +375,34 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               value={prompt}
               onChange={e => isAuthenticated && setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isGenerating || !isAuthenticated}
+              disabled={
+                isGenerating || !isAuthenticated || (usage?.count ?? 0) >= (usage?.limit ?? 50)
+              }
               maxLength={10000}
               className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
               placeholder={
-                isAuthenticated
-                  ? 'Example: A script that finds all large files in a directory and shows their sizes in human-readable format'
-                  : 'Sign in to start generating scripts!'
+                !isAuthenticated
+                  ? 'Sign in to start generating scripts!'
+                  : usage && usage.count >= usage.limit
+                    ? 'Daily generation limit reached. Try again tomorrow!'
+                    : 'Example: A script that finds all large files in a directory and shows their sizes in human-readable format'
               }
               required
               onClick={() => !isAuthenticated && signIn()}
             />
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2 flex justify-between items-center">
               <span
                 className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
               >
                 {prompt.trim().length}/10,000 characters (minimum 15)
               </span>
+              {isAuthenticated && usage && (
+                <span
+                  className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
+                >
+                  {usage.count} / {usage.limit} generations used today
+                </span>
+              )}
             </div>
           </div>
 
@@ -375,7 +410,11 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
             <>
               <button
                 type="submit"
-                disabled={isGenerating || prompt.trim().length < 15}
+                disabled={
+                  isGenerating ||
+                  prompt.trim().length < 15 ||
+                  (usage?.count ?? 0) >= (usage?.limit ?? 50)
+                }
                 className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
                   isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
                 }`}
@@ -390,6 +429,11 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                   <>
                     <RocketLaunchIcon className="w-5 h-5" />
                     Sign in to Generate
+                  </>
+                ) : usage && usage.count >= usage.limit ? (
+                  <>
+                    <RocketLaunchIcon className="w-5 h-5" />
+                    Daily Limit Reached
                   </>
                 ) : (
                   <>
