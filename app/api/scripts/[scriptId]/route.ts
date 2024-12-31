@@ -71,6 +71,9 @@ export async function DELETE(request: NextRequest, context: Context) {
       prisma.verification.deleteMany({
         where: { scriptId: params.scriptId },
       }),
+      prisma.scriptVersion.deleteMany({
+        where: { scriptId: params.scriptId },
+      }),
       prisma.script.delete({
         where: { id: params.scriptId },
       }),
