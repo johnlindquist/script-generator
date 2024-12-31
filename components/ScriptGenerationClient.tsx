@@ -12,6 +12,7 @@ import {
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/solid'
 import { toast } from 'react-hot-toast'
+import { motion } from 'framer-motion'
 
 interface EditorRef {
   getModel: () => {
@@ -26,32 +27,30 @@ interface Props {
   isAuthenticated: boolean
 }
 
-const LoadingDots = () => (
-  <span className="loading-dots">
-    <style jsx>{`
-      .loading-dots::after {
-        content: '';
-        animation: dots 1.5s steps(4, end) infinite;
-      }
-      @keyframes dots {
-        0%,
-        20% {
-          content: '';
-        }
-        40% {
-          content: '.';
-        }
-        60% {
-          content: '..';
-        }
-        80%,
-        100% {
-          content: '...';
-        }
-      }
-    `}</style>
-  </span>
-)
+const AnimatedText = ({ text }: { text: string }) => {
+  return (
+    <div className="inline-flex items-center gap-2">
+      <span>{text}</span>
+      <motion.div className="flex gap-1" initial={{ opacity: 0.5 }} animate={{ opacity: 1 }}>
+        {[0, 1, 2].map(index => (
+          <motion.span
+            key={index}
+            className="w-1.5 h-1.5 rounded-full bg-amber-400"
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.5, 1, 0.5],
+            }}
+            transition={{
+              duration: 1,
+              repeat: Infinity,
+              delay: index * 0.2,
+            }}
+          />
+        ))}
+      </motion.div>
+    </div>
+  )
+}
 
 export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [prompt, setPrompt] = useState('')
@@ -329,14 +328,15 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
   return (
     <div className="mb-12">
-      <h2 className="text-2xl font-bold mb-6 text-center">
+      <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
         {isGenerating ? (
-          <span>
-            {generationPass === 'initial'
-              ? 'Generating Initial Script Idea'
-              : 'Refining Script Idea'}
-            <LoadingDots />
-          </span>
+          <AnimatedText
+            text={
+              generationPass === 'initial'
+                ? 'Generating Initial Script Idea'
+                : 'Refining Script Idea'
+            }
+          />
         ) : generatedScript ? (
           'Done ✅. Please Make Final Edits and Save'
         ) : (
