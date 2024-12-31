@@ -12,12 +12,12 @@ model User {
   id            String         @id @default(uuid())
   githubId      String         @unique
   username      String
-  verifications Verification[]
   favorites     Favorite[]
+  installs      Install[]
+  verifications Verification[]
   scripts       Script[]
   requestedBy   Script[]       @relation("RequestedBy")
   usage         Usage[]
-  installs      Install[]
 }
 
 model Script {
@@ -26,8 +26,6 @@ model Script {
   title         String
   summary       String?
   content       String
-  dashedName    String?
-  uppercaseName String?
   starred       Boolean         @default(false)
   saved         Boolean         @default(false)
   ownerId       String
@@ -41,9 +39,11 @@ model Script {
   sponsorId     String?
   sponsored     Boolean         @default(false)
   status        ScriptStatus    @default(ACTIVE)
-  verifications Verification[]
+  dashedName    String?
+  uppercaseName String?
   favorites     Favorite[]
   installs      Install[]
+  verifications Verification[]
   owner         User            @relation(fields: [ownerId], references: [id])
   parent        Script?         @relation("ScriptForks", fields: [parentId], references: [id])
   children      Script[]        @relation("ScriptForks")
@@ -52,9 +52,7 @@ model Script {
   versions      ScriptVersion[]
   tags          Tag[]           @relation("ScriptTags")
 
-  @@index([status, saved])
-  @@index([ownerId])
-  @@index([createdAt])
+  @@index([createdAt(sort: Desc)])
 }
 
 model ScriptVersion {
@@ -63,8 +61,6 @@ model ScriptVersion {
   content   String
   createdAt DateTime @default(now())
   script    Script   @relation(fields: [scriptId], references: [id])
-
-  @@index([scriptId])
 }
 
 model Tag {
@@ -100,7 +96,6 @@ model Verification {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
-  @@index([scriptId])
   @@map("Like")
 }
 
@@ -108,12 +103,10 @@ model Install {
   id        String   @id @default(uuid())
   userId    String?
   scriptId  String
-  ip        String
   createdAt DateTime @default(now())
+  ip        String
   script    Script   @relation(fields: [scriptId], references: [id])
   user      User?    @relation(fields: [userId], references: [id])
-
-  @@index([scriptId])
 }
 
 model Favorite {
@@ -125,7 +118,6 @@ model Favorite {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
-  @@index([scriptId])
 }
 
 enum ScriptStatus {
