@@ -58,9 +58,10 @@ export const STRINGS = {
     headingWhileRefining: 'Refining Script Idea',
     headingDone: 'Done ✅. Please Make Final Edits and Save',
     headingDefault: 'What Would You Like to Automate?',
+    scriptSuggestionsHeading: 'Or click one of these suggestions',
 
     // Buttons
-    generateScript: 'Generate Script',
+    generateScript: 'Generate',
     signInToGenerate: 'Sign in to Generate',
     dailyLimitReached: 'Daily Limit Reached',
     saveScript: 'Save Script',

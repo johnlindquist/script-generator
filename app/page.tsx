@@ -61,7 +61,7 @@ export default async function Home({
       <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
         <NavBar isAuthenticated={!!session} />
         <div className="container mx-auto px-4 py-8">
-          <div className="mb-12 text-center">
+          <div className="mb-4 text-center">
             {!session && (
               <p className="text-slate-300 mb-8">
                 Browse existing scripts below or <SignInButton /> to generate your own!
@@ -143,7 +143,7 @@ export default async function Home({
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={!!session} />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-12 text-center">
+        <div className="mb-4 text-center">
           {!session && (
             <p className="text-slate-300 mb-8">
               Browse existing scripts below or <SignInButton /> to generate your own!

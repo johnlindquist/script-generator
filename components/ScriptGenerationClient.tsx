@@ -13,6 +13,7 @@ import {
 import { toast } from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { STRINGS } from '@/lib/strings'
+import ScriptSuggestions from '@/components/ScriptSuggestions'
 
 interface EditorRef {
   getModel: () => {
@@ -368,85 +369,79 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       </h2>
       {!generatedScript && !isGenerating && (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <textarea
-              id="prompt"
-              value={prompt}
-              onChange={e => isAuthenticated && setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={
-                isGenerating || !isAuthenticated || (usage?.count ?? 0) >= (usage?.limit ?? 25)
-              }
-              maxLength={10000}
-              className={`w-full h-32 px-3 py-2 bg-zinc-900/90 text-slate-300 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed ${!isAuthenticated ? 'cursor-pointer' : ''}`}
-              placeholder={
-                !isAuthenticated
-                  ? STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
-                  : usage && usage.count >= usage.limit
-                    ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
-                    : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
-              }
-              required
-              onClick={() => !isAuthenticated && signIn()}
-            />
-            <div className="mt-2 flex justify-between items-center">
-              <span
-                className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
-              >
-                {STRINGS.SCRIPT_GENERATION.characterCount.replace(
-                  '{count}',
-                  prompt.trim().length.toString()
-                )}
-              </span>
-              {isAuthenticated && usage && (
-                <span
-                  className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
-                >
-                  {STRINGS.SCRIPT_GENERATION.generationUsage
-                    .replace('{count}', usage.count.toString())
-                    .replace('{limit}', usage.limit.toString())}
-                </span>
-              )}
-            </div>
-          </div>
+          <textarea
+            value={prompt}
+            onChange={e => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              !isAuthenticated
+                ? STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
+                : usage?.count === usage?.limit
+                  ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
+                  : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
+            }
+            className="w-full h-32 p-4 mb-2 bg-black/20 border border-amber-400/20 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none"
+            disabled={!isAuthenticated || usage?.count === usage?.limit}
+          />
 
-          {!isGenerating && (
+          <div className="flex justify-between items-center mb-4">
+            <span
+              className={`text-sm ${prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
+            >
+              {STRINGS.SCRIPT_GENERATION.characterCount.replace(
+                '{count}',
+                prompt.trim().length.toString()
+              )}
+            </span>
+            {isAuthenticated && usage && (
+              <span
+                className={`text-sm ${usage.count >= usage.limit ? 'text-red-400' : 'text-slate-400'}`}
+              >
+                {STRINGS.SCRIPT_GENERATION.generationUsage
+                  .replace('{count}', usage.count.toString())
+                  .replace('{limit}', usage.limit.toString())}
+              </span>
+            )}
+          </div>
+          <div className="flex justify-center mt-4">
             <button
               type="submit"
               disabled={
+                !isAuthenticated ||
                 isGenerating ||
                 prompt.trim().length < 15 ||
-                (usage?.count ?? 0) >= (usage?.limit ?? 25)
+                usage?.count === usage?.limit
               }
-              className={`w-1/2 bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl transition flex items-center justify-center gap-2 mx-auto ${
-                isGenerating ? 'cursor-wait' : !isAuthenticated ? 'cursor-pointer' : ''
-              }`}
-              onClick={() => !isAuthenticated && signIn()}
+              className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isGenerating ? (
+              {!isAuthenticated ? (
+                STRINGS.SCRIPT_GENERATION.signInToGenerate
+              ) : usage?.count === usage?.limit ? (
+                STRINGS.SCRIPT_GENERATION.dailyLimitReached
+              ) : isGenerating ? (
                 <>
                   <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                  {STRINGS.SCRIPT_GENERATION.generating}
-                </>
-              ) : !isAuthenticated ? (
-                <>
-                  <RocketLaunchIcon className="w-5 h-5" />
-                  {STRINGS.SCRIPT_GENERATION.signInToGenerate}
-                </>
-              ) : usage && usage.count >= usage.limit ? (
-                <>
-                  <RocketLaunchIcon className="w-5 h-5" />
-                  {STRINGS.SCRIPT_GENERATION.dailyLimitReached}
+                  <AnimatedText text={STRINGS.SCRIPT_GENERATION.generating} />
                 </>
               ) : (
                 <>
-                  <RocketLaunchIcon className="w-5 h-5" />
                   {STRINGS.SCRIPT_GENERATION.generateScript}
+                  <RocketLaunchIcon className="w-5 h-5" />
                 </>
               )}
             </button>
-          )}
+          </div>
         </form>
+      )}
+
+      {!generatedScript && !isGenerating && (
+        <div className="pt-4">
+          <hr className="border-amber-400/20 my-4" />
+          <h3 className="text-lg mb-4 text-center">
+            {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
+          </h3>
+          {isAuthenticated && <ScriptSuggestions setPrompt={setPrompt} className="mb-4" />}
+        </div>
       )}
 
       {error && (
