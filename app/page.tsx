@@ -60,7 +60,7 @@ export default async function Home({
     return (
       <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
         <NavBar isAuthenticated={!!session} />
-        <div className="mx-auto px-2 sm:px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="mb-4 text-center">
             <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
           </div>
@@ -132,7 +132,7 @@ export default async function Home({
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={!!session} />
-      <div className="mx-auto px-2 sm:px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-4 text-center">
           <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
         </div>

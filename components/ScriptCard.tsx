@@ -38,7 +38,7 @@ export default function ScriptCard({ script, isAuthenticated, currentUserId }: S
 
   return (
     <div
-      className="border border-neutral-700 rounded-lg px-4 py-4 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90"
+      className="border border-neutral-700 rounded-lg px-6 py-4 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90"
       data-script-id={script.id}
     >
       <div className="mb-4">
