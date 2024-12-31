@@ -24,6 +24,9 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  pages: {
+    signIn: '/auth/signin',
+  },
   ...(process.env.AUTH_REDIRECT_PROXY_URL
     ? {
         callbacks: {
@@ -47,6 +50,11 @@ export const authOptions: AuthOptions = {
         return url
       }
 
+      // Handle relative URLs
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`
+      }
+
       const allowedDomains = [
         'scriptkit.com',
         'dev-scriptkit.vercel.app',
@@ -56,19 +64,23 @@ export const authOptions: AuthOptions = {
         'script-generator-*.vercel.app',
       ]
 
-      const urlObj = new URL(url)
-      const host = urlObj.host.replace(/^(https?:\/\/)?(www\.)?/, '')
+      try {
+        const urlObj = new URL(url)
+        const host = urlObj.host.replace(/^(https?:\/\/)?(www\.)?/, '')
 
-      const isAllowedDomain = allowedDomains.some(domain => {
-        if (domain.includes('*')) {
-          const pattern = domain.replace('*', '.*')
-          return new RegExp(`^${pattern}$`).test(host)
+        const isAllowedDomain = allowedDomains.some(domain => {
+          if (domain.includes('*')) {
+            const pattern = domain.replace('*', '.*')
+            return new RegExp(`^${pattern}$`).test(host)
+          }
+          return domain === host
+        })
+
+        if (isAllowedDomain) {
+          return url
         }
-        return domain === host
-      })
-
-      if (isAllowedDomain) {
-        return url
+      } catch (error) {
+        console.error('Error parsing URL:', error)
       }
 
       return baseUrl

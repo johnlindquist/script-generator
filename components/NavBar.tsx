@@ -1,6 +1,6 @@
 'use client'
 
-import { signOut, useSession } from 'next-auth/react'
+import { signOut, useSession, signIn } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid'
@@ -48,13 +48,13 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
             </button>
           </>
         ) : (
-          <Link
-            href="/api/auth/signin"
+          <button
+            onClick={() => signIn('github', { callbackUrl: '/' })}
             className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition flex items-center gap-2"
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
             {STRINGS.NAVBAR.signInToGenerate}
-          </Link>
+          </button>
         )}
       </div>
     </nav>
