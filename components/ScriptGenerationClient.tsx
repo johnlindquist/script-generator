@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
@@ -55,9 +55,145 @@ const AnimatedText = ({ text }: { text: string }) => {
 }
 
 export default function ScriptGenerationClient({ isAuthenticated }: Props) {
-  const [state, send] = useMachine(scriptGenerationMachine)
-
+  const [state, send] = useMachine(scriptGenerationMachine, {
+    input: {
+      prompt: '',
+      requestId: null,
+      scriptId: null,
+    },
+  })
+  const [streamedText, setStreamedText] = useState('')
   const editorRef = useRef<EditorRef | null>(null)
+
+  // Update the editor with streamed text
+  useEffect(() => {
+    if (
+      streamedText &&
+      (state.matches('generatingInitial') || state.matches('generatingRefined'))
+    ) {
+      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: streamedText })
+    }
+  }, [streamedText, state.matches])
+
+  // Handle streaming text updates
+  const handleStreamedText = useCallback((text: string) => {
+    setStreamedText(text)
+  }, [])
+
+  // Attach the handler to the state machine
+  useEffect(() => {
+    // Only start streaming if we're in a generating state
+    if (!state.matches('generatingInitial') && !state.matches('generatingRefined')) {
+      return
+    }
+
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    const fetchWithStreaming = async () => {
+      try {
+        const url = state.matches('generatingInitial') ? '/api/generate-initial' : '/api/generate'
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: state.context.prompt,
+            requestId: state.context.requestId,
+            scriptId: state.context.scriptId,
+          }),
+          signal,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          const errorMessage =
+            response.status === 429
+              ? 'Rate limit exceeded. Please wait a moment before trying again.'
+              : errorData.details || 'Failed to generate script'
+          throw new Error(errorMessage)
+        }
+
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error('No reader available')
+        }
+
+        try {
+          let buffer = ''
+          while (true) {
+            try {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              const text = new TextDecoder().decode(value)
+              buffer += text
+              buffer = buffer.trim()
+
+              const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+              if (idMatch) {
+                const scriptId = idMatch[1]
+                buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+                send({ type: 'SET_SCRIPT_ID', scriptId })
+              }
+
+              handleStreamedText(buffer)
+            } catch {
+              if (signal.aborted) {
+                // Clean abort during state transition, not an error
+                return
+              }
+              // If we get a read error but have a buffer, we can still use it
+              if (buffer) {
+                handleStreamedText(buffer)
+              }
+              break
+            }
+          }
+
+          // Only proceed if we have a valid buffer and haven't been aborted
+          if (buffer && !signal.aborted) {
+            // Generation complete, move to next state
+            if (state.matches('generatingInitial')) {
+              // Make sure we preserve the final buffer before transitioning
+              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
+              send({ type: 'GENERATE_REFINED' })
+            } else {
+              // Ensure final buffer is set before completing
+              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
+              send({ type: 'COMPLETE_GENERATION', script: buffer })
+            }
+          }
+        } finally {
+          if (!signal.aborted) {
+            reader.cancel().catch(() => {})
+          }
+        }
+      } catch (error) {
+        if (!signal.aborted) {
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+          // First cancel the generation to go back to idle
+          send({ type: 'CANCEL_GENERATION' })
+          // Then set the error message
+          send({ type: 'SET_ERROR', error: errorMessage })
+        }
+      }
+    }
+
+    fetchWithStreaming()
+
+    return () => {
+      // Only abort if we're not transitioning between generation phases
+      if (state.matches('generatingInitial') && !state.matches('generatingRefined')) {
+        controller.abort()
+      }
+    }
+  }, [
+    state.matches,
+    state.context.prompt,
+    state.context.requestId,
+    state.context.scriptId,
+    handleStreamedText,
+  ])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -86,6 +222,18 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
   // Auto-scroll to bottom when new content is streamed
   useEffect(() => {
+    console.log('State changed:', {
+      state: state.value,
+      editableScript: state.context.editableScript,
+      timestamp: new Date().toISOString(),
+    })
+  }, [state])
+
+  useEffect(() => {
+    console.log('editableScript changed:', {
+      editableScript: state.context.editableScript,
+      timestamp: new Date().toISOString(),
+    })
     const editor = editorRef.current
     if (editor && (state.matches('generatingInitial') || state.matches('generatingRefined'))) {
       const model = editor.getModel()

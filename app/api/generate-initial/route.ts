@@ -96,44 +96,85 @@ export async function POST(req: NextRequest) {
     )
 
     let fullScript = ''
+    let aborted = false
 
-    // Create a ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         try {
           for await (const chunk of result.stream) {
+            if (aborted) break
             const text = cleanCodeFences(chunk.text())
             fullScript += text
             controller.enqueue(new TextEncoder().encode(text))
           }
 
-          // Save the raw script to the database
-          const script = await prisma.script.create({
-            data: {
-              content: fullScript,
-              title: prompt.slice(0, 100),
-              summary: prompt,
-              requestId,
-              ownerId: session.user.id,
-              saved: false,
-              status: 'IN_PROGRESS', // Mark as in progress until second pass
-            },
-          })
+          if (!aborted) {
+            try {
+              // Check for existing script with this requestId
+              const existingScript = await prisma.script.findUnique({
+                where: { requestId },
+              })
 
-          // Add a special delimiter to indicate the script ID
-          controller.enqueue(new TextEncoder().encode(`\n__SCRIPT_ID__${script.id}__SCRIPT_ID__\n`))
+              let script
+              if (existingScript) {
+                // Update existing script
+                script = await prisma.script.update({
+                  where: { requestId },
+                  data: {
+                    content: fullScript,
+                    title: prompt.slice(0, 100),
+                    summary: prompt,
+                    ownerId: session.user.id,
+                    saved: false,
+                    status: 'IN_PROGRESS',
+                  },
+                })
+              } else {
+                // Create new script
+                script = await prisma.script.create({
+                  data: {
+                    content: fullScript,
+                    title: prompt.slice(0, 100),
+                    summary: prompt,
+                    requestId,
+                    ownerId: session.user.id,
+                    saved: false,
+                    status: 'IN_PROGRESS',
+                  },
+                })
+              }
 
-          controller.close()
+              // Add a special delimiter to indicate the script ID
+              controller.enqueue(
+                new TextEncoder().encode(`\n__SCRIPT_ID__${script.id}__SCRIPT_ID__\n`)
+              )
+              controller.enqueue(new TextEncoder().encode(''))
+              controller.close()
+            } catch (dbError) {
+              const errorMessage =
+                dbError instanceof Error ? dbError.message : 'Database error occurred'
+              controller.error(new Error(errorMessage))
+            }
+          } else {
+            controller.close()
+          }
         } catch (streamError) {
-          console.error('Stream error:', streamError)
-          controller.error(streamError)
+          const errorMessage =
+            streamError instanceof Error ? streamError.message : 'Stream error occurred'
+          controller.error(new Error(errorMessage))
         }
+      },
+      cancel() {
+        aborted = true
       },
     })
 
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
       },
     })
   } catch (error) {

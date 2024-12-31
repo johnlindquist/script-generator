@@ -32,168 +32,123 @@ type ScriptGenerationEvent =
   | { type: 'FROM_SUGGESTION'; value: boolean }
   | { type: 'UPDATE_EDITABLE_SCRIPT'; script: string }
   | { type: 'SET_SCRIPT_ID'; scriptId: string }
+  | { type: 'COMPLETE_GENERATION'; script: string }
 
-const generateInitialScript = fromPromise(
-  async ({
-    input,
-    emit,
-  }: {
-    input: ScriptGenerationContext
-    emit: (event: ScriptGenerationEvent) => void
-  }): Promise<GenerateInitialResponse> => {
-    const response = await fetch('/api/generate-initial', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: input.prompt, requestId: input.requestId }),
-    })
+const generateScript = async (
+  url: string,
+  input: ScriptGenerationContext,
+  emit: (event: ScriptGenerationEvent) => void
+) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: input.prompt,
+      requestId: input.requestId,
+      scriptId: input.scriptId,
+    }),
+  })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.details || 'Failed to generate initial script')
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('No reader available')
-    }
-
-    let buffer = ''
-    let scriptId = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const text = new TextDecoder().decode(value)
-      buffer += text
-      buffer = buffer.trim()
-
-      const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-      if (idMatch) {
-        scriptId = idMatch[1]
-        buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
-        emit({ type: 'SET_SCRIPT_ID', scriptId })
-      }
-
-      // Send partial text updates to the machine
-      emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-    }
-
-    if (!scriptId) {
-      throw new Error('Failed to get script ID from initial generation')
-    }
-
-    return { script: buffer, scriptId }
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.details || 'Failed to generate script')
   }
-)
 
-const generateRefinedScript = fromPromise(
-  async ({
-    input,
-    emit,
-  }: {
-    input: ScriptGenerationContext
-    emit: (event: ScriptGenerationEvent) => void
-  }): Promise<string> => {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scriptId: input.scriptId }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.details || 'Failed to refine script')
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('No reader available')
-    }
-
-    let buffer = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const text = new TextDecoder().decode(value)
-      buffer += text
-      buffer = buffer.trim()
-
-      // Send partial text updates to the machine
-      emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-    }
-
-    return buffer
+  const reader = response.body?.getReader()
+  if (!reader) {
+    throw new Error('No reader available')
   }
-)
 
-const saveScript = fromPromise(
-  async ({ input }: { input: ScriptGenerationContext }): Promise<void> => {
-    const response = await fetch('/api/scripts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: input.prompt,
-        code: input.editableScript,
-        saved: true,
-      }),
-    })
+  let buffer = ''
+  let scriptId = ''
 
-    if (!response.ok) {
-      throw new Error('Failed to save script')
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const text = new TextDecoder().decode(value)
+    buffer += text
+    buffer = buffer.trim()
+
+    const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+    if (idMatch) {
+      scriptId = idMatch[1]
+      buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+      emit({ type: 'SET_SCRIPT_ID', scriptId })
     }
 
-    toast.success('Script saved successfully!')
-    window.location.reload()
+    // Send partial text updates
+    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
   }
-)
 
-const saveAndInstallScript = fromPromise(
-  async ({ input }: { input: ScriptGenerationContext }): Promise<void> => {
-    const response = await fetch('/api/scripts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: input.prompt,
-        code: input.editableScript,
-        saved: true,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to save script')
-    }
-
-    const { id, dashedName } = await response.json()
-
-    const installResponse = await fetch('/api/install', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scriptId: id }),
-    })
-
-    if (!installResponse.ok) {
-      throw new Error('Failed to track install')
-    }
-
-    toast.success('Script saved and installed successfully!')
-
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
-    window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${id}/raw/${dashedName || 'script'}.ts`)}`
-  }
-)
+  return { script: buffer, scriptId }
+}
 
 export const scriptGenerationMachine = setup({
   types: {
     context: {} as ScriptGenerationContext,
     events: {} as ScriptGenerationEvent,
+    input: {} as { prompt: string; requestId: string | null; scriptId: string | null },
+    output: {} as { script: string; scriptId: string },
   },
   actors: {
-    generateInitialScript,
-    generateRefinedScript,
-    saveScriptService: saveScript,
-    saveAndInstallService: saveAndInstallScript,
+    generateInitialScript: fromPromise(async ({ input, emit }) => {
+      return generateScript('/api/generate-initial', input as ScriptGenerationContext, emit)
+    }),
+    generateRefinedScript: fromPromise(async ({ input, emit }) => {
+      return generateScript('/api/generate', input as ScriptGenerationContext, emit)
+    }),
+    saveScriptService: fromPromise(async ({ input }: { input: ScriptGenerationContext }) => {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: input.prompt,
+          code: input.editableScript,
+          saved: true,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save script')
+      }
+
+      toast.success('Script saved successfully!')
+      window.location.reload()
+    }),
+    saveAndInstallService: fromPromise(async ({ input }: { input: ScriptGenerationContext }) => {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: input.prompt,
+          code: input.editableScript,
+          saved: true,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save script')
+      }
+
+      const { id, dashedName } = await response.json()
+
+      const installResponse = await fetch('/api/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scriptId: id }),
+      })
+
+      if (!installResponse.ok) {
+        throw new Error('Failed to track install')
+      }
+
+      toast.success('Script saved and installed successfully!')
+
+      const baseUrl =
+        typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
+      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${id}/raw/${dashedName || 'script'}.ts`)}`
+    }),
   },
 }).createMachine({
   id: 'scriptGeneration',
@@ -249,7 +204,6 @@ export const scriptGenerationMachine = setup({
       entry: assign({
         error: () => null,
         generatedScript: () => null,
-        editableScript: () => '',
         requestId: () => crypto.randomUUID(),
       }),
       invoke: {
@@ -258,53 +212,77 @@ export const scriptGenerationMachine = setup({
         onDone: {
           target: 'generatingRefined',
           actions: assign({
-            editableScript: ({ event }) => event.output.script,
-            scriptId: ({ event }) => event.output.scriptId,
+            scriptId: ({ event }) => (event.output as GenerateInitialResponse).scriptId,
           }),
         },
         onError: {
           target: 'idle',
           actions: assign({
-            error: ({ event }) => event.error as string,
+            error: ({ event }) => {
+              const error = event.error
+              return error instanceof Error ? error.message : String(error)
+            },
           }),
         },
       },
       on: {
-        CANCEL_GENERATION: { target: 'idle' },
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: assign({
+            error: null,
+            editableScript: '',
+          }),
+        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
+          }),
+        },
+        SET_ERROR: {
+          actions: assign({
+            error: ({ event }) => String(event.error),
           }),
         },
       },
     },
 
     generatingRefined: {
-      entry: assign({
-        editableScript: () => '',
-      }),
       invoke: {
         src: 'generateRefinedScript',
         input: ({ context }) => context,
         onDone: {
           target: 'done',
           actions: assign({
-            editableScript: ({ event }) => event.output,
-            generatedScript: ({ event }) => event.output,
+            editableScript: ({ event }) => (event.output as { script: string }).script,
+            generatedScript: ({ event }) => (event.output as { script: string }).script,
           }),
         },
         onError: {
           target: 'idle',
           actions: assign({
-            error: ({ event }) => event.error as string,
+            error: ({ event }) => {
+              const error = event.error
+              return error instanceof Error ? error.message : String(error)
+            },
           }),
         },
       },
       on: {
-        CANCEL_GENERATION: { target: 'idle' },
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: assign({
+            error: null,
+            editableScript: '',
+          }),
+        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
+          }),
+        },
+        SET_ERROR: {
+          actions: assign({
+            error: ({ event }) => String(event.error),
           }),
         },
       },
@@ -348,7 +326,10 @@ export const scriptGenerationMachine = setup({
         onError: {
           target: 'done',
           actions: assign({
-            error: ({ event }) => event.error as string,
+            error: ({ event }) => {
+              const error = event.error
+              return error instanceof Error ? error.message : String(error)
+            },
           }),
         },
       },
@@ -370,7 +351,10 @@ export const scriptGenerationMachine = setup({
         onError: {
           target: 'done',
           actions: assign({
-            error: ({ event }) => event.error as string,
+            error: ({ event }) => {
+              const error = event.error
+              return error instanceof Error ? error.message : String(error)
+            },
           }),
         },
       },

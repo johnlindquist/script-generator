@@ -105,46 +105,63 @@ export async function POST(req: NextRequest) {
     )
 
     let fullScript = ''
+    let aborted = false
 
-    // Create a ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         try {
           for await (const chunk of result.stream) {
+            if (aborted) break
             const text = cleanCodeFences(chunk.text())
             fullScript += text
             controller.enqueue(new TextEncoder().encode(text))
           }
 
-          // Update the script in the database
-          await prisma.script.update({
-            where: { id: scriptId },
-            data: {
-              content: fullScript,
-              status: 'ACTIVE', // Mark as active now that it's complete
-            },
-          })
+          if (!aborted) {
+            try {
+              await prisma.script.update({
+                where: { id: scriptId },
+                data: {
+                  content: fullScript,
+                  status: 'ACTIVE',
+                },
+              })
 
-          // Save the original version
-          await prisma.scriptVersion.create({
-            data: {
-              scriptId,
-              content: initialScript.content,
-            },
-          })
+              await prisma.scriptVersion.create({
+                data: {
+                  scriptId,
+                  content: initialScript.content,
+                },
+              })
 
-          controller.close()
+              controller.enqueue(new TextEncoder().encode(''))
+              controller.close()
+            } catch (dbError) {
+              const errorMessage =
+                dbError instanceof Error ? dbError.message : 'Database error occurred'
+              controller.error(new Error(errorMessage))
+            }
+          } else {
+            controller.close()
+          }
         } catch (streamError) {
-          console.error('Stream error:', streamError)
-          controller.error(streamError)
+          const errorMessage =
+            streamError instanceof Error ? streamError.message : 'Stream error occurred'
+          controller.error(new Error(errorMessage))
         }
+      },
+      cancel() {
+        aborted = true
       },
     })
 
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
         'X-Script-Id': scriptId,
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
       },
     })
   } catch (error) {
