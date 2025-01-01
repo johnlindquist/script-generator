@@ -11,7 +11,7 @@ export default function EditButtonClient({ scriptId }: EditButtonClientProps) {
   const router = useRouter()
 
   const handleEdit = () => {
-    router.push(`/scripts/${scriptId}/edit`)
+    router.push(`/scripts/${scriptId}`)
   }
 
   return (

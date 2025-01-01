@@ -83,7 +83,7 @@ export default function ScriptPage({ params }: ScriptPageProps) {
     setSaving(true)
     try {
       const response = await fetch(`/api/scripts/${scriptId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: updatedContent }),
       })

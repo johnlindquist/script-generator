@@ -86,11 +86,14 @@ const updateScript = async (request: NextRequest, context?: { params: Record<str
       return NextResponse.json({ error: 'Not authorized to modify this script' }, { status: 403 })
     }
 
-    const { saved } = await request.json()
+    const { saved, content } = await request.json()
 
     const updatedScript = await prisma.script.update({
       where: { id: scriptId },
-      data: { saved },
+      data: {
+        ...(typeof saved === 'boolean' ? { saved } : {}),
+        ...(typeof content === 'string' ? { content } : {}),
+      },
     })
 
     return NextResponse.json(updatedScript)
