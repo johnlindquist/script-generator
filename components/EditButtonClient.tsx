@@ -13,7 +13,7 @@ export default function EditButtonClient({ scriptId }: EditButtonClientProps) {
   const { data: session } = useSession()
 
   const handleEdit = () => {
-    router.push(`/${session?.user?.username}/${scriptId}`)
+    router.push(`/${session?.user?.username}/${scriptId}/edit`)
   }
 
   return (
