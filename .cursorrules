@@ -2,3 +2,11 @@
 
 - Avoid "any" type or my build will fail
 - Always remove unused imports, parameters, variables, etc, or my build will fail
+
+## Icons
+
+- never generate svg, always use a library like heroicons or other popular icon libraries
+
+## build
+
+- Assume the project is already running with "pnpm dev"

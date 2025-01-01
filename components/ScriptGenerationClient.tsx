@@ -64,6 +64,29 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   })
   const [streamedText, setStreamedText] = useState('')
   const editorRef = useRef<EditorRef | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Check for forked content on mount
+  useEffect(() => {
+    const forkedContent = localStorage.getItem('forkedScriptContent')
+    if (forkedContent && !state.context.prompt) {
+      send({ type: 'SET_PROMPT', prompt: forkedContent })
+      localStorage.removeItem('forkedScriptContent')
+
+      // Focus immediately and after a delay to ensure it works
+      if (textareaRef.current) {
+        textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+        textareaRef.current.focus()
+      }
+      // Try again after a delay
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+          textareaRef.current.focus()
+        }
+      })
+    }
+  }, [send, state.context.prompt])
 
   // Update the editor with streamed text
   useEffect(() => {
@@ -316,6 +339,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       {!state.context.generatedScript && !isGenerating && !isThinking && (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <textarea
+            ref={textareaRef}
             value={state.context.prompt}
             onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
             onKeyDown={handleKeyDown}

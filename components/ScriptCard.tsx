@@ -10,6 +10,7 @@ import FavoriteButtonClient from './FavoriteButtonClient'
 import InstallButtonClient from './InstallButtonClient'
 import DeleteButtonClient from './DeleteButtonClient'
 import EditButtonClient from './EditButtonClient'
+import ForkButtonClient from './ForkButtonClient'
 
 interface ScriptCardProps {
   script: {
@@ -110,6 +111,9 @@ export default function ScriptCard({
                 }}
               />
             </>
+          )}
+          {isAuthenticated && (
+            <ForkButtonClient scriptId={script.id} scriptContent={script.content} />
           )}
         </div>
 
