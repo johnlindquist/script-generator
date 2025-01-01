@@ -16,6 +16,7 @@ type GitHubRelease = {
   name: string | null
   prerelease: boolean
   html_url: string
+  tag_name: string
   assets: Array<{
     name: string
     browser_download_url: string
