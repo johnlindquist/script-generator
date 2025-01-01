@@ -15,9 +15,9 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "tsc-files --noEmit",
+      "prettier --write",
       "eslint --fix",
-      "prettier --write"
+      "bash -c 'pnpm tsc --noEmit'"
     ]
   },
   "dependencies": {

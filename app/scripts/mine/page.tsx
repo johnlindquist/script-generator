@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import NavBar from '@/components/NavBar'
 import ScriptsListClient from '@/components/ScriptsListClient'
 import { redirect } from 'next/navigation'
+import { ScriptWithRelations } from '@/types/script'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,13 +85,14 @@ export default async function MyScriptsPage({
   })
 
   // Transform scripts to include isVerified and match ScriptCard interface
-  const transformedScripts = scripts.map(script => {
+  const transformedScripts: ScriptWithRelations[] = scripts.map(script => {
     const { owner, _count, verifications, favorites, ...rest } = script
     return {
       ...rest,
       owner: {
         username: owner.username,
         id: owner.id,
+        fullName: owner.fullName,
       },
       _count: {
         verifications: _count.verifications,
@@ -109,11 +111,13 @@ export default async function MyScriptsPage({
         <h1 className="text-2xl font-bold text-amber-300 mb-8">My Scripts</h1>
 
         <ScriptsListClient
-          initialScripts={transformedScripts}
+          initialData={{
+            scripts: transformedScripts,
+            totalPages,
+            currentPage,
+          }}
           isAuthenticated={true}
           currentUserId={session.user.id}
-          currentPage={currentPage}
-          totalPages={totalPages}
         />
       </div>
     </main>

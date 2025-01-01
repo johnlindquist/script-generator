@@ -5,32 +5,7 @@ import useSWR from 'swr'
 import { Suspense } from 'react'
 import ScriptCard from './ScriptCard'
 import ScriptCardSkeleton from './ScriptCardSkeleton'
-
-interface Script {
-  id: string
-  title: string
-  content: string
-  saved: boolean
-  createdAt: Date
-  dashedName: string | null
-  owner: {
-    username: string
-    id: string
-  }
-  _count: {
-    verifications: number
-    favorites: number
-    installs: number
-  }
-  isVerified: boolean
-  isFavorited: boolean
-}
-
-interface ScriptsResponse {
-  scripts: Script[]
-  totalPages: number
-  currentPage: number
-}
+import { ScriptsResponse } from '@/types/script'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 

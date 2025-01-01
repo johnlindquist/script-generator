@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { wrapApiHandler } from '@/lib/timing'
+import { RouteContext, wrapApiHandler } from '@/lib/timing'
 
-const deleteScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
+const deleteScript = async (request: NextRequest, context?: RouteContext) => {
   try {
-    if (!context?.params?.scriptId) throw new Error('Missing script ID')
-    const { scriptId } = context.params
+    if (!context?.params) throw new Error('Missing script ID')
+    const params = await context?.params
+    if (!params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -45,14 +47,12 @@ const deleteScript = async (request: NextRequest, context?: { params: Record<str
   }
 }
 
-const getScript = async (
-  request: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
-) => {
+const getScript = async (request: NextRequest, context?: RouteContext) => {
   try {
-    if (!context?.params) throw new Error('Missing script params')
-
-    const { scriptId } = await context.params
+    if (!context?.params) throw new Error('Missing script ID')
+    const params = await context?.params
+    if (!params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = params
 
     if (!scriptId) throw new Error('Missing script ID')
 
@@ -72,10 +72,12 @@ const getScript = async (
   }
 }
 
-const updateScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
+const updateScript = async (request: NextRequest, context?: RouteContext) => {
   try {
-    if (!context?.params?.scriptId) throw new Error('Missing script ID')
-    const { scriptId } = context.params
+    if (!context?.params) throw new Error('Missing script ID')
+    const params = await context?.params
+    if (!params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })

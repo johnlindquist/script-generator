@@ -3,32 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import ScriptGridWithSuspense from './ScriptGridWithSuspense'
-
-interface Script {
-  id: string
-  title: string
-  content: string
-  saved: boolean
-  createdAt: Date
-  dashedName: string | null
-  owner: {
-    username: string
-    id: string
-  }
-  _count: {
-    verifications: number
-    favorites: number
-    installs: number
-  }
-  isVerified: boolean
-  isFavorited: boolean
-}
-
-interface ScriptsResponse {
-  scripts: Script[]
-  totalPages: number
-  currentPage: number
-}
+import { ScriptsResponse } from '@/types/script'
 
 interface ScriptListClientProps {
   isAuthenticated: boolean

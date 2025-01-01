@@ -15,10 +15,11 @@ import {
   getLinuxarm64Release,
   getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
+import { ScriptsResponse } from '@/types/script'
 
 export const dynamic = 'force-dynamic'
 
-async function getInitialScripts(page: number = 1) {
+async function getInitialScripts(page: number = 1): Promise<ScriptsResponse> {
   const PAGE_SIZE = 12
   const [totalScripts, scripts] = await Promise.all([
     prisma.script.count({
@@ -37,17 +38,12 @@ async function getInitialScripts(page: number = 1) {
       },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        saved: true,
-        createdAt: true,
-        dashedName: true,
+      include: {
         owner: {
           select: {
             username: true,
             id: true,
+            fullName: true,
           },
         },
         _count: {

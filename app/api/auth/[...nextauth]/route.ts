@@ -1,13 +1,23 @@
-import NextAuth, { DefaultSession, AuthOptions, User as NextAuthUser } from 'next-auth'
+import NextAuth, { DefaultSession, AuthOptions } from 'next-auth'
 import GithubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 
 // Extend the built-in types
 declare module 'next-auth' {
-  interface User extends NextAuthUser {
+  interface Profile {
+    login: string
+    name?: string | undefined
+    email?: string | undefined
+    avatar_url?: string
+  }
+
+  interface User {
+    id: string
     username: string
     fullName?: string | null
+    email?: string | null
+    image?: string | null
   }
 
   interface Session {
@@ -41,6 +51,7 @@ export const authOptions: AuthOptions = {
       profile(profile) {
         return {
           id: profile.id.toString(),
+          githubId: profile.id.toString(),
           username: profile.login,
           fullName: profile.name || null,
           email: profile.email,
@@ -76,10 +87,11 @@ export const authOptions: AuthOptions = {
 
         return {
           id: user.id,
-          username: TEST_USER.username,
-          fullName: TEST_USER.name,
+          username: user.username,
+          fullName: user.fullName,
           email: TEST_USER.email,
           image: TEST_USER.image,
+          githubId: TEST_USER.id,
         }
       },
     }),

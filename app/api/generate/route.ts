@@ -31,7 +31,6 @@ const generateScript = async (req: NextRequest) => {
       await prisma.user.create({
         data: {
           id: session.user.id,
-          githubId: session.user.githubId,
           username:
             session.user.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ??
             session.user.email?.split('@')[0] ??

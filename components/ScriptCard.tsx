@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
 import { FaGithub } from 'react-icons/fa'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
+import { Prisma } from '@prisma/client'
 
 import CopyButtonClient from './CopyButtonClient'
 import VerifyButtonClient from './VerifyButtonClient'
@@ -13,28 +14,24 @@ import DeleteButtonClient from './DeleteButtonClient'
 import EditButtonClient from './EditButtonClient'
 import ForkButtonClient from './ForkButtonClient'
 
-interface ScriptCardProps {
-  script: {
-    id: string
-    title: string
-    content: string
-    saved: boolean
-    locked: boolean
-    createdAt: Date
-    dashedName?: string | null
-    owner: {
-      username: string
-      id: string
-      fullName?: string | null
+type ScriptWithRelations = Prisma.ScriptGetPayload<{
+  include: {
+    owner: true
+    _count: {
+      select: {
+        verifications: true
+        favorites: true
+        installs: true
+      }
     }
-    _count?: {
-      verifications: number
-      favorites: number
-      installs: number
-    }
-    isVerified?: boolean
-    isFavorited?: boolean
   }
+}> & {
+  isVerified?: boolean
+  isFavorited?: boolean
+}
+
+interface ScriptCardProps {
+  script: ScriptWithRelations
   isAuthenticated: boolean
   currentUserId?: string
   onDeleted?: (scriptId: string) => void
@@ -96,12 +93,12 @@ export default function ScriptCard({
             </Link>
           </p>
 
-          {script.locked && isOwner && (
+          {
             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-300">
               <LockClosedIcon className="w-4 h-4 mr-1" />
               Locked
             </span>
-          )}
+          }
         </div>
       </div>
       <div className="flex-grow flex flex-col overflow-hidden">
