@@ -5,6 +5,15 @@ import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ScriptListClient from '@/components/ScriptListClient'
 import { STRINGS } from '@/lib/strings'
 import { prisma } from '@/lib/prisma'
+import ScriptKitDownload from '@/components/ScriptKitDownload'
+import {
+  getMacIntelRelease,
+  getMacSiliconRelease,
+  getWindowsx64Release,
+  getWindowsarm64Release,
+  getLinuxx64Release,
+  getLinuxarm64Release,
+} from '@/lib/get-scriptkit-releases'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +77,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const page = Number(params.page ?? '1')
   const initialData = await getInitialScripts(page)
 
+  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64] = await Promise.all([
+    getMacIntelRelease(),
+    getMacSiliconRelease(),
+    getWindowsx64Release(),
+    getWindowsarm64Release(),
+    getLinuxx64Release(),
+    getLinuxarm64Release(),
+  ])
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <NavBar isAuthenticated={!!session} />
@@ -92,6 +110,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             isAuthenticated={!!session}
             currentUserId={session?.user?.id}
             initialData={initialData}
+          />
+        </div>
+
+        <hr className="my-8 border-zinc-800" />
+
+        <div className="flex justify-center items-center w-full">
+          <ScriptKitDownload
+            macIntelRelease={macIntel}
+            macSiliconRelease={macSilicon}
+            windowsx64Release={winx64}
+            windowsarm64Release={winarm64}
+            linuxx64Release={linuxx64}
+            linuxarm64Release={linuxarm64}
           />
         </div>
       </div>
