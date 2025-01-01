@@ -21,10 +21,6 @@ export default function ScriptListClient({
   const page = Number(searchParams.get('page') ?? '1')
   const [totalPages, setTotalPages] = useState(initialData.totalPages)
 
-  const handlePageOutOfRange = useCallback(() => {
-    router.replace('/?page=1')
-  }, [router])
-
   const handleTotalPagesChange = useCallback((newTotalPages: number) => {
     setTotalPages(newTotalPages)
   }, [])
@@ -37,7 +33,6 @@ export default function ScriptListClient({
         page={page}
         isAuthenticated={isAuthenticated}
         currentUserId={currentUserId}
-        onPageOutOfRange={handlePageOutOfRange}
         onTotalPagesChange={handleTotalPagesChange}
         fallbackData={initialData}
       />

@@ -101,12 +101,12 @@ export default function ScriptCard({
             </Link>
           </div>
 
-          {
+          {isOwner && script.locked && (
             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-300">
               <LockClosedIcon className="w-4 h-4 mr-1" />
               Locked
             </span>
-          }
+          )}
         </div>
       </div>
       <div className="flex-grow flex flex-col overflow-hidden">

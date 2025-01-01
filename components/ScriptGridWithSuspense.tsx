@@ -12,7 +12,6 @@ interface ScriptGridWithSuspenseProps {
   currentUserId?: string
   page: number
   totalPages: number
-  onPageOutOfRange: () => void
   onTotalPagesChange?: (newTotalPages: number) => void
   fallbackData?: ScriptsResponse
 }

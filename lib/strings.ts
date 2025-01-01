@@ -7,6 +7,24 @@ export const STRINGS = {
     userAvatarAlt: 'User avatar',
   },
 
+  SYNC_REPO: {
+    title: 'Sync GitHub Repository',
+    description:
+      'Enter the full URL of the GitHub repository containing your scripts in the /scripts directory',
+    inputLabel: 'GitHub Repository URL',
+    inputPlaceholder: 'https://github.com/username/repository',
+    syncButton: 'Sync Repository',
+    syncing: 'Syncing...',
+    success: 'Successfully imported scripts',
+    error: {
+      invalidUrl: 'Invalid GitHub repository URL',
+      noScriptsDir: 'No scripts directory found in the repository',
+      fetchFailed: 'Failed to fetch scripts from GitHub',
+      unauthorized: 'Unauthorized',
+      unknown: 'Failed to sync repository',
+    },
+  },
+
   FAVORITE_BUTTON: {
     tooltipRemove: 'Remove from favorites',
     tooltipAdd: 'Add to favorites',

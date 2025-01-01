@@ -70,7 +70,6 @@ export default async function UserScriptsPage({
           currentUserId={session?.user?.id}
           page={page}
           totalPages={Math.ceil(totalScripts / pageSize)}
-          onPageOutOfRange={() => {}}
         />
       </div>
     </main>
