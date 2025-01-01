@@ -171,10 +171,6 @@ Generate ONLY the script content, no additional explanations or markdown.
 export const SECOND_PASS_PROMPT = `You are a TypeScript script generator and code reviewer.
 Your task is to verify, correct, refine, and format the provided script according to best practices.
 
-<USER_INFO>
-{userInfo}
-</USER_INFO>
-
 Review and improve the following aspects:
 1. Code style and formatting
 2. Error handling and edge cases
@@ -183,6 +179,10 @@ Review and improve the following aspects:
 5. Performance and efficiency
 6. Security considerations
 7. Following the examples and documentation exactly
+
+<USER_INFO>
+{userInfo}
+</USER_INFO>
 
 <DOCS>
 ${getDocsContent()}
@@ -204,5 +204,13 @@ Here are all the global types included with Script Kit:
 ${getKitTypes()}
 </TYPES>
 
-Generate improved script content and this time, include inline comments explaining the flow and logic of the, but only generate the script.
+Check the types, docs, and examples to refine the script.
+Re-generate the improved script content and this time, include inline comments explaining any complex parts.
+Be absolutely sure to include the following metadata in the script:
+
+<METADATA>
+// Name: A concise title for the script (max 20 chars)
+// Description: A short description of the script (max 50 chars)
+// Author: The name from the <USER_INFO>
+</METADATA>
 `

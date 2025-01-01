@@ -85,3 +85,30 @@ export async function GET(request: NextRequest) {
     currentPage: page,
   })
 }
+
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { prompt, code } = await request.json()
+
+  if (!prompt || !code) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const script = await prisma.script.create({
+    data: {
+      title: code.match(/\/\/ Name: (.*)/)?.[1]?.trim() ?? prompt.slice(0, 20),
+      content: code,
+      saved: true,
+      status: 'ACTIVE',
+      ownerId: session.user.id,
+      dashedName: prompt.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    },
+  })
+
+  return NextResponse.json(script)
+}
