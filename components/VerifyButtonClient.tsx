@@ -36,12 +36,7 @@ export default function VerifyButtonClient({
       return
     }
 
-    // Optimistically update UI
-    const wasOriginallyVerified = isVerified
-    const originalCount = verifiedCount
-    setIsVerified(!wasOriginallyVerified)
-    setVerifiedCount(originalCount + (wasOriginallyVerified ? -1 : 1))
-    setError(null)
+    setIsLoading(true)
 
     try {
       const response = await fetch('/api/verify', {
@@ -49,20 +44,24 @@ export default function VerifyButtonClient({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ scriptId }),
       })
+
+      if (response.status === 401) {
+        throw new Error(STRINGS.VERIFY_BUTTON.signInRequired)
+      }
 
       if (!response.ok) {
         throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
-      // Server confirmed the change, trigger cache update
+      // Only update UI after successful API call
+      setIsVerified(!isVerified)
+      setVerifiedCount(verifiedCount + (isVerified ? -1 : 1))
       onScriptChanged?.()
     } catch (error) {
-      // Revert optimistic update on error
       console.error('Error verifying script:', error)
-      setIsVerified(wasOriginallyVerified)
-      setVerifiedCount(originalCount)
       setError(error instanceof Error ? error.message : STRINGS.VERIFY_BUTTON.error)
     } finally {
       setIsLoading(false)
@@ -78,10 +77,10 @@ export default function VerifyButtonClient({
     >
       <button
         onClick={handleVerify}
-        disabled={isLoading}
+        disabled={isLoading || !isAuthenticated}
         className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
           error ? 'border-red-500 border' : ''
-        }`}
+        } ${!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <svg
           className={`w-4 h-4 ${isVerified ? 'text-green-400' : ''} ${error ? 'text-red-500' : ''}`}

@@ -29,12 +29,7 @@ export default function FavoriteButtonClient({
       return
     }
 
-    // Optimistically update UI
-    const wasOriginallyFavorited = isFavorited
-    const originalCount = favoriteCount
-    setIsFavorited(!wasOriginallyFavorited)
-    setFavoriteCount(originalCount + (wasOriginallyFavorited ? -1 : 1))
-    setError(null)
+    setIsLoading(true)
 
     try {
       const response = await fetch('/api/favorite', {
@@ -42,20 +37,24 @@ export default function FavoriteButtonClient({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ scriptId }),
       })
+
+      if (response.status === 401) {
+        throw new Error(STRINGS.FAVORITE_BUTTON.signInRequired)
+      }
 
       if (!response.ok) {
         throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
-      // Server confirmed the change, trigger cache update
+      // Only update UI after successful API call
+      setIsFavorited(!isFavorited)
+      setFavoriteCount(favoriteCount + (isFavorited ? -1 : 1))
       onScriptChanged?.()
     } catch (error) {
-      // Revert optimistic update on error
       console.error('Error favoriting script:', error)
-      setIsFavorited(wasOriginallyFavorited)
-      setFavoriteCount(originalCount)
       setError(error instanceof Error ? error.message : STRINGS.FAVORITE_BUTTON.error)
     } finally {
       setIsLoading(false)
@@ -71,10 +70,10 @@ export default function FavoriteButtonClient({
     >
       <button
         onClick={handleFavorite}
-        disabled={isLoading}
+        disabled={isLoading || !isAuthenticated}
         className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 min-w-[3.5rem] justify-center ${
           error ? 'border-red-500 border' : ''
-        }`}
+        } ${!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <svg
           className={`w-4 h-4 ${isFavorited ? 'text-amber-300' : ''} ${
