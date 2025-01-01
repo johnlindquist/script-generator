@@ -21,6 +21,25 @@ const generateScript = async (req: NextRequest) => {
       )
     }
 
+    // Check if user exists in database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    })
+
+    if (!dbUser) {
+      // Create user if they don't exist
+      await prisma.user.create({
+        data: {
+          id: session.user.id,
+          githubId: session.user.githubId,
+          username:
+            session.user.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ??
+            session.user.email?.split('@')[0] ??
+            'unknown-user',
+        },
+      })
+    }
+
     const { scriptId } = await req.json()
     if (!scriptId) {
       return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
