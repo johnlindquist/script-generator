@@ -8,7 +8,6 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string
-      githubId: string
     } & DefaultSession['user']
   }
 }
@@ -16,7 +15,6 @@ declare module 'next-auth' {
 // Test user details
 const TEST_USER = {
   id: 'test-user-id',
-  githubId: 'test-user-id',
   username: 'test',
   name: 'Test User',
   email: 'test@example.com',
@@ -33,6 +31,15 @@ export const authOptions: AuthOptions = {
           scope: 'read:user user:email',
         },
       },
+      profile(profile) {
+        return {
+          id: profile.id.toString(),
+          name: profile.name || profile.login,
+          email: profile.email,
+          image: profile.avatar_url,
+          username: profile.login,
+        }
+      },
     }),
     CredentialsProvider({
       id: 'credentials',
@@ -48,17 +55,16 @@ export const authOptions: AuthOptions = {
 
         // Create or update test user in DB
         const user = await prisma.user.upsert({
-          where: { githubId: TEST_USER.githubId },
+          where: { id: TEST_USER.id },
           update: { username: TEST_USER.username },
           create: {
-            githubId: TEST_USER.githubId,
+            id: TEST_USER.id,
             username: TEST_USER.username,
           },
         })
 
         return {
           id: user.id,
-          githubId: user.githubId,
           name: TEST_USER.name,
           email: TEST_USER.email,
           image: TEST_USER.image,
@@ -70,14 +76,12 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.userId = user.id
-        token.githubId = user.githubId
       }
       return token
     },
     async session({ session, token }) {
-      if (token.userId && token.githubId) {
+      if (token.userId) {
         session.user.id = token.userId as string
-        session.user.githubId = token.githubId as string
       }
       return session
     },
