@@ -3,6 +3,13 @@ import { notFound } from 'next/navigation'
 import ScriptGridWithSuspense from '@/components/ScriptGridWithSuspense'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { ScriptWithMinimalRelations, ScriptWithComputedFields } from '@/types/script'
+
+const transformScript = (script: ScriptWithMinimalRelations): ScriptWithComputedFields => ({
+  ...script,
+  isVerified: false,
+  isFavorited: false,
+})
 
 export default async function UserScriptsPage({
   params,
@@ -12,12 +19,10 @@ export default async function UserScriptsPage({
   searchParams: { page?: string }
 }) {
   const session = await getServerSession(authOptions)
-  const { username } = await params
+  const { username } = params
 
   const user = await prisma.user.findFirst({
-    where: {
-      username,
-    },
+    where: { username },
   })
 
   if (!user) {
@@ -61,11 +66,7 @@ export default async function UserScriptsPage({
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-300 mb-4">Scripts by {username}</h1>
         <ScriptGridWithSuspense
-          scripts={scripts.map(s => ({
-            ...s,
-            isVerified: false,
-            isFavorited: false,
-          }))}
+          scripts={scripts.map(transformScript)}
           isAuthenticated={!!session}
           currentUserId={session?.user?.id}
           page={page}

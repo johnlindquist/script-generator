@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ScriptWithRelations } from '@/types/script'
+import { ScriptWithComputedFields } from '@/types/script'
 import useSWR from 'swr'
 import ScriptCard from './ScriptCard'
 import { useParams } from 'next/navigation'
 
 interface ScriptGridWithSuspenseProps {
-  scripts: ScriptWithRelations[]
+  scripts: ScriptWithComputedFields[]
   isAuthenticated: boolean
   currentUserId?: string
   page: number
@@ -16,7 +16,7 @@ interface ScriptGridWithSuspenseProps {
 }
 
 interface ScriptsResponse {
-  scripts: ScriptWithRelations[]
+  scripts: ScriptWithComputedFields[]
   totalPages: number
   currentPage: number
 }
@@ -54,7 +54,7 @@ export default function ScriptGridWithSuspense({
   // Ensure we have an array even if data is undefined
   const scripts = data?.scripts || initialScripts || []
   const visibleScripts = scripts.filter(
-    (script: ScriptWithRelations) => !deletedScriptIds.has(script.id)
+    (script: ScriptWithComputedFields) => !deletedScriptIds.has(script.id)
   )
 
   if (!scripts.length) {
@@ -63,7 +63,7 @@ export default function ScriptGridWithSuspense({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {visibleScripts.map((script: ScriptWithRelations) => (
+      {visibleScripts.map((script: ScriptWithComputedFields) => (
         <ScriptCard
           key={script.id}
           script={script}

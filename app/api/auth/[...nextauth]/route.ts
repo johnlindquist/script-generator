@@ -119,7 +119,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.userId = user.id
         token.username = user.username
-        token.fullName = user.fullName
+        token.fullName = user.fullName ?? null
       }
       // If it's a GitHub sign in, ensure we have latest profile info
       if (account?.provider === 'github' && profile) {
@@ -130,9 +130,9 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.userId as string
-        session.user.username = token.username as string
-        session.user.fullName = token.fullName as string | null
+        session.user.id = token.userId
+        session.user.username = token.username
+        session.user.fullName = token.fullName ?? null
       }
       return session
     },

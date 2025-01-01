@@ -1,7 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ScriptWithRelations, ScriptsResponse } from '@/types/script'
+import {
+  ScriptWithAllRelations,
+  ScriptWithMinimalRelations,
+  ScriptWithComputedFields,
+  ScriptsResponse,
+} from '@/types/script'
 import useSWR from 'swr'
 import ScriptCard from './ScriptCard'
 import { STRINGS } from '@/lib/strings'
@@ -10,14 +15,32 @@ import { useSession } from 'next-auth/react'
 interface ScriptListClientProps {
   isAuthenticated: boolean
   currentUserId?: string
-  initialData: {
-    scripts: ScriptWithRelations[]
-    totalPages: number
-    currentPage: number
+  initialData: ScriptsResponse
+}
+
+const transformScript = (
+  script: ScriptWithAllRelations | ScriptWithMinimalRelations,
+  currentUserId?: string
+): ScriptWithComputedFields => {
+  return {
+    ...script,
+    isVerified:
+      'verifications' in script
+        ? script.verifications.some(v => v.userId === currentUserId)
+        : false,
+    isFavorited:
+      'favorites' in script ? script.favorites.some(f => f.userId === currentUserId) : false,
   }
 }
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = async (url: string) => {
+  const response = await fetch(url)
+  const data = await response.json()
+  return {
+    ...data,
+    scripts: data.scripts.map((script: ScriptWithMinimalRelations) => transformScript(script)),
+  }
+}
 
 export default function ScriptsListClient({
   isAuthenticated,
@@ -32,9 +55,8 @@ export default function ScriptsListClient({
     fetcher,
     {
       fallbackData: {
-        scripts: initialData.scripts,
-        totalPages: initialData.totalPages,
-        currentPage: initialData.currentPage,
+        ...initialData,
+        scripts: initialData.scripts.map(script => transformScript(script, currentUserId)),
       },
       revalidateOnFocus: false,
     }
@@ -46,10 +68,14 @@ export default function ScriptsListClient({
 
   const visibleScripts = (data?.scripts || []).filter(script => !deletedScriptIds.has(script.id))
 
+  const sortedScripts = visibleScripts.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {visibleScripts.map(script => (
+        {sortedScripts.map(script => (
           <ScriptCard
             key={script.id}
             script={script}
