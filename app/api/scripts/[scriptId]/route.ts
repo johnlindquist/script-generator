@@ -45,10 +45,17 @@ const deleteScript = async (request: NextRequest, context?: { params: Record<str
   }
 }
 
-const getScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
+const getScript = async (
+  request: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => {
   try {
-    if (!context?.params?.scriptId) throw new Error('Missing script ID')
-    const { scriptId } = context.params
+    if (!context?.params) throw new Error('Missing script params')
+
+    const { scriptId } = await context.params
+
+    if (!scriptId) throw new Error('Missing script ID')
+
     const script = await prisma.script.findUnique({
       where: { id: scriptId },
       include: { owner: true },

@@ -18,7 +18,7 @@ export function getRandomSuggestions(): Promise<Suggestion[]> {
   }
   if (!suggestionsPromise) {
     suggestionsPromise = new Promise(resolve => {
-      const delay = process.env.NODE_ENV === 'development' ? 1000 : 0
+      const delay = process.env.NODE_ENV === 'development' ? 0 : 0
       setTimeout(() => {
         resolve(suggestions.slice(0, 7))
       }, delay)
