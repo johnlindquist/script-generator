@@ -162,7 +162,7 @@ export const scriptGenerationMachine = setup({
     generatedScript: null,
     error: null,
     usageCount: 0,
-    usageLimit: 25,
+    usageLimit: 24,
     requestId: null,
     isFromSuggestion: false,
     scriptId: null,

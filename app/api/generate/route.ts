@@ -6,7 +6,7 @@ import { model } from '@/lib/gemini'
 import { SECOND_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 
-const DAILY_LIMIT = 25
+const DAILY_LIMIT = 24
 
 const generateScript = async (req: NextRequest) => {
   try {

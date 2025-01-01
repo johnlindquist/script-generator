@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 
-const DAILY_LIMIT = 25
+const DAILY_LIMIT = 24
 
 export async function GET() {
   const session = await getServerSession(authOptions)
