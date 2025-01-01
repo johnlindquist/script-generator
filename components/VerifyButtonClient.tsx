@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
+import { ShieldCheckIcon } from '@heroicons/react/24/outline'
 import { STRINGS } from '@/lib/strings'
 
 interface VerifyButtonClientProps {
@@ -82,21 +83,11 @@ export default function VerifyButtonClient({
         disabled={isLoading || !isAuthenticated || isOwner}
         className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
           error ? 'border-red-500 border' : ''
-        } ${!isAuthenticated || isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+        } ${!isAuthenticated || isOwner ? 'opacity-50 cursor-not-allowed' : ''}${isVerified ? 'bg-green-400/25' : ''}`}
       >
-        <svg
+        <ShieldCheckIcon
           className={`w-4 h-4 ${isVerified ? 'text-green-400' : ''} ${error ? 'text-red-500' : ''}`}
-          fill={isVerified ? 'currentColor' : 'none'}
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
+        />
         <span>{verifiedCount}</span>
       </button>
     </Tooltip>
