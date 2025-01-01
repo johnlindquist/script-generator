@@ -205,7 +205,9 @@ ${getKitTypes()}
 </TYPES>
 
 Check the types, docs, and examples to refine the script.
-Re-generate the improved script content and this time, include inline comments explaining any complex parts.
+Re-generate the improved script content paying extra attention to the types.
+If there's any overly complex logic, please add inline comments explaining it.
+
 Be absolutely sure to include the following metadata in the script:
 
 <METADATA>
