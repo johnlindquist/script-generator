@@ -13,6 +13,7 @@ import {
   getWindowsarm64Release,
   getLinuxx64Release,
   getLinuxarm64Release,
+  getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
 
 export const dynamic = 'force-dynamic'
@@ -77,13 +78,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const page = Number(params.page ?? '1')
   const initialData = await getInitialScripts(page)
 
-  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64] = await Promise.all([
+  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
     getMacSiliconRelease(),
     getWindowsx64Release(),
     getWindowsarm64Release(),
     getLinuxx64Release(),
     getLinuxarm64Release(),
+    getBetaRelease(),
   ])
 
   return (
@@ -123,6 +125,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             windowsarm64Release={winarm64}
             linuxx64Release={linuxx64}
             linuxarm64Release={linuxarm64}
+            betaRelease={beta}
           />
         </div>
       </div>

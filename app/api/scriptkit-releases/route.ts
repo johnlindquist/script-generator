@@ -6,6 +6,7 @@ import {
   getWindowsarm64Release,
   getLinuxx64Release,
   getLinuxarm64Release,
+  getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
 
 // This route is completely static and will only update on new deployments
@@ -13,13 +14,14 @@ export const dynamic = 'force-static'
 
 export async function GET() {
   try {
-    const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64] = await Promise.all([
+    const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
       getMacIntelRelease(),
       getMacSiliconRelease(),
       getWindowsx64Release(),
       getWindowsarm64Release(),
       getLinuxx64Release(),
       getLinuxarm64Release(),
+      getBetaRelease(),
     ])
 
     return NextResponse.json({
@@ -29,9 +31,10 @@ export async function GET() {
       winarm64,
       linuxx64,
       linuxarm64,
+      beta,
     })
-  } catch (error: Error) {
+  } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 })
   }
 }

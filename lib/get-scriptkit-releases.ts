@@ -13,8 +13,9 @@ export type ScriptKitRelease = {
 }
 
 type GitHubRelease = {
-  name: string
+  name: string | null
   prerelease: boolean
+  html_url: string
   assets: Array<{
     name: string
     browser_download_url: string
@@ -173,6 +174,49 @@ export async function getLinuxarm64Release(): Promise<ScriptKitRelease | null> {
     ? {
         name: foundAsset.name,
         browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
+}
+
+export type BetaRelease = {
+  html_url: string
+  tag_name: string
+}
+
+export async function getBetaRelease(): Promise<BetaRelease | null> {
+  const allReleases = await fetchAllReleases()
+  console.log(
+    'All releases:',
+    allReleases.map(r => ({
+      name: r.name,
+      prerelease: r.prerelease,
+      html_url: r.html_url,
+      tag_name: r.tag_name,
+    }))
+  )
+
+  const betaRelease = allReleases.find(release => {
+    const isBeta =
+      release.prerelease ||
+      release?.name?.toLowerCase().includes('beta') ||
+      release?.name?.toLowerCase().includes('alpha')
+
+    if (isBeta) {
+      console.log('Found beta release:', {
+        name: release.name,
+        prerelease: release.prerelease,
+        html_url: release.html_url,
+        tag_name: release.tag_name,
+      })
+    }
+
+    return isBeta
+  })
+
+  return betaRelease
+    ? {
+        html_url: betaRelease.html_url,
+        tag_name: betaRelease.tag_name,
       }
     : null
 }

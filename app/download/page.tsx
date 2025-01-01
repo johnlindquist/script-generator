@@ -6,19 +6,21 @@ import {
   getWindowsarm64Release,
   getLinuxx64Release,
   getLinuxarm64Release,
+  getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
 
 // This page is completely static and will only update on new deployments
 export const dynamic = 'force-static'
 
 export default async function DownloadPage() {
-  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64] = await Promise.all([
+  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
     getMacSiliconRelease(),
     getWindowsx64Release(),
     getWindowsarm64Release(),
     getLinuxx64Release(),
     getLinuxarm64Release(),
+    getBetaRelease(),
   ])
 
   return (
@@ -31,6 +33,7 @@ export default async function DownloadPage() {
         windowsarm64Release={winarm64}
         linuxx64Release={linuxx64}
         linuxarm64Release={linuxarm64}
+        betaRelease={beta}
       />
     </main>
   )

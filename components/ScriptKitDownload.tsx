@@ -1,4 +1,4 @@
-import { type ScriptKitRelease } from '@/lib/get-scriptkit-releases'
+import { type ScriptKitRelease, type BetaRelease } from '@/lib/get-scriptkit-releases'
 import cx from 'classnames'
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   windowsarm64Release: ScriptKitRelease | null
   linuxx64Release: ScriptKitRelease | null
   linuxarm64Release: ScriptKitRelease | null
+  betaRelease: BetaRelease | null
 }
 
 export default function ScriptKitDownload({
@@ -17,6 +18,7 @@ export default function ScriptKitDownload({
   windowsarm64Release,
   linuxx64Release,
   linuxarm64Release,
+  betaRelease,
 }: Props) {
   const macReleases = [
     { ...macIntelRelease, label: 'Intel' },
@@ -130,6 +132,29 @@ export default function ScriptKitDownload({
         </div>
         <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-gray-800 via-gray-900 to-gray-900 bg-gradient-to-r -z-10" />
       </div>
+
+      {betaRelease && (
+        <div className="relative">
+          <div className="inline-flex items-center gap-5 rounded-xl overflow-hidden bg-violet-900 text-white pl-4">
+            <div className="font-medium flex items-center gap-1">
+              <BeakerIcon /> Beta
+            </div>
+            <div className="flex items-center bg-violet-800">
+              <div className="relative group flex">
+                <a
+                  className="font-normal tracking-tight flex items-center p-4 hover:bg-violet-700/50 transition"
+                  href={betaRelease.html_url}
+                  title={`Try the latest beta release: ${betaRelease.tag_name}`}
+                >
+                  <DownloadIcon className="flex-shrink-0 text-violet-400" />
+                  <span className="pl-1">{betaRelease.tag_name}</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-violet-800 via-violet-900 to-violet-900 bg-gradient-to-r -z-10" />
+        </div>
+      )}
     </div>
   )
 }
@@ -226,5 +251,20 @@ const DownloadIcon = ({ className }: { className?: string }) => (
       d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"
     />
     <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+  </svg>
+)
+
+const BeakerIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className="w-5 h-5 text-violet-200"
+  >
+    <path
+      fillRule="evenodd"
+      d="M10.5 3.798v5.02a3 3 0 01-.879 2.121l-2.377 2.377a9.845 9.845 0 015.091 1.013 8.315 8.315 0 005.713.636l.285-.071-3.954-3.955a3 3 0 01-.879-2.121v-5.02a23.614 23.614 0 00-3 0zm4.5.138a.75.75 0 00.093-1.495A24.837 24.837 0 0012 2.25a25.048 25.048 0 00-3.093.191A.75.75 0 009 3.936v4.882a1.5 1.5 0 01-.44 1.06l-6.293 6.294c-1.62 1.621-.903 4.475 1.471 4.88 2.686.46 5.447.698 8.262.698 2.816 0 5.576-.239 8.262-.697 2.373-.406 3.092-3.26 1.47-4.881L15.44 9.879A1.5 1.5 0 0115 8.818V3.936z"
+      clipRule="evenodd"
+    />
   </svg>
 )
