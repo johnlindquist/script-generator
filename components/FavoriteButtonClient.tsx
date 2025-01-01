@@ -8,6 +8,7 @@ interface FavoriteButtonClientProps {
   initialIsFavorited: boolean
   initialFavoriteCount: number
   isAuthenticated: boolean
+  onScriptChanged?: () => void
 }
 
 export default function FavoriteButtonClient({
@@ -15,6 +16,7 @@ export default function FavoriteButtonClient({
   initialIsFavorited,
   initialFavoriteCount,
   isAuthenticated,
+  onScriptChanged,
 }: FavoriteButtonClientProps) {
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited)
   const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount)
@@ -47,7 +49,8 @@ export default function FavoriteButtonClient({
         throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
-      // Server confirmed the change, no need to do anything
+      // Server confirmed the change, trigger cache update
+      onScriptChanged?.()
     } catch (error) {
       // Revert optimistic update on error
       console.error('Error favoriting script:', error)

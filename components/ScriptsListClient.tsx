@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { STRINGS } from '@/lib/strings'
 import ScriptCard from './ScriptCard'
+import useSWR from 'swr'
 
 interface Script {
   id: string
@@ -24,6 +25,12 @@ interface Script {
   isFavorited?: boolean
 }
 
+interface ScriptsResponse {
+  scripts: Script[]
+  totalPages: number
+  currentPage: number
+}
+
 interface ScriptsListClientProps {
   initialScripts: Script[]
   isAuthenticated: boolean
@@ -32,20 +39,31 @@ interface ScriptsListClientProps {
   totalPages: number
 }
 
+const fetcher = (url: string) => fetch(url).then(r => r.json())
+
 export default function ScriptsListClient({
   initialScripts,
   isAuthenticated,
   currentUserId,
   currentPage,
-  totalPages,
+  totalPages: initialTotalPages,
 }: ScriptsListClientProps) {
   const [deletedScriptIds, setDeletedScriptIds] = useState<Set<string>>(new Set())
+
+  const { data, mutate } = useSWR<ScriptsResponse>(`/api/scripts?page=${currentPage}`, fetcher, {
+    fallbackData: {
+      scripts: initialScripts,
+      totalPages: initialTotalPages,
+      currentPage,
+    },
+    revalidateOnFocus: false,
+  })
 
   const handleScriptDeleted = (scriptId: string) => {
     setDeletedScriptIds(prev => new Set([...prev, scriptId]))
   }
 
-  const visibleScripts = initialScripts.filter(script => !deletedScriptIds.has(script.id))
+  const visibleScripts = (data?.scripts || []).filter(script => !deletedScriptIds.has(script.id))
 
   return (
     <>
@@ -57,6 +75,7 @@ export default function ScriptsListClient({
             isAuthenticated={isAuthenticated}
             currentUserId={currentUserId}
             onDeleted={() => handleScriptDeleted(script.id)}
+            onScriptChanged={() => mutate()}
           />
         ))}
       </div>
@@ -75,12 +94,14 @@ export default function ScriptsListClient({
           <span className="text-slate-300">
             {STRINGS.HOME.pagination.pageInfo
               .replace('{currentPage}', String(currentPage))
-              .replace('{totalPages}', String(totalPages))}
+              .replace('{totalPages}', String(data?.totalPages || initialTotalPages))}
           </span>
           <a
-            href={`/scripts/mine?page=${Math.min(totalPages, currentPage + 1)}`}
+            href={`/scripts/mine?page=${Math.min(data?.totalPages || initialTotalPages, currentPage + 1)}`}
             className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
-              currentPage === totalPages ? 'pointer-events-none opacity-50' : ''
+              currentPage === (data?.totalPages || initialTotalPages)
+                ? 'pointer-events-none opacity-50'
+                : ''
             }`}
           >
             {STRINGS.HOME.pagination.next}

@@ -9,6 +9,7 @@ interface VerifyButtonClientProps {
   initialVerifiedCount: number
   isAuthenticated: boolean
   isOwner: boolean
+  onScriptChanged?: () => void
 }
 
 export default function VerifyButtonClient({
@@ -17,6 +18,7 @@ export default function VerifyButtonClient({
   initialVerifiedCount,
   isAuthenticated,
   isOwner,
+  onScriptChanged,
 }: VerifyButtonClientProps) {
   const [isVerified, setIsVerified] = useState(initialIsVerified)
   const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount)
@@ -54,7 +56,8 @@ export default function VerifyButtonClient({
         throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
-      // Server confirmed the change, no need to do anything
+      // Server confirmed the change, trigger cache update
+      onScriptChanged?.()
     } catch (error) {
       // Revert optimistic update on error
       console.error('Error verifying script:', error)

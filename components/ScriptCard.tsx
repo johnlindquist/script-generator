@@ -34,6 +34,7 @@ interface ScriptCardProps {
   isAuthenticated: boolean
   currentUserId?: string
   onDeleted?: (scriptId: string) => void
+  onScriptChanged?: () => void
 }
 
 export default function ScriptCard({
@@ -41,6 +42,7 @@ export default function ScriptCard({
   isAuthenticated,
   currentUserId,
   onDeleted,
+  onScriptChanged,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner.id
 
@@ -100,7 +102,13 @@ export default function ScriptCard({
           {isOwner && (
             <>
               <EditButtonClient scriptId={script.id} />
-              <DeleteButtonClient scriptId={script.id} onDeleted={() => onDeleted?.(script.id)} />
+              <DeleteButtonClient
+                scriptId={script.id}
+                onDeleted={() => {
+                  onDeleted?.(script.id)
+                  onScriptChanged?.()
+                }}
+              />
             </>
           )}
         </div>
@@ -118,6 +126,7 @@ export default function ScriptCard({
             initialVerifiedCount={script._count?.verifications ?? 0}
             isAuthenticated={isAuthenticated}
             isOwner={isOwner}
+            onScriptChanged={onScriptChanged}
           />
 
           <FavoriteButtonClient
@@ -125,6 +134,7 @@ export default function ScriptCard({
             initialIsFavorited={script.isFavorited ?? false}
             initialFavoriteCount={script._count?.favorites ?? 0}
             isAuthenticated={isAuthenticated}
+            onScriptChanged={onScriptChanged}
           />
         </div>
       </div>

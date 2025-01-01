@@ -51,12 +51,16 @@ export default function ScriptGridWithSuspense({
   onTotalPagesChange,
   fallbackData,
 }: ScriptGridWithSuspenseProps) {
-  const { data, isLoading } = useSWR<ScriptsResponse>(`/api/scripts?page=${page}`, fetcher, {
-    keepPreviousData: true,
-    revalidateOnFocus: false,
-    suspense: true,
-    fallbackData,
-  })
+  const { data, isLoading, mutate } = useSWR<ScriptsResponse>(
+    `/api/scripts?page=${page}`,
+    fetcher,
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      suspense: true,
+      fallbackData,
+    }
+  )
 
   // With suspense: true and fallbackData, data will always be defined
   if (!data) throw new Error('Should never happen with suspense: true and fallbackData')
@@ -85,6 +89,7 @@ export default function ScriptGridWithSuspense({
                 script={script}
                 isAuthenticated={isAuthenticated}
                 currentUserId={currentUserId}
+                onScriptChanged={() => mutate()}
               />
             </Suspense>
           ))}
