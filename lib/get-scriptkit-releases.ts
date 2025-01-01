@@ -39,7 +39,7 @@ async function fetchAllReleases() {
     )
   )
 
-  releases = releaseResponses.flatMap(response => response.data)
+  releases = releaseResponses.flatMap(response => response.data) as GitHubRelease[]
   return releases
 }
 
