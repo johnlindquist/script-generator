@@ -25,6 +25,20 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         {STRINGS.NAVBAR.homeLinkLabel}
       </Link>
       <div className="flex gap-4 items-center">
+        {process.env.NODE_ENV === 'development' && !isAuthenticated && (
+          <button
+            onClick={async () => {
+              await signIn('credentials', {
+                callbackUrl: '/',
+                username: 'test',
+                isTest: true,
+              })
+            }}
+            className="bg-gray-700 text-amber-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Test Account
+          </button>
+        )}
         {isAuthenticated ? (
           <>
             <div className="relative">

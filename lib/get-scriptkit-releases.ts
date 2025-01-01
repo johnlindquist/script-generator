@@ -184,40 +184,25 @@ export type BetaRelease = {
   tag_name: string
 }
 
+let _betaRelease: BetaRelease
 export async function getBetaRelease(): Promise<BetaRelease | null> {
+  if (_betaRelease) return _betaRelease
   const allReleases = await fetchAllReleases()
-  console.log(
-    'All releases:',
-    allReleases.map(r => ({
-      name: r.name,
-      prerelease: r.prerelease,
-      html_url: r.html_url,
-      tag_name: r.tag_name,
-    }))
+
+  const betaRelease = allReleases.find(
+    release =>
+      release.prerelease ||
+      release.name?.toLowerCase().includes('beta') ||
+      release.name?.toLowerCase().includes('alpha')
   )
 
-  const betaRelease = allReleases.find(release => {
-    const isBeta =
-      release.prerelease ||
-      release?.name?.toLowerCase().includes('beta') ||
-      release?.name?.toLowerCase().includes('alpha')
-
-    if (isBeta) {
-      console.log('Found beta release:', {
-        name: release.name,
-        prerelease: release.prerelease,
-        html_url: release.html_url,
-        tag_name: release.tag_name,
-      })
+  if (betaRelease) {
+    _betaRelease = {
+      html_url: betaRelease.html_url,
+      tag_name: betaRelease.tag_name,
     }
+    return _betaRelease
+  }
 
-    return isBeta
-  })
-
-  return betaRelease
-    ? {
-        html_url: betaRelease.html_url,
-        tag_name: betaRelease.tag_name,
-      }
-    : null
+  return null
 }

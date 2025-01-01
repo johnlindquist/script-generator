@@ -1,5 +1,6 @@
 import NextAuth, { DefaultSession, AuthOptions } from 'next-auth'
 import GithubProvider from 'next-auth/providers/github'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 
 // Extend the built-in session type
@@ -10,6 +11,16 @@ declare module 'next-auth' {
       githubId: string
     } & DefaultSession['user']
   }
+}
+
+// Test user details
+const TEST_USER = {
+  id: 'test-user-id',
+  githubId: 'test-user-id',
+  username: 'test',
+  name: 'Test User',
+  email: 'test@example.com',
+  image: 'https://avatars.githubusercontent.com/u/99999999?v=4',
 }
 
 export const authOptions: AuthOptions = {
@@ -23,153 +34,60 @@ export const authOptions: AuthOptions = {
         },
       },
     }),
-  ],
-  pages: {
-    signIn: '/auth/signin',
-  },
-  ...(process.env.AUTH_REDIRECT_PROXY_URL
-    ? {
-        callbacks: {
-          async redirect({ url }) {
-            const finalUrl = url.replace(
-              process.env.AUTH_REDIRECT_PROXY_URL!,
-              process.env.NEXTAUTH_URL!
-            )
-            return finalUrl
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Test Account',
+      credentials: {
+        username: { type: 'text' },
+        isTest: { type: 'boolean' },
+      },
+      async authorize(credentials) {
+        if (process.env.NODE_ENV !== 'development' || !credentials?.isTest) {
+          return null
+        }
+
+        // Create or update test user in DB
+        const user = await prisma.user.upsert({
+          where: { githubId: TEST_USER.githubId },
+          update: { username: TEST_USER.username },
+          create: {
+            githubId: TEST_USER.githubId,
+            username: TEST_USER.username,
           },
-        },
-      }
-    : {}),
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
+        })
+
+        return {
+          id: user.id,
+          githubId: user.githubId,
+          name: TEST_USER.name,
+          email: TEST_USER.email,
+          image: TEST_USER.image,
+        }
+      },
+    }),
+  ],
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith(baseUrl)) {
-        return url
-      }
-
-      // Handle relative URLs
-      if (url.startsWith('/')) {
-        return `${baseUrl}${url}`
-      }
-
-      const allowedDomains = [
-        'scriptkit.com',
-        'dev-scriptkit.vercel.app',
-        'staging-scriptkit.vercel.app',
-        `localhost:${process.env.PORT || 3000}`,
-        'script-generator-git-main-skillrecordings.vercel.app',
-        'script-generator-*.vercel.app',
-      ]
-
-      try {
-        const urlObj = new URL(url)
-        const host = urlObj.host.replace(/^(https?:\/\/)?(www\.)?/, '')
-
-        const isAllowedDomain = allowedDomains.some(domain => {
-          if (domain.includes('*')) {
-            const pattern = domain.replace('*', '.*')
-            return new RegExp(`^${pattern}$`).test(host)
-          }
-          return domain === host
-        })
-
-        if (isAllowedDomain) {
-          return url
-        }
-      } catch (error) {
-        console.error('Error parsing URL:', error)
-      }
-
-      return baseUrl
-    },
-    async signIn({ user, account }) {
-      if (account?.provider !== 'github') {
-        console.error('Only GitHub authentication is supported')
-        return false
-      }
-
-      try {
-        console.log('GitHub sign in:', {
-          user,
-          providerAccountId: account.providerAccountId,
-        })
-
-        if (!account.providerAccountId) {
-          console.error('No providerAccountId found in GitHub account')
-          return false
-        }
-
-        const githubId = account.providerAccountId
-        const username = user.name || user.email?.split('@')[0] || 'user'
-
-        // Create or update user in database with a new Prisma instance
-        const dbUser = await prisma.$transaction(async tx => {
-          return await tx.user.upsert({
-            where: { githubId },
-            update: { username },
-            create: {
-              githubId,
-              username,
-            },
-          })
-        })
-
-        console.log('User upserted:', { dbUser })
-
-        if (!dbUser) {
-          console.error('Failed to upsert user')
-          return false
-        }
-
-        return true
-      } catch (error) {
-        console.error('Error in signIn callback:', error)
-        // Disconnect Prisma client on error
-        await prisma.$disconnect()
-        return false
-      }
-    },
-    async jwt({ token, account, profile }) {
-      console.log('JWT callback:', { token, account, profile })
-
-      if (account) {
-        token.sub = account.providerAccountId
-
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { githubId: account.providerAccountId },
-          })
-
-          if (dbUser) {
-            token.userId = dbUser.id
-            token.githubId = dbUser.githubId
-          }
-        } catch (error) {
-          console.error('Error in jwt callback:', error)
-          await prisma.$disconnect()
-        }
+    async jwt({ token, user }) {
+      if (user) {
+        token.userId = user.id
+        token.githubId = user.githubId
       }
       return token
     },
     async session({ session, token }) {
-      console.log('Session callback:', { session, token })
-
       if (token.userId && token.githubId) {
         session.user.id = token.userId as string
         session.user.githubId = token.githubId as string
-        console.log('Updated session with user data:', {
-          id: session.user.id,
-          githubId: session.user.githubId,
-        })
-      } else {
-        console.error('No user ID or GitHub ID in token:', { token })
       }
-
       return session
     },
+  },
+  pages: {
+    signIn: '/auth/signin',
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: process.env.NODE_ENV === 'development',
 }
