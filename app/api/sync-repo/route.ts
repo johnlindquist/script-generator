@@ -71,6 +71,14 @@ export async function POST(req: NextRequest) {
       (f: { type: string; name: string }) => f.type === 'file' && f.name.endsWith('.ts')
     )
 
+    // Limit the number of scripts to 200
+    if (scriptFiles.length > 200) {
+      return NextResponse.json(
+        { error: 'Repository contains too many scripts. Maximum allowed is 200.' },
+        { status: 400 }
+      )
+    }
+
     // Find or create the GitHub user
     let ownerUser = await prisma.user.findUnique({
       where: {
