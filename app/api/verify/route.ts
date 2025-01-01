@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { shouldLockScript } from '@/lib/scripts'
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,6 +56,15 @@ export async function POST(req: NextRequest) {
         },
       })
       isVerified = true
+
+      // Check if script should be locked (since this is a non-owner verification)
+      const shouldLock = await shouldLockScript(scriptId)
+      if (shouldLock) {
+        await prisma.script.update({
+          where: { id: scriptId },
+          data: { locked: true },
+        })
+      }
     }
 
     // Get updated verification count

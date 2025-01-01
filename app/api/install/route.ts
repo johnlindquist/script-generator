@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { headers } from 'next/headers'
+import { shouldLockScript } from '@/lib/scripts'
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -17,6 +18,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Get the script to check ownership
+    const script = await prisma.script.findUnique({
+      where: { id: scriptId },
+      select: { ownerId: true },
+    })
+
+    if (!script) {
+      return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+    }
+
     // Check if this IP has installed this script in the last 24 hours
     const recentInstall = await prisma.install.findFirst({
       where: {
@@ -48,6 +59,17 @@ export async function POST(request: Request) {
         userId: session?.user?.id, // Optional: track user if they're logged in
       },
     })
+
+    // If user is logged in and not the owner, check if script should be locked
+    if (session?.user?.id && session.user.id !== script.ownerId) {
+      const shouldLock = await shouldLockScript(scriptId)
+      if (shouldLock) {
+        await prisma.script.update({
+          where: { id: scriptId },
+          data: { locked: true },
+        })
+      }
+    }
 
     // Get updated install count
     const installCount = await prisma.install.count({
