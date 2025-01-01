@@ -2,8 +2,61 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { shouldLockScript } from '@/lib/scripts'
 
 const PAGE_SIZE = 12
+
+// Migration endpoint to update existing scripts
+export async function PUT() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Get all scripts that have favorites, verifications, or installs
+  const scripts = await prisma.script.findMany({
+    where: {
+      OR: [
+        { favorites: { some: {} } },
+        { verifications: { some: {} } },
+        { installs: { some: {} } },
+      ],
+      locked: false,
+    },
+    select: {
+      id: true,
+      ownerId: true,
+      favorites: { select: { userId: true } },
+      verifications: { select: { userId: true } },
+      installs: { select: { userId: true } },
+    },
+  })
+
+  console.log('Migration Debug - Found Scripts:', {
+    count: scripts.length,
+  })
+
+  const updatedScripts = []
+  for (const script of scripts) {
+    const shouldLock = await shouldLockScript(script.id)
+    if (shouldLock) {
+      await prisma.script.update({
+        where: { id: script.id },
+        data: { locked: true },
+      })
+      updatedScripts.push(script.id)
+      console.log('Migration Debug - Locked Script:', {
+        scriptId: script.id,
+        ownerId: script.ownerId,
+      })
+    }
+  }
+
+  return NextResponse.json({
+    message: 'Migration complete',
+    updatedScripts,
+  })
+}
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -32,6 +85,7 @@ export async function GET(request: NextRequest) {
         title: true,
         content: true,
         saved: true,
+        locked: true,
         createdAt: true,
         dashedName: true,
         owner: {
@@ -56,7 +110,12 @@ export async function GET(request: NextRequest) {
                 id: true,
               },
             }
-          : false,
+          : {
+              select: {
+                id: true,
+              },
+              take: 0,
+            },
         favorites: session?.user?.id
           ? {
               where: {
@@ -66,7 +125,12 @@ export async function GET(request: NextRequest) {
                 id: true,
               },
             }
-          : false,
+          : {
+              select: {
+                id: true,
+              },
+              take: 0,
+            },
       },
     }),
   ])

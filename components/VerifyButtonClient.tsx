@@ -25,14 +25,14 @@ export default function VerifyButtonClient({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Hide button if not logged in OR is the script owner
-  if (!isAuthenticated || isOwner) {
-    return null
-  }
-
   const handleVerify = async () => {
     if (!isAuthenticated) {
       alert(STRINGS.VERIFY_BUTTON.signInRequired)
+      return
+    }
+
+    if (isOwner) {
+      alert("You can't verify your own script")
       return
     }
 
@@ -68,19 +68,21 @@ export default function VerifyButtonClient({
     }
   }
 
-  return (
-    <Tooltip
-      content={
-        error ||
+  const tooltipContent = isOwner
+    ? "You can't verify your own script"
+    : !isAuthenticated
+      ? STRINGS.VERIFY_BUTTON.signInRequired
+      : error ||
         (isVerified ? STRINGS.VERIFY_BUTTON.tooltipRemove : STRINGS.VERIFY_BUTTON.tooltipAdd)
-      }
-    >
+
+  return (
+    <Tooltip content={tooltipContent}>
       <button
         onClick={handleVerify}
-        disabled={isLoading || !isAuthenticated}
+        disabled={isLoading || !isAuthenticated || isOwner}
         className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
           error ? 'border-red-500 border' : ''
-        } ${!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
+        } ${!isAuthenticated || isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <svg
           className={`w-4 h-4 ${isVerified ? 'text-green-400' : ''} ${error ? 'text-red-500' : ''}`}

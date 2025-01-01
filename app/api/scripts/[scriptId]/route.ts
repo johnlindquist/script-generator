@@ -89,6 +89,13 @@ const updateScript = async (request: NextRequest, context?: { params: Record<str
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
+    if (script.locked) {
+      return NextResponse.json(
+        { error: 'Script is locked and cannot be modified' },
+        { status: 403 }
+      )
+    }
+
     if (script.ownerId !== session.user.id) {
       return NextResponse.json({ error: 'Not authorized to modify this script' }, { status: 403 })
     }

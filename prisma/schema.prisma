@@ -27,6 +27,7 @@ model Script {
   content       String
   starred       Boolean         @default(false)
   saved         Boolean         @default(false)
+  locked        Boolean         @default(false)
   ownerId       String
   createdAt     DateTime        @default(now())
   prompt        String?

@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
+    // Prevent owners from verifying their own scripts
+    if (script.ownerId === session.user.id) {
+      return NextResponse.json({ error: "You can't verify your own script" }, { status: 403 })
+    }
+
     // Check if user already verified this script
     const existingVerification = await prisma.verification.findUnique({
       where: {
