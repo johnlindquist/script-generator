@@ -7,6 +7,21 @@ export const STRINGS = {
     userAvatarAlt: 'User avatar',
   },
 
+  IMPORT_SCRIPTS: {
+    title: 'Import Scripts from JSON',
+    description:
+      'The JSON should be an array of script objects. Each script should have a name and content. Optional fields include description, author (full name), user (username), github, and twitter.',
+    inputLabel: 'Paste your JSON content here',
+    importButton: 'Import Scripts',
+    importing: 'Importing...',
+    success: 'Successfully imported scripts',
+    error: {
+      invalidJson: 'Invalid JSON format. Expected an array of scripts.',
+      unauthorized: 'Unauthorized',
+      unknown: 'Failed to import scripts',
+    },
+  },
+
   SYNC_REPO: {
     title: 'Sync GitHub Repository',
     description:

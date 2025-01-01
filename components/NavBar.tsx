@@ -72,6 +72,12 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
                   >
                     Sync GitHub Repo
                   </Link>
+                  <Link
+                    href="/scripts/import"
+                    className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors"
+                  >
+                    Import Scripts
+                  </Link>
                   <button
                     onClick={() => signOut()}
                     className="w-full text-left px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-b-lg transition-colors flex items-center gap-2"
