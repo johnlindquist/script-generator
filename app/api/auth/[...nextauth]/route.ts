@@ -1,13 +1,20 @@
-import NextAuth, { DefaultSession, AuthOptions } from 'next-auth'
+import NextAuth, { DefaultSession, AuthOptions, User as NextAuthUser } from 'next-auth'
 import GithubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 
-// Extend the built-in session type
+// Extend the built-in types
 declare module 'next-auth' {
+  interface User extends NextAuthUser {
+    username: string
+    fullName?: string | null
+  }
+
   interface Session {
     user: {
       id: string
+      username: string
+      fullName?: string | null
     } & DefaultSession['user']
   }
 }
@@ -34,10 +41,10 @@ export const authOptions: AuthOptions = {
       profile(profile) {
         return {
           id: profile.id.toString(),
-          name: profile.name || profile.login,
+          username: profile.login,
+          fullName: profile.name || null,
           email: profile.email,
           image: profile.avatar_url,
-          username: profile.login,
         }
       },
     }),
@@ -56,16 +63,21 @@ export const authOptions: AuthOptions = {
         // Create or update test user in DB
         const user = await prisma.user.upsert({
           where: { id: TEST_USER.id },
-          update: { username: TEST_USER.username },
+          update: {
+            username: TEST_USER.username,
+            fullName: TEST_USER.name,
+          },
           create: {
             id: TEST_USER.id,
             username: TEST_USER.username,
+            fullName: TEST_USER.name,
           },
         })
 
         return {
           id: user.id,
-          name: TEST_USER.name,
+          username: TEST_USER.username,
+          fullName: TEST_USER.name,
           email: TEST_USER.email,
           image: TEST_USER.image,
         }
@@ -73,15 +85,42 @@ export const authOptions: AuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'github' && profile) {
+        // Ensure we update the user in our database with latest GitHub info
+        await prisma.user.upsert({
+          where: { id: user.id },
+          update: {
+            username: profile.login as string,
+            fullName: profile.name || null,
+          },
+          create: {
+            id: user.id,
+            username: profile.login as string,
+            fullName: profile.name || null,
+          },
+        })
+      }
+      return true
+    },
+    async jwt({ token, user, account, profile }) {
       if (user) {
         token.userId = user.id
+        token.username = user.username
+        token.fullName = user.fullName
+      }
+      // If it's a GitHub sign in, ensure we have latest profile info
+      if (account?.provider === 'github' && profile) {
+        token.username = profile.login as string
+        token.fullName = profile.name || null
       }
       return token
     },
     async session({ session, token }) {
-      if (token.userId) {
+      if (token) {
         session.user.id = token.userId as string
+        session.user.username = token.username as string
+        session.user.fullName = token.fullName as string | null
       }
       return session
     },

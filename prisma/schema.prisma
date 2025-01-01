@@ -11,6 +11,7 @@ datasource db {
 model User {
   id            String         @id
   username      String
+  fullName      String?
   favorites     Favorite[]
   installs      Install[]
   verifications Verification[]

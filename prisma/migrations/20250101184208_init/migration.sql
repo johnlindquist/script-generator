@@ -4,8 +4,8 @@ CREATE TYPE "ScriptStatus" AS ENUM ('ACTIVE', 'REQUESTED', 'IN_PROGRESS', 'COMPL
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "githubId" TEXT NOT NULL,
     "username" TEXT NOT NULL,
+    "fullName" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -19,6 +19,7 @@ CREATE TABLE "Script" (
     "content" TEXT NOT NULL,
     "starred" BOOLEAN NOT NULL DEFAULT false,
     "saved" BOOLEAN NOT NULL DEFAULT false,
+    "locked" BOOLEAN NOT NULL DEFAULT false,
     "ownerId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "prompt" TEXT,
@@ -112,9 +113,6 @@ CREATE TABLE "_ScriptTags" (
 
     CONSTRAINT "_ScriptTags_AB_pkey" PRIMARY KEY ("A","B")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_githubId_key" ON "User"("githubId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Script_requestId_key" ON "Script"("requestId");
