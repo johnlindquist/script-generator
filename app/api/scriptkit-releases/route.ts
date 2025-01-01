@@ -33,8 +33,11 @@ export async function GET() {
       linuxarm64,
       beta,
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error)
-    return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to fetch releases' },
+      { status: 500 }
+    )
   }
 }
