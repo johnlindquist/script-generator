@@ -1,15 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  ScriptWithAllRelations,
-  ScriptWithMinimalRelations,
-  ScriptWithComputedFields,
-  ScriptsResponse,
-} from '@/types/script'
+import { ScriptLite, ScriptWithMinimalRelations, ScriptsResponse } from '@/types/script'
 import useSWR from 'swr'
 import ScriptCard from './ScriptCard'
 import { STRINGS } from '@/lib/strings'
+import { Session } from 'next-auth'
 import { useSession } from 'next-auth/react'
 
 interface ScriptListClientProps {
@@ -19,26 +15,31 @@ interface ScriptListClientProps {
 }
 
 const transformScript = (
-  script: ScriptWithAllRelations | ScriptWithMinimalRelations,
-  currentUserId?: string
-): ScriptWithComputedFields => {
+  script: ScriptWithMinimalRelations,
+  session: Session | null
+): ScriptLite => {
   return {
     ...script,
     isVerified:
-      'verifications' in script
-        ? script.verifications.some(v => v.userId === currentUserId)
+      'verifications' in script && Array.isArray(script.verifications)
+        ? script.verifications.some((v: { userId: string }) => v.userId === session?.user?.id)
         : false,
     isFavorited:
-      'favorites' in script ? script.favorites.some(f => f.userId === currentUserId) : false,
+      'favorites' in script && Array.isArray(script.favorites)
+        ? script.favorites.some((f: { userId: string }) => f.userId === session?.user?.id)
+        : false,
   }
 }
 
 const fetcher = async (url: string) => {
   const response = await fetch(url)
   const data = await response.json()
+  const { data: session } = useSession()
   return {
     ...data,
-    scripts: data.scripts.map((script: ScriptWithMinimalRelations) => transformScript(script)),
+    scripts: data.scripts.map((script: ScriptWithMinimalRelations) =>
+      transformScript(script, session)
+    ),
   }
 }
 
@@ -56,7 +57,7 @@ export default function ScriptsListClient({
     {
       fallbackData: {
         ...initialData,
-        scripts: initialData.scripts.map(script => transformScript(script, currentUserId)),
+        scripts: initialData.scripts.map(script => transformScript(script, session)),
       },
       revalidateOnFocus: false,
     }

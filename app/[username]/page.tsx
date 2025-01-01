@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation'
 import ScriptGridWithSuspense from '@/components/ScriptGridWithSuspense'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { ScriptWithMinimalRelations, ScriptWithComputedFields } from '@/types/script'
+import { ScriptLite, ScriptWithMinimalRelations } from '@/types/script'
 
-const transformScript = (script: ScriptWithMinimalRelations): ScriptWithComputedFields => ({
+const transformScript = (script: ScriptWithMinimalRelations): ScriptLite => ({
   ...script,
   isVerified: false,
   isFavorited: false,
