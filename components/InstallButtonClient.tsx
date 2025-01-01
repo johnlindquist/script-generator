@@ -35,7 +35,7 @@ export default function InstallButtonClient({
       setInstallCount(installCount + 1)
 
       if (dashedName) {
-        window.open(`kit://script/install/${dashedName}`, '_blank')
+        window.location.href = `kit://script/install/${dashedName}`
       }
     } catch (error) {
       console.error('Error installing script:', error)
