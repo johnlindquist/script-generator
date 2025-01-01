@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
 import { STRINGS } from '@/lib/strings'
+import { toast } from 'react-hot-toast'
 
 interface CopyButtonClientProps {
   content: string
@@ -13,6 +14,7 @@ export default function CopyButtonClient({ content }: CopyButtonClientProps) {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content)
     setCopied(true)
+    toast.success(STRINGS.COPY_BUTTON.tooltipCopied)
     setTimeout(() => setCopied(false), 2000)
   }
 

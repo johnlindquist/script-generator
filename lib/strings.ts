@@ -22,7 +22,7 @@ export const STRINGS = {
   },
 
   COPY_BUTTON: {
-    tooltipCopied: 'Copied!',
+    tooltipCopied: 'Copied to clipboard!',
     tooltipDefault: 'Copy to clipboard',
   },
 
