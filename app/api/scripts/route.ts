@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
           select: {
             username: true,
             id: true,
+            fullName: true,
           },
         },
         _count: {
