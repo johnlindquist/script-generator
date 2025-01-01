@@ -4,15 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { wrapApiHandler } from '@/lib/timing'
 
-interface Context {
-  params: {
-    scriptId: string
-  }
-}
-
-const deleteScript = async (request: NextRequest, context: Context) => {
+const deleteScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
   try {
-    const params = await context.params
+    if (!context?.params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = context.params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -20,7 +15,7 @@ const deleteScript = async (request: NextRequest, context: Context) => {
     }
 
     const script = await prisma.script.findUnique({
-      where: { id: params.scriptId },
+      where: { id: scriptId },
     })
 
     if (!script) {
@@ -33,13 +28,13 @@ const deleteScript = async (request: NextRequest, context: Context) => {
 
     await prisma.$transaction([
       prisma.verification.deleteMany({
-        where: { scriptId: params.scriptId },
+        where: { scriptId: scriptId },
       }),
       prisma.scriptVersion.deleteMany({
-        where: { scriptId: params.scriptId },
+        where: { scriptId: scriptId },
       }),
       prisma.script.delete({
-        where: { id: params.scriptId },
+        where: { id: scriptId },
       }),
     ])
 
@@ -50,11 +45,12 @@ const deleteScript = async (request: NextRequest, context: Context) => {
   }
 }
 
-const getScript = async (request: NextRequest, context: Context) => {
+const getScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
   try {
-    const params = await context.params
+    if (!context?.params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = context.params
     const script = await prisma.script.findUnique({
-      where: { id: params.scriptId },
+      where: { id: scriptId },
       include: { owner: true },
     })
 
@@ -69,16 +65,17 @@ const getScript = async (request: NextRequest, context: Context) => {
   }
 }
 
-const updateScript = async (request: NextRequest, context: Context) => {
+const updateScript = async (request: NextRequest, context?: { params: Record<string, string> }) => {
   try {
-    const params = await context.params
+    if (!context?.params?.scriptId) throw new Error('Missing script ID')
+    const { scriptId } = context.params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const script = await prisma.script.findUnique({
-      where: { id: params.scriptId },
+      where: { id: scriptId },
     })
 
     if (!script) {
@@ -92,7 +89,7 @@ const updateScript = async (request: NextRequest, context: Context) => {
     const { saved } = await request.json()
 
     const updatedScript = await prisma.script.update({
-      where: { id: params.scriptId },
+      where: { id: scriptId },
       data: { saved },
     })
 
