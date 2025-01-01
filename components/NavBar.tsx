@@ -55,7 +55,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-xl border border-amber-400/10 z-50">
                   <Link
-                    href="/scripts/new"
+                    href="/new"
                     className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-t-lg transition-colors"
                   >
                     {STRINGS.NAVBAR.addScript}

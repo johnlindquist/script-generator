@@ -1,73 +1,82 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState } from 'react'
+import { ScriptWithRelations } from '@/types/script'
 import useSWR from 'swr'
-import { Suspense } from 'react'
 import ScriptCard from './ScriptCard'
-import ScriptCardSkeleton from './ScriptCardSkeleton'
-import { ScriptsResponse } from '@/types/script'
+import { useParams } from 'next/navigation'
+
+interface ScriptGridWithSuspenseProps {
+  scripts: ScriptWithRelations[]
+  isAuthenticated: boolean
+  currentUserId?: string
+  page: number
+  totalPages: number
+  onPageOutOfRange: () => void
+  onTotalPagesChange?: (newTotalPages: number) => void
+  fallbackData?: ScriptsResponse
+}
+
+interface ScriptsResponse {
+  scripts: ScriptWithRelations[]
+  totalPages: number
+  currentPage: number
+}
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
-interface ScriptGridWithSuspenseProps {
-  page: number
-  isAuthenticated: boolean
-  currentUserId?: string
-  onPageOutOfRange: () => void
-  onTotalPagesChange: (totalPages: number) => void
-  fallbackData: ScriptsResponse
-}
-
 export default function ScriptGridWithSuspense({
-  page,
+  scripts: initialScripts,
   isAuthenticated,
   currentUserId,
-  onPageOutOfRange,
-  onTotalPagesChange,
-  fallbackData,
+  page,
+  totalPages,
 }: ScriptGridWithSuspenseProps) {
-  const { data, isLoading, mutate } = useSWR<ScriptsResponse>(
-    `/api/scripts?page=${page}`,
-    fetcher,
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      suspense: true,
-      fallbackData,
-    }
+  const params = useParams()
+  const username = params?.username as string | undefined
+  const [deletedScriptIds, setDeletedScriptIds] = useState<Set<string>>(new Set())
+
+  // Use different API endpoints based on whether we're on a user page or homepage
+  const apiUrl = username ? `/${username}/api/scripts?page=${page}` : `/api/scripts?page=${page}`
+
+  const { data } = useSWR<ScriptsResponse>(apiUrl, fetcher, {
+    fallbackData: {
+      scripts: initialScripts || [],
+      totalPages,
+      currentPage: page,
+    },
+    revalidateOnFocus: false,
+  })
+
+  const handleScriptDeleted = (scriptId: string) => {
+    setDeletedScriptIds(prev => new Set([...prev, scriptId]))
+  }
+
+  // Ensure we have an array even if data is undefined
+  const scripts = data?.scripts || initialScripts || []
+  const visibleScripts = scripts.filter(
+    (script: ScriptWithRelations) => !deletedScriptIds.has(script.id)
   )
 
-  // With suspense: true and fallbackData, data will always be defined
-  if (!data) throw new Error('Should never happen with suspense: true and fallbackData')
-
-  useEffect(() => {
-    if (data.totalPages) {
-      onTotalPagesChange(data.totalPages)
-    }
-  }, [data.totalPages, onTotalPagesChange])
-
-  // This will only run after data is loaded due to suspense
-  if (data.totalPages && page > data.totalPages) {
-    onPageOutOfRange()
-    return null
+  if (!scripts.length) {
+    return <div className="text-center text-gray-400 py-12">No scripts found</div>
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {isLoading
-        ? // Show skeletons during loading
-          Array.from({ length: 6 }).map((_, i) => <ScriptCardSkeleton key={i} />)
-        : // Show actual content when not loading
-          data.scripts.map(script => (
-            <Suspense key={script.id} fallback={<ScriptCardSkeleton />}>
-              <ScriptCard
-                script={script}
-                isAuthenticated={isAuthenticated}
-                currentUserId={currentUserId}
-                onScriptChanged={() => mutate()}
-              />
-            </Suspense>
-          ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {visibleScripts.map((script: ScriptWithRelations) => (
+        <ScriptCard
+          key={script.id}
+          script={script}
+          isAuthenticated={isAuthenticated}
+          currentUserId={currentUserId}
+          onDeleted={() => handleScriptDeleted(script.id)}
+          onScriptChanged={() => {
+            // Refresh data
+            window.location.reload()
+          }}
+        />
+      ))}
     </div>
   )
 }

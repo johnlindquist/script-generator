@@ -32,6 +32,8 @@ export default function ScriptListClient({
   return (
     <div>
       <ScriptGridWithSuspense
+        scripts={initialData.scripts}
+        totalPages={totalPages}
         page={page}
         isAuthenticated={isAuthenticated}
         currentUserId={currentUserId}

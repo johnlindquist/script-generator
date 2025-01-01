@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Tooltip } from '@nextui-org/react'
 import { toast } from 'react-hot-toast'
 import { STRINGS } from '@/lib/strings'
+import { useSession } from 'next-auth/react'
 
 interface DeleteButtonClientProps {
   scriptId: string
@@ -14,11 +15,12 @@ export default function DeleteButtonClient({ scriptId, onDeleted }: DeleteButton
   const [isDeleting, setIsDeleting] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const router = useRouter()
+  const { data: session } = useSession()
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/scripts/${scriptId}`, {
+      const response = await fetch(`/api/${session?.user?.username}/${scriptId}`, {
         method: 'DELETE',
       })
 

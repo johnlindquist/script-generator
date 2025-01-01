@@ -1,4 +1,5 @@
 'use client'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Tooltip } from '@nextui-org/react'
 import { STRINGS } from '@/lib/strings'
@@ -9,9 +10,10 @@ interface EditButtonClientProps {
 
 export default function EditButtonClient({ scriptId }: EditButtonClientProps) {
   const router = useRouter()
+  const { data: session } = useSession()
 
   const handleEdit = () => {
-    router.push(`/scripts/${scriptId}`)
+    router.push(`/${session?.user?.username}/${scriptId}`)
   }
 
   return (

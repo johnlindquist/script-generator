@@ -75,23 +75,31 @@ export default function ScriptCard({
       })}
     >
       <div className="mb-4">
-        <Link href={`/scripts/${script.id}`} className="block hover:opacity-75 transition-opacity">
+        <Link
+          href={`/${script.owner.username}/${script.id}`}
+          className="block hover:opacity-75 transition-opacity"
+        >
           <h2 className="text-xl font-lexend font-semibold mb-2 text-amber-300">{script.title}</h2>
         </Link>
 
         <div className="flex justify-between">
-          <p className="text-slate-400 text-sm flex items-center">
-            {script.owner.fullName || script.owner.username}
+          <div className="text-slate-400 text-sm flex items-center gap-2">
+            <Link
+              href={`/${script.owner.username}`}
+              className="hover:text-amber-300 transition-colors"
+            >
+              {script.owner.fullName || script.owner.username}
+            </Link>
 
             <Link
               href={`https://github.com/${script.owner.username}`}
-              className="block hover:opacity-75 transition-opacity"
+              className="hover:opacity-75 transition-opacity"
             >
-              <span className="ml-2 inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
-                <FaGithub className="w-4 h-4 mr-1" />
+              <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
+                <FaGithub className="w-4 h-4" />
               </span>
             </Link>
-          </p>
+          </div>
 
           {
             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-300">
@@ -102,7 +110,7 @@ export default function ScriptCard({
         </div>
       </div>
       <div className="flex-grow flex flex-col overflow-hidden">
-        <Link href={`/scripts/${script.id}`} className="block flex-grow min-h-0">
+        <Link href={`/${script.owner.username}/${script.id}`} className="block flex-grow min-h-0">
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight theme={themes.nightOwl} code={script.content} language="typescript">
               {({ className, style, tokens, getLineProps, getTokenProps }) => (

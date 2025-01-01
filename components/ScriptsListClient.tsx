@@ -5,6 +5,7 @@ import { ScriptWithRelations, ScriptsResponse } from '@/types/script'
 import useSWR from 'swr'
 import ScriptCard from './ScriptCard'
 import { STRINGS } from '@/lib/strings'
+import { useSession } from 'next-auth/react'
 
 interface ScriptListClientProps {
   isAuthenticated: boolean
@@ -24,6 +25,7 @@ export default function ScriptsListClient({
   initialData,
 }: ScriptListClientProps) {
   const [deletedScriptIds, setDeletedScriptIds] = useState<Set<string>>(new Set())
+  const { data: session } = useSession()
 
   const { data, mutate } = useSWR<ScriptsResponse>(
     `/api/scripts?page=${initialData.currentPage}`,
@@ -63,7 +65,7 @@ export default function ScriptsListClient({
       {visibleScripts.length > 0 && (
         <div className="mt-8 flex justify-center items-center gap-4">
           <a
-            href={`/scripts/mine?page=${Math.max(1, initialData.currentPage - 1)}`}
+            href={`/${session?.user?.username}?page=${Math.max(1, initialData.currentPage - 1)}`}
             className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
               initialData.currentPage === 1 ? 'pointer-events-none opacity-50' : ''
             }`}
@@ -76,7 +78,7 @@ export default function ScriptsListClient({
               .replace('{totalPages}', String(data?.totalPages || initialData.totalPages))}
           </span>
           <a
-            href={`/scripts/mine?page=${Math.min(data?.totalPages || initialData.totalPages, initialData.currentPage + 1)}`}
+            href={`/${session?.user?.username}?page=${Math.min(data?.totalPages || initialData.totalPages, initialData.currentPage + 1)}`}
             className={`px-4 py-2 bg-amber-400/10 text-amber-300 rounded-lg hover:bg-amber-400/20 ${
               initialData.currentPage === (data?.totalPages || initialData.totalPages)
                 ? 'pointer-events-none opacity-50'
