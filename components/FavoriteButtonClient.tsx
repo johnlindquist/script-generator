@@ -2,13 +2,26 @@
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
 import { STRINGS } from '@/lib/strings'
+import useSWR from 'swr'
+import { useParams } from 'next/navigation'
 
 interface FavoriteButtonClientProps {
   scriptId: string
   initialIsFavorited: boolean
   initialFavoriteCount: number
   isAuthenticated: boolean
-  onScriptChanged?: () => void
+}
+
+interface Script {
+  id: string
+  isFavorited: boolean
+  _count: {
+    favorites: number
+  }
+}
+
+interface ScriptsResponse {
+  scripts: Script[]
 }
 
 export default function FavoriteButtonClient({
@@ -16,12 +29,15 @@ export default function FavoriteButtonClient({
   initialIsFavorited,
   initialFavoriteCount,
   isAuthenticated,
-  onScriptChanged,
 }: FavoriteButtonClientProps) {
-  const [isFavorited, setIsFavorited] = useState(initialIsFavorited)
-  const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const params = useParams()
+  const username = params?.username as string | undefined
+
+  // Use the same SWR key as the parent component
+  const apiUrl = username ? `/${username}/api/scripts?page=1` : `/api/scripts?page=1`
+  const { mutate } = useSWR(apiUrl)
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
@@ -30,8 +46,32 @@ export default function FavoriteButtonClient({
     }
 
     setIsLoading(true)
+    setError(null)
 
     try {
+      // Optimistically update the UI
+      mutate(
+        async (currentData: ScriptsResponse | undefined) => {
+          if (!currentData) return currentData
+
+          const updatedScripts = currentData.scripts.map((script: Script) =>
+            script.id === scriptId
+              ? {
+                  ...script,
+                  isFavorited: !script.isFavorited,
+                  _count: {
+                    ...script._count,
+                    favorites: script._count.favorites + (script.isFavorited ? -1 : 1),
+                  },
+                }
+              : script
+          )
+
+          return { ...currentData, scripts: updatedScripts }
+        },
+        { revalidate: false }
+      )
+
       const response = await fetch('/api/favorite', {
         method: 'POST',
         headers: {
@@ -49,17 +89,47 @@ export default function FavoriteButtonClient({
         throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
-      // Only update UI after successful API call
-      setIsFavorited(!isFavorited)
-      setFavoriteCount(favoriteCount + (isFavorited ? -1 : 1))
-      onScriptChanged?.()
+      const data = await response.json()
+
+      // Update with the real data from the server
+      mutate(
+        async (currentData: ScriptsResponse | undefined) => {
+          if (!currentData) return currentData
+
+          const updatedScripts = currentData.scripts.map((script: Script) =>
+            script.id === scriptId
+              ? {
+                  ...script,
+                  isFavorited: data.isFavorited,
+                  _count: {
+                    ...script._count,
+                    favorites: data.favoriteCount,
+                  },
+                }
+              : script
+          )
+
+          return { ...currentData, scripts: updatedScripts }
+        },
+        { revalidate: false }
+      )
     } catch (error) {
       console.error('Error favoriting script:', error)
       setError(error instanceof Error ? error.message : STRINGS.FAVORITE_BUTTON.error)
+
+      // Revert the optimistic update on error
+      mutate()
     } finally {
       setIsLoading(false)
     }
   }
+
+  // Get the current state from the SWR cache
+  const currentScript = useSWR<ScriptsResponse>(apiUrl).data?.scripts?.find(
+    (s: Script) => s.id === scriptId
+  )
+  const isFavorited = currentScript?.isFavorited ?? initialIsFavorited
+  const favoriteCount = currentScript?._count?.favorites ?? initialFavoriteCount
 
   return (
     <Tooltip

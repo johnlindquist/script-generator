@@ -5,6 +5,7 @@ import { Highlight, themes } from 'prism-react-renderer'
 import { FaGithub } from 'react-icons/fa'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
 import { Prisma } from '@prisma/client'
+import { ScriptsResponse } from '@/types/script'
 
 import CopyButtonClient from './CopyButtonClient'
 import VerifyButtonClient from './VerifyButtonClient'
@@ -35,7 +36,7 @@ interface ScriptCardProps {
   isAuthenticated: boolean
   currentUserId?: string
   onDeleted?: (scriptId: string) => void
-  onScriptChanged?: () => void
+  onScriptChanged?: () => void | Promise<ScriptsResponse | undefined>
 }
 
 export default function ScriptCard({
@@ -43,7 +44,6 @@ export default function ScriptCard({
   isAuthenticated,
   currentUserId,
   onDeleted,
-  onScriptChanged,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner.id
 
@@ -146,7 +146,6 @@ export default function ScriptCard({
                 scriptId={script.id}
                 onDeleted={() => {
                   onDeleted?.(script.id)
-                  onScriptChanged?.()
                 }}
               />
             </>
@@ -169,7 +168,6 @@ export default function ScriptCard({
             initialVerifiedCount={script._count?.verifications ?? 0}
             isAuthenticated={isAuthenticated}
             isOwner={isOwner}
-            onScriptChanged={onScriptChanged}
           />
 
           <FavoriteButtonClient
@@ -177,7 +175,6 @@ export default function ScriptCard({
             initialIsFavorited={script.isFavorited ?? false}
             initialFavoriteCount={script._count?.favorites ?? 0}
             isAuthenticated={isAuthenticated}
-            onScriptChanged={onScriptChanged}
           />
         </div>
       </div>

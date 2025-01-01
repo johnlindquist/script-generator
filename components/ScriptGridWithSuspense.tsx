@@ -12,7 +12,6 @@ interface ScriptGridWithSuspenseProps {
   currentUserId?: string
   page: number
   totalPages: number
-  onTotalPagesChange?: (newTotalPages: number) => void
   fallbackData?: ScriptsResponse
 }
 
@@ -30,6 +29,7 @@ export default function ScriptGridWithSuspense({
   currentUserId,
   page,
   totalPages,
+  fallbackData,
 }: ScriptGridWithSuspenseProps) {
   const params = useParams()
   const username = params?.username as string | undefined
@@ -38,8 +38,8 @@ export default function ScriptGridWithSuspense({
   // Use different API endpoints based on whether we're on a user page or homepage
   const apiUrl = username ? `/${username}/api/scripts?page=${page}` : `/api/scripts?page=${page}`
 
-  const { data } = useSWR<ScriptsResponse>(apiUrl, fetcher, {
-    fallbackData: {
+  const { data, mutate } = useSWR<ScriptsResponse>(apiUrl, fetcher, {
+    fallbackData: fallbackData || {
       scripts: initialScripts || [],
       totalPages,
       currentPage: page,
@@ -71,8 +71,8 @@ export default function ScriptGridWithSuspense({
           currentUserId={currentUserId}
           onDeleted={() => handleScriptDeleted(script.id)}
           onScriptChanged={() => {
-            // Refresh data
-            window.location.reload()
+            // Just trigger a revalidation instead of a full page reload
+            mutate()
           }}
         />
       ))}

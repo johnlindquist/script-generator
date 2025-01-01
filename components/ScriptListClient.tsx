@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import ScriptGridWithSuspense from './ScriptGridWithSuspense'
 import { ScriptsResponse } from '@/types/script'
 
@@ -19,11 +19,7 @@ export default function ScriptListClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const page = Number(searchParams.get('page') ?? '1')
-  const [totalPages, setTotalPages] = useState(initialData.totalPages)
-
-  const handleTotalPagesChange = useCallback((newTotalPages: number) => {
-    setTotalPages(newTotalPages)
-  }, [])
+  const [totalPages] = useState(initialData.totalPages)
 
   return (
     <div>
@@ -33,7 +29,6 @@ export default function ScriptListClient({
         page={page}
         isAuthenticated={isAuthenticated}
         currentUserId={currentUserId}
-        onTotalPagesChange={handleTotalPagesChange}
         fallbackData={initialData}
       />
 

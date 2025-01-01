@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
 import { ShieldCheckIcon } from '@heroicons/react/24/outline'
 import { STRINGS } from '@/lib/strings'
+import useSWR from 'swr'
+import { useParams } from 'next/navigation'
 
 interface VerifyButtonClientProps {
   scriptId: string
@@ -13,18 +15,33 @@ interface VerifyButtonClientProps {
   onScriptChanged?: () => void
 }
 
+interface Script {
+  id: string
+  isVerified: boolean
+  _count: {
+    verifications: number
+  }
+}
+
+interface ScriptsResponse {
+  scripts: Script[]
+}
+
 export default function VerifyButtonClient({
   scriptId,
   initialIsVerified,
   initialVerifiedCount,
   isAuthenticated,
   isOwner,
-  onScriptChanged,
 }: VerifyButtonClientProps) {
-  const [isVerified, setIsVerified] = useState(initialIsVerified)
-  const [verifiedCount, setVerifiedCount] = useState(initialVerifiedCount)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const params = useParams()
+  const username = params?.username as string | undefined
+
+  // Use the same SWR key as the parent component
+  const apiUrl = username ? `/${username}/api/scripts?page=1` : `/api/scripts?page=1`
+  const { mutate } = useSWR(apiUrl)
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
@@ -38,8 +55,32 @@ export default function VerifyButtonClient({
     }
 
     setIsLoading(true)
+    setError(null)
 
     try {
+      // Optimistically update the UI
+      mutate(
+        async (currentData: ScriptsResponse | undefined) => {
+          if (!currentData) return currentData
+
+          const updatedScripts = currentData.scripts.map((script: Script) =>
+            script.id === scriptId
+              ? {
+                  ...script,
+                  isVerified: !script.isVerified,
+                  _count: {
+                    ...script._count,
+                    verifications: script._count.verifications + (script.isVerified ? -1 : 1),
+                  },
+                }
+              : script
+          )
+
+          return { ...currentData, scripts: updatedScripts }
+        },
+        { revalidate: false }
+      )
+
       const response = await fetch('/api/verify', {
         method: 'POST',
         headers: {
@@ -57,17 +98,47 @@ export default function VerifyButtonClient({
         throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
-      // Only update UI after successful API call
-      setIsVerified(!isVerified)
-      setVerifiedCount(verifiedCount + (isVerified ? -1 : 1))
-      onScriptChanged?.()
+      const data = await response.json()
+
+      // Update with the real data from the server
+      mutate(
+        async (currentData: ScriptsResponse | undefined) => {
+          if (!currentData) return currentData
+
+          const updatedScripts = currentData.scripts.map((script: Script) =>
+            script.id === scriptId
+              ? {
+                  ...script,
+                  isVerified: data.isVerified,
+                  _count: {
+                    ...script._count,
+                    verifications: data.verifiedCount,
+                  },
+                }
+              : script
+          )
+
+          return { ...currentData, scripts: updatedScripts }
+        },
+        { revalidate: false }
+      )
     } catch (error) {
       console.error('Error verifying script:', error)
       setError(error instanceof Error ? error.message : STRINGS.VERIFY_BUTTON.error)
+
+      // Revert the optimistic update on error
+      mutate()
     } finally {
       setIsLoading(false)
     }
   }
+
+  // Get the current state from the SWR cache
+  const currentScript = useSWR<ScriptsResponse>(apiUrl).data?.scripts?.find(
+    (s: Script) => s.id === scriptId
+  )
+  const isVerified = currentScript?.isVerified ?? initialIsVerified
+  const verifiedCount = currentScript?._count?.verifications ?? initialVerifiedCount
 
   const tooltipContent = isOwner
     ? "You can't verify your own script"
