@@ -14,22 +14,22 @@ const DAILY_LIMIT = 24
 
 const generateScript = async (req: NextRequest) => {
   try {
-    const interactionId = req.headers.get('Interaction-ID')
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Started /api/generate route')
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate route')
 
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Unauthorized request')
+      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { scriptId } = await req.json()
     if (!scriptId) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Missing scriptId')
+      logInteraction(interactionTimestamp, 'serverRoute', 'Missing scriptId')
       return NextResponse.json({ error: 'Missing scriptId' }, { status: 400 })
     }
 
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Checking user usage', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
       userId: session.user.id,
     })
 
@@ -42,7 +42,7 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!dbUser) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'User not found in database')
+      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -56,7 +56,7 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!usage) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Creating new usage record', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Creating new usage record', {
         userId: session.user.id,
       })
       usage = await prisma.usage.create({
@@ -69,7 +69,7 @@ const generateScript = async (req: NextRequest) => {
     }
 
     if (usage.count >= DAILY_LIMIT) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Daily limit reached', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit reached', {
         userId: session.user.id,
         count: usage.count,
       })
@@ -95,7 +95,7 @@ const generateScript = async (req: NextRequest) => {
       },
     })
 
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Usage incremented', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Usage incremented', {
       userId: session.user.id,
       newCount: usage.count + 1,
     })
@@ -106,12 +106,12 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!initialScript) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Script not found', { scriptId })
+      logInteraction(interactionTimestamp, 'serverRoute', 'Script not found', { scriptId })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
     if (initialScript.ownerId !== session.user.id) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Unauthorized script access', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized script access', {
         scriptId,
         userId: session.user.id,
       })
@@ -119,7 +119,7 @@ const generateScript = async (req: NextRequest) => {
     }
 
     if (initialScript.status !== 'IN_PROGRESS') {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Invalid script status', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Invalid script status', {
         scriptId,
         status: initialScript.status,
       })
@@ -132,15 +132,15 @@ const generateScript = async (req: NextRequest) => {
       data: { status: 'IN_PROGRESS' },
     })
 
+    logInteraction(interactionTimestamp, 'serverRoute', 'Starting refinement', {
+      scriptId,
+      prompt: initialScript.summary,
+    })
+
     // Generate refined script using Gemini
     const refinementPrompt = SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
       .replace('{prompt}', initialScript.summary || '')
       .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
-
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Starting refinement', {
-      scriptId,
-      prompt: initialScript.summary,
-    })
 
     const result = await model.generateContentStream(refinementPrompt)
 
@@ -152,7 +152,7 @@ const generateScript = async (req: NextRequest) => {
         try {
           for await (const chunk of result.stream) {
             if (aborted) {
-              logInteraction(interactionId || 'unknown', 'serverRoute', 'Refinement aborted', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Refinement aborted', {
                 scriptId,
               })
               break
@@ -172,7 +172,7 @@ const generateScript = async (req: NextRequest) => {
                 },
               })
 
-              logInteraction(interactionId || 'unknown', 'serverRoute', 'Refinement completed', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Refinement completed', {
                 scriptId,
               })
 
@@ -197,7 +197,7 @@ const generateScript = async (req: NextRequest) => {
             } catch (dbError) {
               const errorMessage =
                 dbError instanceof Error ? dbError.message : 'Database error occurred'
-              logInteraction(interactionId || 'unknown', 'serverRoute', 'Database error', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Database error', {
                 scriptId,
                 error: errorMessage,
               })
@@ -207,7 +207,7 @@ const generateScript = async (req: NextRequest) => {
             controller.close()
           }
         } catch (error) {
-          logInteraction(interactionId || 'unknown', 'serverRoute', 'Stream error', {
+          logInteraction(interactionTimestamp, 'serverRoute', 'Stream error', {
             scriptId,
             error: error instanceof Error ? error.message : String(error),
           })
@@ -221,8 +221,8 @@ const generateScript = async (req: NextRequest) => {
 
     return new NextResponse(stream)
   } catch (error) {
-    const interactionId = req.headers.get('Interaction-ID')
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Error in /api/generate route', {
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate route', {
       error: error instanceof Error ? error.message : String(error),
     })
     return NextResponse.json(

@@ -14,16 +14,16 @@ const DAILY_LIMIT = 24
 
 export async function GET(req: Request) {
   try {
-    const interactionId = req.headers.get('Interaction-ID')
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Started /api/lucky route')
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/lucky route')
 
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Unauthorized request')
+      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Checking user usage', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
       userId: session.user.id,
     })
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     })
 
     if (!dbUser) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'User not found in database')
+      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
     })
 
     if (!usage) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Creating new usage record', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Creating new usage record', {
         userId: session.user.id,
       })
       usage = await prisma.usage.create({
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
     }
 
     if (usage.count >= DAILY_LIMIT) {
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Daily limit reached', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit reached', {
         userId: session.user.id,
         count: usage.count,
       })
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       })
 
       if (scriptIds.length === 0) {
-        logInteraction(interactionId || 'unknown', 'serverRoute', 'No scripts found')
+        logInteraction(interactionTimestamp, 'serverRoute', 'No scripts found')
         throw new Error('No scripts found')
       }
 
@@ -114,7 +114,7 @@ export async function GET(req: Request) {
         },
       })
 
-      logInteraction(interactionId || 'unknown', 'serverRoute', 'Selected random scripts', {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Selected random scripts', {
         scriptIds: randomScripts.map(s => s.id),
       })
 
@@ -141,14 +141,14 @@ ${LUCKY_INSTRUCTION}`
       return { scripts: limitedScripts, combinedPrompt }
     })
 
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Generated lucky prompt', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Generated lucky prompt', {
       scriptCount: scripts.length,
     })
 
     return NextResponse.json({ scripts, combinedPrompt })
   } catch (error) {
-    const interactionId = req.headers.get('Interaction-ID')
-    logInteraction(interactionId || 'unknown', 'serverRoute', 'Error in /api/lucky route', {
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/lucky route', {
       error: error instanceof Error ? error.message : String(error),
     })
     return NextResponse.json(

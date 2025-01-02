@@ -24,6 +24,9 @@ function ensureLogDir() {
 /**
  * Writes a single line in a log file for an interaction.
  * @param interactionTimestamp - The timestamp when the interaction started (from the click)
+ * @param stage - The stage of the interaction (client, stateMachine, serverRoute)
+ * @param message - The message to log
+ * @param data - Optional data to include in the log
  */
 export function logInteraction(
   interactionTimestamp: string,
