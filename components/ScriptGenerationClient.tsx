@@ -59,8 +59,18 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   const [state, send] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
+      editableScript: '',
+      generatedScript: null,
+      error: null,
+      usageCount: 0,
+      usageLimit: 0,
       requestId: null,
+      isFromSuggestion: false,
       scriptId: null,
+      interactionTimestamp: null,
+      isFromLucky: false,
+      luckyRequestId: null,
+      lastRefinementRequestId: null,
     },
   })
   const [streamedText, setStreamedText] = useState('')
