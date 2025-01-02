@@ -4,16 +4,19 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { wrapApiHandler } from '@/lib/timing'
 import { shouldLockScript } from '@/lib/scripts'
+import { debugLog } from '@/lib/debug'
 
 const toggleFavorite = async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
+      debugLog('favorite', 'Unauthorized - No valid user ID')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { scriptId } = await req.json()
     if (!scriptId) {
+      debugLog('favorite', 'Missing script ID')
       return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
     }
 
@@ -23,10 +26,11 @@ const toggleFavorite = async (req: NextRequest) => {
     })
 
     if (!script) {
+      debugLog('favorite', 'Script not found', { scriptId })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
-    console.log('toggleFavorite Debug - Initial:', {
+    debugLog('favorite', 'Processing favorite toggle', {
       scriptId,
       userId: session.user.id,
       ownerId: script.ownerId,
@@ -50,7 +54,7 @@ const toggleFavorite = async (req: NextRequest) => {
         where: { id: existingFavorite.id },
       })
       isFavorited = false
-      console.log('toggleFavorite Debug - Unfavorited:', {
+      debugLog('favorite', 'Removed favorite', {
         scriptId,
         userId: session.user.id,
       })
@@ -63,20 +67,20 @@ const toggleFavorite = async (req: NextRequest) => {
         },
       })
       isFavorited = true
-      console.log('toggleFavorite Debug - Favorited:', {
+      debugLog('favorite', 'Added favorite', {
         scriptId,
         userId: session.user.id,
       })
 
       // Check if script should be locked
       if (session.user.id !== script.ownerId) {
-        console.log('toggleFavorite Debug - Checking Lock:', {
+        debugLog('favorite', 'Checking script lock', {
           scriptId,
           userId: session.user.id,
           ownerId: script.ownerId,
         })
         const shouldLock = await shouldLockScript(scriptId)
-        console.log('toggleFavorite Debug - Lock Result:', {
+        debugLog('favorite', 'Lock check result', {
           scriptId,
           shouldLock,
         })
@@ -85,9 +89,7 @@ const toggleFavorite = async (req: NextRequest) => {
             where: { id: scriptId },
             data: { locked: true },
           })
-          console.log('toggleFavorite Debug - Script Locked:', {
-            scriptId,
-          })
+          debugLog('favorite', 'Script locked', { scriptId })
         }
       }
     }
@@ -97,7 +99,7 @@ const toggleFavorite = async (req: NextRequest) => {
       where: { scriptId },
     })
 
-    console.log('toggleFavorite Debug - Final:', {
+    debugLog('favorite', 'Favorite toggle complete', {
       scriptId,
       isFavorited,
       favoriteCount,
@@ -105,7 +107,9 @@ const toggleFavorite = async (req: NextRequest) => {
 
     return NextResponse.json({ isFavorited, favoriteCount })
   } catch (error) {
-    console.error('Favorite error:', error)
+    debugLog('favorite', 'Error toggling favorite', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return NextResponse.json({ error: 'Failed to toggle favorite' }, { status: 500 })
   }
 }

@@ -5,7 +5,10 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { SECOND_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
-import { writeDebugFile, debugLog } from '@/lib/debug'
+import { debugLog, writeDebugFile } from '@/lib/debug-node'
+
+// Explicitly declare this route uses Node.js runtime
+export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 
@@ -13,6 +16,7 @@ const generateScript = async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
+      debugLog('generate', 'Unauthorized - No valid user ID')
       return NextResponse.json(
         {
           error: 'Unauthorized - No valid user ID',
@@ -28,6 +32,7 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!dbUser) {
+      debugLog('generate', 'Creating new user', { userId: session.user.id })
       // Create user if they don't exist
       await prisma.user.create({
         data: {
@@ -42,6 +47,7 @@ const generateScript = async (req: NextRequest) => {
 
     const { scriptId } = await req.json()
     if (!scriptId) {
+      debugLog('generate', 'Missing script ID')
       return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
     }
 
@@ -59,6 +65,7 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!usage) {
+      debugLog('generate', 'Creating new usage record', { userId: session.user.id })
       usage = await prisma.usage.create({
         data: {
           userId: session.user.id,
@@ -69,6 +76,7 @@ const generateScript = async (req: NextRequest) => {
     }
 
     if (usage.count >= DAILY_LIMIT) {
+      debugLog('generate', 'Daily limit reached', { userId: session.user.id, count: usage.count })
       return NextResponse.json(
         {
           error: 'Daily generation limit reached',
@@ -97,10 +105,12 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!initialScript) {
+      debugLog('generate', 'Script not found', { scriptId })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
     if (initialScript.ownerId !== session.user.id) {
+      debugLog('generate', 'Unauthorized script access', { scriptId, userId: session.user.id })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
@@ -123,7 +133,7 @@ const generateScript = async (req: NextRequest) => {
     writeDebugFile(`refinement_input_id_${scriptId}`, initialScript.content)
     writeDebugFile(`refinement_prompt_id_${scriptId}`, refinementPrompt)
 
-    debugLog('Refinement Started:', scriptId)
+    debugLog('generate', 'Starting refinement', { scriptId })
 
     const result = await model.generateContentStream(refinementPrompt)
 
@@ -134,7 +144,10 @@ const generateScript = async (req: NextRequest) => {
       async start(controller) {
         try {
           for await (const chunk of result.stream) {
-            if (aborted) break
+            if (aborted) {
+              debugLog('generate', 'Refinement aborted', { scriptId })
+              break
+            }
             const text = cleanCodeFences(chunk.text())
             fullScript += text
             controller.enqueue(new TextEncoder().encode(text))
@@ -150,9 +163,10 @@ const generateScript = async (req: NextRequest) => {
                 },
               })
 
+              debugLog('generate', 'Refinement completed successfully', { scriptId })
+
               // Write debug file for final refined script
               writeDebugFile(`refinement_output_id_${scriptId}`, fullScript)
-              debugLog('Refinement Complete:', scriptId)
 
               // Store the pre-refinement version
               await prisma.scriptVersion.create({
@@ -175,6 +189,10 @@ const generateScript = async (req: NextRequest) => {
             } catch (dbError) {
               const errorMessage =
                 dbError instanceof Error ? dbError.message : 'Database error occurred'
+              debugLog('generate', 'Database error during refinement', {
+                scriptId,
+                error: errorMessage,
+              })
               controller.error(new Error(errorMessage))
             }
           } else {
@@ -183,10 +201,12 @@ const generateScript = async (req: NextRequest) => {
         } catch (streamError) {
           const errorMessage =
             streamError instanceof Error ? streamError.message : 'Stream error occurred'
+          debugLog('generate', 'Stream error during refinement', { scriptId, error: errorMessage })
           controller.error(new Error(errorMessage))
         }
       },
       cancel() {
+        debugLog('generate', 'Refinement cancelled', { scriptId })
         aborted = true
       },
     })
@@ -201,7 +221,9 @@ const generateScript = async (req: NextRequest) => {
       },
     })
   } catch (error) {
-    console.error('Generate error:', error)
+    debugLog('generate', 'Error generating script', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return NextResponse.json(
       {
         error: 'Failed to generate script',

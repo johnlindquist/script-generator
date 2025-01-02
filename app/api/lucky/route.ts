@@ -7,6 +7,9 @@ import { writeDebugFile, debugLog } from '@/lib/debug'
 const LUCKY_INSTRUCTION =
   'Use these scripts above for inspiration. Create a new script inspiration by pieces of these scripts, but let it have a single focus and be useful. Avoid a generatic "power tools" scenario where it just combines them all'
 
+// Explicitly declare Node.js runtime since we use file system operations
+export const runtime = 'nodejs'
+
 const DAILY_LIMIT = 24
 
 export async function GET() {
@@ -87,10 +90,7 @@ export async function GET() {
         },
       })
 
-      debugLog(
-        'Selected Random Scripts:',
-        randomScripts.map(s => s.id)
-      )
+      debugLog('lucky', 'Selected random scripts', { scriptIds: randomScripts.map(s => s.id) })
 
       const limitedScripts = randomScripts.map(s => ({
         id: s.id,
@@ -121,7 +121,7 @@ Script "${s.title}":\n${s.content}
 
       // Write the final combined prompt
       writeDebugFile('lucky_combined_prompt', combinedPrompt)
-      debugLog('Combined Prompt Length:', combinedPrompt.length)
+      debugLog('lucky', 'Combined prompt created', { length: combinedPrompt.length })
 
       return { scripts: limitedScripts, combinedPrompt }
     })

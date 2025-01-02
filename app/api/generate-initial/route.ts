@@ -5,7 +5,10 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { INITIAL_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
-import { writeDebugFile, debugLog } from '@/lib/debug'
+import { debugLog, writeDebugFile } from '@/lib/debug-node'
+
+// Explicitly declare this route uses Node.js runtime
+export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 
@@ -13,6 +16,7 @@ const generateInitialScript = async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
+      debugLog('generate-initial', 'Unauthorized - No valid user ID')
       return NextResponse.json(
         {
           error: 'Unauthorized - No valid user ID',
@@ -28,6 +32,7 @@ const generateInitialScript = async (req: NextRequest) => {
     })
 
     if (!dbUser) {
+      debugLog('generate-initial', 'Creating new user', { userId: session.user.id })
       // Create user if they don't exist
       await prisma.user.create({
         data: {
@@ -42,10 +47,12 @@ const generateInitialScript = async (req: NextRequest) => {
 
     const { prompt, requestId } = await req.json()
     if (!prompt) {
+      debugLog('generate-initial', 'Missing prompt')
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
 
     if (!requestId || requestId.trim().length === 0) {
+      debugLog('generate-initial', 'Missing or invalid requestId')
       return NextResponse.json({ error: 'A valid requestId is required' }, { status: 400 })
     }
 
@@ -63,6 +70,7 @@ const generateInitialScript = async (req: NextRequest) => {
     })
 
     if (!usage) {
+      debugLog('generate-initial', 'Creating new usage record', { userId: session.user.id })
       usage = await prisma.usage.create({
         data: {
           userId: session.user.id,
@@ -73,6 +81,10 @@ const generateInitialScript = async (req: NextRequest) => {
     }
 
     if (usage.count >= DAILY_LIMIT) {
+      debugLog('generate-initial', 'Daily limit reached', {
+        userId: session.user.id,
+        count: usage.count,
+      })
       return NextResponse.json(
         {
           error: 'Daily generation limit reached',
@@ -102,12 +114,9 @@ const generateInitialScript = async (req: NextRequest) => {
     )
 
     // Debug the incoming prompt
-    writeDebugFile(
-      `initial_incoming_prompt_id_${requestId}`,
-      `Raw Prompt:\n${prompt}\n\nFull Initial Prompt:\n${initialPrompt}`
-    )
-    debugLog('Initial Generation Starting:', requestId)
-    debugLog('Prompt Length:', prompt.length)
+    const debugPromptContent = `Raw Prompt:\n${prompt}\n\nFull Initial Prompt:\n${initialPrompt}`
+    writeDebugFile(`initial_incoming_prompt_id_${requestId}`, debugPromptContent)
+    debugLog('generate-initial', 'Starting generation', { requestId, promptLength: prompt.length })
 
     const result = await model.generateContentStream(initialPrompt)
 
@@ -118,7 +127,10 @@ const generateInitialScript = async (req: NextRequest) => {
       async start(controller) {
         try {
           for await (const chunk of result.stream) {
-            if (aborted) break
+            if (aborted) {
+              debugLog('generate-initial', 'Generation aborted', { requestId })
+              break
+            }
             const text = cleanCodeFences(chunk.text())
             fullScript += text
             controller.enqueue(new TextEncoder().encode(text))
@@ -133,6 +145,10 @@ const generateInitialScript = async (req: NextRequest) => {
 
               let script
               if (existingScript) {
+                debugLog('generate-initial', 'Updating existing script', {
+                  requestId,
+                  scriptId: existingScript.id,
+                })
                 // Update existing script
                 script = await prisma.script.update({
                   where: { requestId },
@@ -146,6 +162,7 @@ const generateInitialScript = async (req: NextRequest) => {
                   },
                 })
               } else {
+                debugLog('generate-initial', 'Creating new script', { requestId })
                 // Create new script
                 script = await prisma.script.create({
                   data: {
@@ -160,6 +177,10 @@ const generateInitialScript = async (req: NextRequest) => {
                 })
               }
 
+              debugLog('generate-initial', 'Generation completed successfully', {
+                scriptId: script.id,
+              })
+
               // Create initial version
               await prisma.scriptVersion.create({
                 data: {
@@ -170,15 +191,13 @@ const generateInitialScript = async (req: NextRequest) => {
 
               // Write debug files and log
               writeDebugFile(`initial_script_id_${script.id}`, fullScript)
-              writeDebugFile(
-                `initial_prompt_id_${script.id}`,
-                INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
-                  '{userInfo}',
-                  JSON.stringify(extractUserInfo(session, dbUser))
-                )
+              const debugInitialPrompt = INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
+                '{userInfo}',
+                JSON.stringify(extractUserInfo(session, dbUser))
               )
+              writeDebugFile(`initial_prompt_id_${script.id}`, debugInitialPrompt)
 
-              debugLog('Initial Generation Complete:', script.id)
+              debugLog('generate-initial', 'Generation complete', { scriptId: script.id })
 
               // Add a special delimiter to indicate the script ID
               controller.enqueue(
@@ -189,6 +208,10 @@ const generateInitialScript = async (req: NextRequest) => {
             } catch (dbError) {
               const errorMessage =
                 dbError instanceof Error ? dbError.message : 'Database error occurred'
+              debugLog('generate-initial', 'Database error during generation', {
+                requestId,
+                error: errorMessage,
+              })
               controller.error(new Error(errorMessage))
             }
           } else {
@@ -197,10 +220,15 @@ const generateInitialScript = async (req: NextRequest) => {
         } catch (streamError) {
           const errorMessage =
             streamError instanceof Error ? streamError.message : 'Stream error occurred'
+          debugLog('generate-initial', 'Stream error during generation', {
+            requestId,
+            error: errorMessage,
+          })
           controller.error(new Error(errorMessage))
         }
       },
       cancel() {
+        debugLog('generate-initial', 'Generation cancelled', { requestId })
         aborted = true
       },
     })
@@ -214,7 +242,9 @@ const generateInitialScript = async (req: NextRequest) => {
       },
     })
   } catch (error) {
-    console.error('Generate initial error:', error)
+    debugLog('generate-initial', 'Error generating initial script', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return NextResponse.json(
       {
         error: 'Failed to generate initial script',

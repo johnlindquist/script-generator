@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { debugLog } from '@/lib/debug-edge'
 
 // Simple in-memory store for rate limiting
 // In production, use Redis or a similar distributed store
@@ -16,10 +17,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  debugLog('middleware', 'Rate limit check started', {
+    path: request.nextUrl.pathname,
+  })
+
   try {
     // Get the token from the request
     const token = await getToken({ req: request as NextRequest })
     if (!token?.sub) {
+      debugLog('middleware', 'Unauthorized request - no valid token')
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
@@ -29,6 +35,7 @@ export async function middleware(request: NextRequest) {
     // Get or create rate limit entry for this user
     let rateLimitInfo = rateLimit.get(userId)
     if (!rateLimitInfo || now > rateLimitInfo.resetTime) {
+      debugLog('middleware', 'Creating new rate limit entry', { userId })
       rateLimitInfo = {
         count: 0,
         resetTime: now + RATE_LIMIT_WINDOW,
@@ -37,6 +44,11 @@ export async function middleware(request: NextRequest) {
 
     // Check if user has exceeded rate limit
     if (rateLimitInfo.count >= MAX_REQUESTS_PER_WINDOW) {
+      debugLog('middleware', 'Rate limit exceeded', {
+        userId,
+        count: rateLimitInfo.count,
+        resetTime: rateLimitInfo.resetTime,
+      })
       return new NextResponse(
         JSON.stringify({
           error: 'Rate limit exceeded',
@@ -58,6 +70,12 @@ export async function middleware(request: NextRequest) {
     rateLimitInfo.count++
     rateLimit.set(userId, rateLimitInfo)
 
+    debugLog('middleware', 'Rate limit updated', {
+      userId,
+      count: rateLimitInfo.count,
+      remaining: MAX_REQUESTS_PER_WINDOW - rateLimitInfo.count,
+    })
+
     // Add rate limit headers to the response
     const response = NextResponse.next()
     response.headers.set('X-RateLimit-Limit', String(MAX_REQUESTS_PER_WINDOW))
@@ -69,7 +87,9 @@ export async function middleware(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Rate limiting error:', error)
+    debugLog('middleware', 'Rate limiting error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return new NextResponse(
       JSON.stringify({
         error: 'Internal server error',

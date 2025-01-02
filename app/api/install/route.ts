@@ -4,6 +4,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { headers } from 'next/headers'
 import { shouldLockScript } from '@/lib/scripts'
+import { debugLog } from '@/lib/debug'
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -14,10 +15,17 @@ export async function POST(request: Request) {
   const { scriptId } = await request.json()
 
   if (!scriptId) {
+    debugLog('install', 'Missing script ID')
     return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
   }
 
   try {
+    debugLog('install', 'Processing install request', {
+      scriptId,
+      userId: session?.user?.id,
+      ip,
+    })
+
     // Get the script to check ownership
     const script = await prisma.script.findUnique({
       where: { id: scriptId },
@@ -25,6 +33,7 @@ export async function POST(request: Request) {
     })
 
     if (!script) {
+      debugLog('install', 'Script not found', { scriptId })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
@@ -40,6 +49,11 @@ export async function POST(request: Request) {
     })
 
     if (recentInstall) {
+      debugLog('install', 'Recent install found', {
+        scriptId,
+        ip,
+        userId: session?.user?.id,
+      })
       // If already installed from this IP in last 24 hours, just return current count
       const installCount = await prisma.install.count({
         where: { scriptId },
@@ -52,6 +66,11 @@ export async function POST(request: Request) {
     }
 
     // Create new install
+    debugLog('install', 'Creating new install record', {
+      scriptId,
+      ip,
+      userId: session?.user?.id,
+    })
     await prisma.install.create({
       data: {
         ip,
@@ -62,12 +81,22 @@ export async function POST(request: Request) {
 
     // If user is logged in and not the owner, check if script should be locked
     if (session?.user?.id && session.user.id !== script.ownerId) {
+      debugLog('install', 'Checking script lock', {
+        scriptId,
+        userId: session.user.id,
+        ownerId: script.ownerId,
+      })
       const shouldLock = await shouldLockScript(scriptId)
+      debugLog('install', 'Lock check result', {
+        scriptId,
+        shouldLock,
+      })
       if (shouldLock) {
         await prisma.script.update({
           where: { id: scriptId },
           data: { locked: true },
         })
+        debugLog('install', 'Script locked', { scriptId })
       }
     }
 
@@ -76,12 +105,20 @@ export async function POST(request: Request) {
       where: { scriptId },
     })
 
+    debugLog('install', 'Install complete', {
+      scriptId,
+      installCount,
+      userId: session?.user?.id,
+    })
+
     return NextResponse.json({
       isInstalled: true,
       installCount,
     })
   } catch (error) {
-    console.error('Install error:', error)
+    debugLog('install', 'Error tracking install', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return NextResponse.json({ error: 'Failed to track install' }, { status: 500 })
   }
 }
