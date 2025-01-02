@@ -14,7 +14,6 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         articulat: ['Articulat', 'sans-serif'],
-        lexend: ['Lexend', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

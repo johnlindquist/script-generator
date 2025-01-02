@@ -46,9 +46,7 @@ export default function SyncRepoPage() {
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-lexend font-bold text-amber-300 mb-8">
-          {STRINGS.SYNC_REPO.title}
-        </h1>
+        <h1 className="text-3xl font-bold text-amber-300 mb-8">{STRINGS.SYNC_REPO.title}</h1>
 
         <form onSubmit={handleSync} className="space-y-6">
           <div>

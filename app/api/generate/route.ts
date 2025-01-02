@@ -105,13 +105,15 @@ const generateScript = async (req: NextRequest) => {
 
     // Generate refined script using Gemini
     const result = await model.generateContentStream(
-      SECOND_PASS_PROMPT.replace('{script}', initialScript.content).replace(
-        '{userInfo}',
-        JSON.stringify({
-          name: session.user.name,
-          image: session.user.image,
-        })
-      )
+      SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
+        .replace('{prompt}', initialScript.summary || '')
+        .replace(
+          '{userInfo}',
+          JSON.stringify({
+            name: session.user.name,
+            image: session.user.image,
+          })
+        )
     )
 
     let fullScript = ''

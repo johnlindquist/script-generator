@@ -9,6 +9,7 @@ import {
   DocumentCheckIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/solid'
 import { motion } from 'framer-motion'
 import { STRINGS } from '@/lib/strings'
@@ -315,6 +316,40 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     }
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
+  const handleFeelingLucky = async () => {
+    if (!isAuthenticated) {
+      signIn()
+      return
+    }
+
+    try {
+      const res = await fetch('/api/lucky')
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to get random scripts')
+      }
+
+      if (!data.combinedPrompt) {
+        throw new Error('Invalid response format')
+      }
+
+      // Clear any existing error and state
+      send({ type: 'RESET' })
+      send({ type: 'SET_ERROR', error: '' })
+
+      // Set the prompt and generate
+      send({ type: 'SET_PROMPT', prompt: data.combinedPrompt })
+      send({ type: 'GENERATE_INITIAL' })
+    } catch (err) {
+      console.error('Lucky generation failed:', err)
+      send({
+        type: 'SET_ERROR',
+        error: err instanceof Error ? err.message : 'Failed to generate random script',
+      })
+    }
+  }
+
   return (
     <div className="mb-4">
       <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
@@ -379,32 +414,35 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               </span>
             )}
           </div>
-          <div className="flex justify-center mt-4">
+          <div className="flex gap-4 justify-end">
             <button
               type="submit"
               disabled={
                 !isAuthenticated ||
-                isGenerating ||
-                state.context.prompt.trim().length < 15 ||
-                state.context.usageCount === state.context.usageLimit
+                state.matches('generatingInitial') ||
+                state.matches('generatingRefined')
               }
-              className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
             >
-              {!isAuthenticated ? (
-                STRINGS.SCRIPT_GENERATION.signInToGenerate
-              ) : state.context.usageCount === state.context.usageLimit ? (
-                STRINGS.SCRIPT_GENERATION.dailyLimitReached
-              ) : isGenerating ? (
-                <>
-                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                  <AnimatedText text={STRINGS.SCRIPT_GENERATION.generating} />
-                </>
+              {state.matches('generatingInitial') || state.matches('generatingRefined') ? (
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
               ) : (
-                <>
-                  {STRINGS.SCRIPT_GENERATION.generateScript}
-                  <RocketLaunchIcon className="w-5 h-5" />
-                </>
+                <RocketLaunchIcon className="w-5 h-5" />
               )}
+              Generate
+            </button>
+            <button
+              type="button"
+              onClick={handleFeelingLucky}
+              disabled={
+                !isAuthenticated ||
+                state.matches('generatingInitial') ||
+                state.matches('generatingRefined')
+              }
+              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              <SparklesIcon className="w-5 h-5" />
+              I'm Feeling Lucky
             </button>
           </div>
         </form>

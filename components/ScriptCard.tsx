@@ -79,7 +79,7 @@ export default function ScriptCard({
           href={`/${script.owner.username}/${script.id}`}
           className="block hover:opacity-75 transition-opacity"
         >
-          <h2 className="text-xl font-lexend font-semibold mb-2 text-amber-300">{script.title}</h2>
+          <h2 className="text-xl font-semibold mb-2 text-amber-300">{script.title}</h2>
         </Link>
 
         <div className="flex justify-between">

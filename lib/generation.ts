@@ -297,6 +297,10 @@ ${getDocsContent()}
 ${getExampleScripts()}
 </EXAMPLES>
 
+<ORIGINAL_PROMPT>
+{prompt}
+</ORIGINAL_PROMPT>
+
 Here is the script to verify and improve:
 
 <SCRIPT>
