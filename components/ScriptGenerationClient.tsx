@@ -414,7 +414,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               </span>
             )}
           </div>
-          <div className="flex gap-4 justify-end">
+          <div className="flex justify-center mt-4">
             <button
               type="submit"
               disabled={
@@ -422,7 +422,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 state.matches('generatingInitial') ||
                 state.matches('generatingRefined')
               }
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {state.matches('generatingInitial') || state.matches('generatingRefined') ? (
                 <ArrowPathIcon className="w-5 h-5 animate-spin" />
@@ -439,7 +439,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 state.matches('generatingInitial') ||
                 state.matches('generatingRefined')
               }
-              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
             >
               <SparklesIcon className="w-5 h-5" />
               I'm Feeling Lucky
