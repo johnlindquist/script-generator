@@ -283,30 +283,16 @@ Review and improve the following aspects:
 4. Documentation and comments
 5. Performance and efficiency
 6. Security considerations
-7. Following the examples and documentation exactly
 
 <USER_INFO>
 {userInfo}
 </USER_INFO>
-
-<DOCS>
-${getDocsContent()}
-</DOCS>
-
-<EXAMPLES>
-${getExampleScripts()}
-</EXAMPLES>
-
-<ORIGINAL_PROMPT>
-{prompt}
-</ORIGINAL_PROMPT>
 
 Here is the script to verify and improve:
 
 <SCRIPT>
 {script}
 </SCRIPT>
-
 
 Here are all the global types included with Script Kit:
 <TYPES>
@@ -315,9 +301,9 @@ ${getKitTypes()}
 
 <GLOBALS>
 You'll notice in <TYPES> that we're providing many of node.js APIs as global types. Please avoid using importing node.js APIs unless they're not specified in <TYPES>.!
-<GLOBALS>
+</GLOBALS>
 
-Check the types, docs, and examples to refine the script.
+Focus ONLY on improving the script above. Do not reference or combine with other scripts.
 Re-generate the improved script content paying extra attention to the types.
 If there's any overly complex logic, please add inline comments explaining it.
 
@@ -328,4 +314,6 @@ Be absolutely sure to include the following metadata in the script:
 // Description: A short description of the script (max 50 chars)
 // Author: The name from the <USER_INFO>
 </METADATA>
+
+Generate ONLY the refined script content, no additional explanations or markdown.
 `

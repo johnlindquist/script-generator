@@ -5,6 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { INITIAL_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
+import { writeDebugFile, debugLog } from '@/lib/debug'
 
 const DAILY_LIMIT = 24
 
@@ -95,15 +96,23 @@ const generateInitialScript = async (req: NextRequest) => {
     })
 
     // Generate initial script using Gemini
-    const result = await model.generateContentStream(
-      INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
-        '{userInfo}',
-        JSON.stringify({
-          name: session.user.name,
-          image: session.user.image,
-        })
-      )
+    const initialPrompt = INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
+      '{userInfo}',
+      JSON.stringify({
+        name: session.user.name,
+        image: session.user.image,
+      })
     )
+
+    // Debug the incoming prompt
+    writeDebugFile(
+      `initial_incoming_prompt_id_${requestId}`,
+      `Raw Prompt:\n${prompt}\n\nFull Initial Prompt:\n${initialPrompt}`
+    )
+    debugLog('Initial Generation Starting:', requestId)
+    debugLog('Prompt Length:', prompt.length)
+
+    const result = await model.generateContentStream(initialPrompt)
 
     let fullScript = ''
     let aborted = false
@@ -153,6 +162,26 @@ const generateInitialScript = async (req: NextRequest) => {
                   },
                 })
               }
+
+              // Create initial version
+              await prisma.scriptVersion.create({
+                data: {
+                  scriptId: script.id,
+                  content: fullScript,
+                },
+              })
+
+              // Write debug files and log
+              writeDebugFile(`initial_script_id_${script.id}`, fullScript)
+              writeDebugFile(
+                `initial_prompt_id_${script.id}`,
+                INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
+                  '{userInfo}',
+                  JSON.stringify({ name: session.user.name, image: session.user.image })
+                )
+              )
+
+              debugLog('Initial Generation Complete:', script.id)
 
               // Add a special delimiter to indicate the script ID
               controller.enqueue(

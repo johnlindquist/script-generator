@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
+import { writeDebugFile, debugLog } from '@/lib/debug'
 
 const LUCKY_INSTRUCTION =
   'Use these scripts above for inspiration. Create a new script inspiration by pieces of these scripts, but let it have a single focus and be useful. Avoid a generatic "power tools" scenario where it just combines them all'
@@ -19,7 +20,7 @@ export async function GET() {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
 
-    const usage = await prisma.usage.findUnique({
+    let usage = await prisma.usage.findUnique({
       where: {
         userId_date: {
           userId: session.user.id,
@@ -29,7 +30,14 @@ export async function GET() {
     })
 
     if (!usage) {
-      return NextResponse.json({ error: 'Failed to track usage' }, { status: 500 })
+      // Create initial usage record for new users
+      usage = await prisma.usage.create({
+        data: {
+          userId: session.user.id,
+          date: now,
+          count: 0,
+        },
+      })
     }
 
     if (usage.count >= DAILY_LIMIT) {
@@ -43,40 +51,60 @@ export async function GET() {
     }
 
     const { scripts, combinedPrompt } = await prisma.$transaction(async tx => {
-      // First get total count
-      const total = await tx.script.count({
-        where: {
-          status: 'ACTIVE',
-          saved: true,
-        },
-      })
-
-      if (total === 0) {
-        throw new Error('No scripts found')
-      }
-
-      // Get random offset
-      const skip = Math.floor(Math.random() * (total - 5))
-
-      const randomScripts = await tx.script.findMany({
+      // First get all script IDs
+      const scriptIds = await tx.script.findMany({
         where: {
           status: 'ACTIVE',
           saved: true,
         },
         select: {
           id: true,
+        },
+      })
+
+      if (scriptIds.length === 0) {
+        throw new Error('No scripts found')
+      }
+
+      // Randomly select 5 unique IDs
+      const selectedIds = new Set<string>()
+      while (selectedIds.size < Math.min(5, scriptIds.length)) {
+        const randomId = scriptIds[Math.floor(Math.random() * scriptIds.length)].id
+        selectedIds.add(randomId)
+      }
+
+      // Fetch just those specific scripts
+      const randomScripts = await tx.script.findMany({
+        where: {
+          id: {
+            in: Array.from(selectedIds),
+          },
+        },
+        select: {
+          id: true,
           title: true,
           content: true,
         },
-        take: 5,
-        skip: Math.max(0, skip), // Ensure we don't go negative
       })
+
+      debugLog(
+        'Selected Random Scripts:',
+        randomScripts.map(s => s.id)
+      )
 
       const limitedScripts = randomScripts.map(s => ({
         id: s.id,
         title: s.title || 'Untitled Script',
-        content: (s.content || '').slice(0, 300),
+        content: s.content || '',
       }))
+
+      // Write debug files for each selected script
+      limitedScripts.forEach((script, index) => {
+        writeDebugFile(
+          `lucky_script_${index + 1}_id_${script.id}`,
+          `Title: ${script.title}\nContent:\n${script.content}`
+        )
+      })
 
       const combinedPrompt =
         limitedScripts
@@ -90,6 +118,10 @@ Script "${s.title}":\n${s.content}
           .join('\n\n') +
         '\n\n' +
         LUCKY_INSTRUCTION
+
+      // Write the final combined prompt
+      writeDebugFile('lucky_combined_prompt', combinedPrompt)
+      debugLog('Combined Prompt Length:', combinedPrompt.length)
 
       return { scripts: limitedScripts, combinedPrompt }
     })

@@ -5,6 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { SECOND_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
+import { writeDebugFile, debugLog } from '@/lib/debug'
 
 const DAILY_LIMIT = 24
 
@@ -103,18 +104,34 @@ const generateScript = async (req: NextRequest) => {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    if (initialScript.status !== 'IN_PROGRESS') {
+      return NextResponse.json({ error: 'Script is not ready for refinement' }, { status: 400 })
+    }
+
+    // Update status to show we're still refining
+    await prisma.script.update({
+      where: { id: scriptId },
+      data: { status: 'IN_PROGRESS' },
+    })
+
     // Generate refined script using Gemini
-    const result = await model.generateContentStream(
-      SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
-        .replace('{prompt}', initialScript.summary || '')
-        .replace(
-          '{userInfo}',
-          JSON.stringify({
-            name: session.user.name,
-            image: session.user.image,
-          })
-        )
-    )
+    const refinementPrompt = SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
+      .replace('{prompt}', initialScript.summary || '')
+      .replace(
+        '{userInfo}',
+        JSON.stringify({
+          name: session.user.name,
+          image: session.user.image,
+        })
+      )
+
+    // Write debug files
+    writeDebugFile(`refinement_input_id_${scriptId}`, initialScript.content)
+    writeDebugFile(`refinement_prompt_id_${scriptId}`, refinementPrompt)
+
+    debugLog('Refinement Started:', scriptId)
+
+    const result = await model.generateContentStream(refinementPrompt)
 
     let fullScript = ''
     let aborted = false
@@ -135,14 +152,27 @@ const generateScript = async (req: NextRequest) => {
                 where: { id: scriptId },
                 data: {
                   content: fullScript,
-                  status: 'ACTIVE',
+                  status: 'COMPLETED',
                 },
               })
 
+              // Write debug file for final refined script
+              writeDebugFile(`refinement_output_id_${scriptId}`, fullScript)
+              debugLog('Refinement Complete:', scriptId)
+
+              // Store the pre-refinement version
               await prisma.scriptVersion.create({
                 data: {
                   scriptId,
                   content: initialScript.content,
+                },
+              })
+
+              // Store the refined version
+              await prisma.scriptVersion.create({
+                data: {
+                  scriptId,
+                  content: fullScript,
                 },
               })
 
