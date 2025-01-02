@@ -170,6 +170,9 @@ export function cleanCodeFences(text: string): string {
   // Clean up any triple or more newlines while preserving exactly two
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
 
+  // Remove leading newlines and whitespace before first non-empty line
+  cleaned = cleaned.replace(/^\s*\n+/, '')
+
   // Return without trimming to preserve whitespace
   return cleaned
 }

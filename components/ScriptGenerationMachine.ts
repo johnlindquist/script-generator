@@ -158,9 +158,9 @@ const generateScript = async (
 
     const text = new TextDecoder().decode(value)
     buffer += text
-    buffer = buffer.trim()
 
-    const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+    const trimmedBuffer = buffer.trim()
+    const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
     if (idMatch) {
       scriptId = idMatch[1]
       buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
