@@ -101,10 +101,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
   // Update the editor with streamed text
   useEffect(() => {
-    if (
-      streamedText &&
-      (state.matches('generatingInitial') || state.matches('generatingRefined'))
-    ) {
+    if (streamedText && (state.matches('generatingDraft') || state.matches('generatingFinal'))) {
       send({ type: 'UPDATE_EDITABLE_SCRIPT', script: streamedText })
     }
   }, [streamedText, state.matches])
@@ -117,7 +114,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   // Attach the handler to the state machine
   useEffect(() => {
     // Only start streaming if we're in a thinking state
-    if (!state.matches('thinkingInitial') && !state.matches('thinkingRefined')) {
+    if (!state.matches('thinkingDraft') && !state.matches('thinkingFinal')) {
       return
     }
 
@@ -126,7 +123,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     const fetchWithStreaming = async () => {
       try {
-        const url = state.matches('thinkingInitial') ? '/api/generate-initial' : '/api/generate'
+        const url = state.matches('thinkingDraft') ? '/api/generate-draft' : '/api/generate-final'
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -160,9 +157,9 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           let buffer = ''
           // Transition to streaming state
           send({
-            type: state.matches('thinkingInitial')
-              ? 'START_STREAMING_INITIAL'
-              : 'START_STREAMING_REFINED',
+            type: state.matches('thinkingDraft')
+              ? 'START_STREAMING_DRAFT'
+              : 'START_STREAMING_FINAL',
           })
 
           while (true) {
@@ -222,8 +219,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     return () => {
       // Only abort if we're not transitioning between generation phases
       if (
-        (state.matches('thinkingInitial') && !state.matches('generatingInitial')) ||
-        (state.matches('thinkingRefined') && !state.matches('generatingRefined'))
+        (state.matches('thinkingDraft') && !state.matches('generatingDraft')) ||
+        (state.matches('thinkingFinal') && !state.matches('generatingFinal'))
       ) {
         controller.abort()
       }
@@ -277,7 +274,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       timestamp: new Date().toISOString(),
     })
     const editor = editorRef.current
-    if (editor && (state.matches('generatingInitial') || state.matches('generatingRefined'))) {
+    if (editor && (state.matches('generatingDraft') || state.matches('generatingFinal'))) {
       const model = editor.getModel()
       if (model) {
         const lineCount = model.getLineCount()
@@ -289,17 +286,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!state.context.prompt.trim() || !isAuthenticated) {
-      if (!isAuthenticated) signIn()
+    if (!isAuthenticated) {
+      signIn()
       return
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-
-    send({
-      type: 'GENERATE_INITIAL',
-      timestamp,
-    })
+    send({ type: 'GENERATE_DRAFT', timestamp })
   }
 
   // Handle keyboard submission
@@ -312,24 +305,20 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         return
       }
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-
-      send({
-        type: 'GENERATE_INITIAL',
-        timestamp,
-      })
+      send({ type: 'GENERATE_DRAFT', timestamp })
     }
   }
 
-  const isGenerating = state.matches('generatingInitial') || state.matches('generatingRefined')
-  const isThinking = state.matches('thinkingInitial') || state.matches('thinkingRefined')
-  const generationPhase = state.matches('thinkingInitial')
-    ? 'thinkingInitial'
-    : state.matches('generatingInitial')
-      ? 'generatingInitial'
-      : state.matches('thinkingRefined')
-        ? 'thinkingRefined'
-        : state.matches('generatingRefined')
-          ? 'generatingRefined'
+  const isGenerating = state.matches('generatingDraft') || state.matches('generatingFinal')
+  const isThinking = state.matches('thinkingDraft') || state.matches('thinkingFinal')
+  const generationPhase = state.matches('thinkingDraft')
+    ? 'thinkingDraft'
+    : state.matches('generatingDraft')
+      ? 'generatingDraft'
+      : state.matches('thinkingFinal')
+        ? 'thinkingFinal'
+        : state.matches('generatingFinal')
+          ? 'generatingFinal'
           : null
 
   useEffect(() => {
@@ -339,7 +328,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       isAuthenticated
     ) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_INITIAL', timestamp })
+      send({ type: 'GENERATE_DRAFT', timestamp })
     }
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
@@ -390,7 +379,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       })
 
       // Start generation with the timestamp
-      send({ type: 'GENERATE_INITIAL', timestamp })
+      send({ type: 'GENERATE_DRAFT', timestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)
       send({
@@ -406,12 +395,12 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         {isGenerating || isThinking ? (
           <AnimatedText
             text={
-              generationPhase === 'thinkingInitial'
-                ? STRINGS.SCRIPT_GENERATION.headingThinkingInitial
-                : generationPhase === 'generatingInitial'
+              generationPhase === 'thinkingDraft'
+                ? STRINGS.SCRIPT_GENERATION.headingThinkingDraft
+                : generationPhase === 'generatingDraft'
                   ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
-                  : generationPhase === 'thinkingRefined'
-                    ? STRINGS.SCRIPT_GENERATION.headingThinkingRefined
+                  : generationPhase === 'thinkingFinal'
+                    ? STRINGS.SCRIPT_GENERATION.headingThinkingFinal
                     : STRINGS.SCRIPT_GENERATION.headingWhileRefining
             }
           />
@@ -469,12 +458,12 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               type="submit"
               disabled={
                 !isAuthenticated ||
-                state.matches('generatingInitial') ||
-                state.matches('generatingRefined')
+                state.matches('generatingDraft') ||
+                state.matches('generatingFinal')
               }
               className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {state.matches('generatingInitial') || state.matches('generatingRefined') ? (
+              {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
                 <ArrowPathIcon className="w-5 h-5 animate-spin" />
               ) : (
                 <RocketLaunchIcon className="w-5 h-5" />
@@ -486,8 +475,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
               onClick={handleFeelingLucky}
               disabled={
                 !isAuthenticated ||
-                state.matches('generatingInitial') ||
-                state.matches('generatingRefined')
+                state.matches('generatingDraft') ||
+                state.matches('generatingFinal')
               }
               className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
             >

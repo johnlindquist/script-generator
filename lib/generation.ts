@@ -281,7 +281,7 @@ export function parseScriptFromMarkdown(content: string): {
 }
 
 // Initial pass prompt - minimal instructions for raw script generation
-export const INITIAL_PASS_PROMPT = `You are a TypeScript script generator.
+export const DRAFT_PASS_PROMPT = `You are a TypeScript script generator.
 Create a workable script from the user's prompt with minimal checks.
 Focus on core functionality without extensive error handling or formatting.
 
@@ -307,7 +307,7 @@ Generate ONLY the script content, no additional explanations or markdown.
 `
 
 // Second pass prompt - extensive verification and refinement
-export const SECOND_PASS_PROMPT = `You are a TypeScript script generator and code reviewer.
+export const FINAL_PASS_PROMPT = `You are a TypeScript script generator and code reviewer.
 Your task is to verify, correct, refine, and format the provided script according to best practices.
 
 Review and improve the following aspects:

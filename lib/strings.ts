@@ -87,10 +87,10 @@ export const STRINGS = {
 
   SCRIPT_GENERATION: {
     // Headings
-    headingWhileGenerating: 'Generating First Draft',
-    headingWhileRefining: 'Finalizing',
-    headingThinkingInitial: 'Thinking',
-    headingThinkingRefined: 'Re-reading Docs and Refining',
+    headingWhileGenerating: 'Generating Draft',
+    headingWhileRefining: 'Generating Final Version',
+    headingThinkingDraft: 'Thinking',
+    headingThinkingFinal: 'Re-reading Docs and Finalizing',
     headingDone: 'Done ✅. Please Make Final Edits and Save',
     headingDefault: 'What Would You Like to Automate?',
     scriptSuggestionsHeading: 'Or click one of these suggestions',

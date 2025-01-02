@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { INITIAL_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
+import { DRAFT_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
 
@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 
-const generateInitialScript = async (req: NextRequest) => {
+const generateDraftScript = async (req: NextRequest) => {
   const requestId = Math.random().toString(36).substring(7)
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp')
@@ -25,7 +25,7 @@ const generateInitialScript = async (req: NextRequest) => {
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-initial route', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', {
       requestId,
       luckyRequestId,
       source: luckyRequestId ? 'lucky' : 'direct',
@@ -128,20 +128,20 @@ const generateInitialScript = async (req: NextRequest) => {
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
-    // Generate initial script using Gemini
-    const initialPrompt = INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
+    // Generate draft script using Gemini
+    const draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
       '{userInfo}',
       JSON.stringify(extractUserInfo(session, dbUser))
     )
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Starting initial generation', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Starting draft generation', {
       scriptId: script.id,
       prompt,
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
-    const result = await model.generateContentStream(initialPrompt)
+    const result = await model.generateContentStream(draftPrompt)
 
     let fullScript = ''
     let aborted = false
@@ -176,13 +176,13 @@ const generateInitialScript = async (req: NextRequest) => {
                 },
               })
 
-              logInteraction(interactionTimestamp, 'serverRoute', 'Initial generation completed', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Draft generation completed', {
                 scriptId: script.id,
                 requestId,
                 source: luckyRequestId ? 'lucky' : 'direct',
               })
 
-              // Store the initial version
+              // Store the draft version
               await prisma.scriptVersion.create({
                 data: {
                   scriptId: script.id,
@@ -230,7 +230,7 @@ const generateInitialScript = async (req: NextRequest) => {
     const body = await req.json().catch(() => ({}))
     const { luckyRequestId } = body
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate-initial route', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate-draft route', {
       error: error instanceof Error ? error.message : String(error),
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
@@ -245,4 +245,4 @@ const generateInitialScript = async (req: NextRequest) => {
   }
 }
 
-export const POST = wrapApiHandler('generate_initial_script', generateInitialScript)
+export const POST = wrapApiHandler('generate_draft_script', generateDraftScript)

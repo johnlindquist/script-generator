@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { SECOND_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
+import { FINAL_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
 
@@ -12,11 +12,11 @@ export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 
-const generateScript = async (req: NextRequest) => {
+const generateFinalScript = async (req: NextRequest) => {
   const requestId = Math.random().toString(36).substring(7)
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate route', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-final route', {
       requestId,
     })
 
@@ -121,12 +121,12 @@ const generateScript = async (req: NextRequest) => {
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
-    // Get the initial script from the database
-    const initialScript = await prisma.script.findUnique({
+    // Get the draft script from the database
+    const draftScript = await prisma.script.findUnique({
       where: { id: scriptId },
     })
 
-    if (!initialScript) {
+    if (!draftScript) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Script not found', {
         scriptId,
         requestId,
@@ -134,7 +134,7 @@ const generateScript = async (req: NextRequest) => {
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
-    if (initialScript.ownerId !== session.user.id) {
+    if (draftScript.ownerId !== session.user.id) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized script access', {
         scriptId,
         userId: session.user.id,
@@ -143,16 +143,19 @@ const generateScript = async (req: NextRequest) => {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    if (initialScript.status !== 'IN_PROGRESS') {
+    if (draftScript.status !== 'IN_PROGRESS') {
       logInteraction(interactionTimestamp, 'serverRoute', 'Invalid script status', {
         scriptId,
-        status: initialScript.status,
+        status: draftScript.status,
         requestId,
       })
-      return NextResponse.json({ error: 'Script is not ready for refinement' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Script is not ready for final generation' },
+        { status: 400 }
+      )
     }
 
-    // Update status to show we're still refining
+    // Update status to show we're still generating final version
     await prisma.script.update({
       where: { id: scriptId },
       data: {
@@ -161,19 +164,19 @@ const generateScript = async (req: NextRequest) => {
       },
     })
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Starting refinement', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Starting final generation', {
       scriptId,
-      prompt: initialScript.summary,
+      prompt: draftScript.summary,
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
-    // Generate refined script using Gemini
-    const refinementPrompt = SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
-      .replace('{prompt}', initialScript.summary || '')
+    // Generate final script using Gemini
+    const finalPrompt = FINAL_PASS_PROMPT.replace('{script}', draftScript.content)
+      .replace('{prompt}', draftScript.summary || '')
       .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
 
-    const result = await model.generateContentStream(refinementPrompt)
+    const result = await model.generateContentStream(finalPrompt)
 
     let fullScript = ''
     let aborted = false
@@ -183,7 +186,7 @@ const generateScript = async (req: NextRequest) => {
         try {
           for await (const chunk of result.stream) {
             if (aborted) {
-              logInteraction(interactionTimestamp, 'serverRoute', 'Refinement aborted', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Final generation aborted', {
                 scriptId,
                 requestId,
                 source: luckyRequestId ? 'lucky' : 'direct',
@@ -206,7 +209,7 @@ const generateScript = async (req: NextRequest) => {
               })
 
               if (currentScript?.requestId !== requestId) {
-                logInteraction(interactionTimestamp, 'serverRoute', 'Refinement superseded', {
+                logInteraction(interactionTimestamp, 'serverRoute', 'Final generation superseded', {
                   scriptId,
                   requestId,
                   currentRequestId: currentScript?.requestId,
@@ -224,21 +227,21 @@ const generateScript = async (req: NextRequest) => {
                 },
               })
 
-              logInteraction(interactionTimestamp, 'serverRoute', 'Refinement completed', {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Final generation completed', {
                 scriptId,
                 requestId,
                 source: luckyRequestId ? 'lucky' : 'direct',
               })
 
-              // Store the pre-refinement version
+              // Store the draft version
               await prisma.scriptVersion.create({
                 data: {
                   scriptId,
-                  content: initialScript.content,
+                  content: draftScript.content,
                 },
               })
 
-              // Store the refined version
+              // Store the final version
               await prisma.scriptVersion.create({
                 data: {
                   scriptId,
@@ -282,14 +285,14 @@ const generateScript = async (req: NextRequest) => {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
     const body = await req.json().catch(() => ({}))
     const { luckyRequestId } = body
-    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate route', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate-final route', {
       error: error instanceof Error ? error.message : String(error),
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
     return NextResponse.json(
       {
-        error: 'Failed to generate script',
+        error: 'Failed to generate final script',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
@@ -297,4 +300,4 @@ const generateScript = async (req: NextRequest) => {
   }
 }
 
-export const POST = wrapApiHandler('generate_script', generateScript)
+export const POST = wrapApiHandler('generate_final_script', generateFinalScript)

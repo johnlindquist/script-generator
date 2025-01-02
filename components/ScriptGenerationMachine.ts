@@ -46,11 +46,11 @@ interface GenerateInitialResponse {
  */
 type ScriptGenerationEvent =
   | { type: 'SET_PROMPT'; prompt: string }
-  | { type: 'GENERATE_INITIAL'; timestamp: string }
-  | { type: 'START_STREAMING_INITIAL' }
-  | { type: 'START_STREAMING_REFINED' }
-  | { type: 'START_REFINING' }
-  | { type: 'GENERATE_REFINED' }
+  | { type: 'GENERATE_DRAFT'; timestamp: string }
+  | { type: 'START_STREAMING_DRAFT' }
+  | { type: 'START_STREAMING_FINAL' }
+  | { type: 'START_FINAL' }
+  | { type: 'GENERATE_FINAL' }
   | { type: 'CANCEL_GENERATION' }
   | { type: 'SAVE_SCRIPT' }
   | { type: 'SAVE_AND_INSTALL' }
@@ -193,29 +193,29 @@ export const scriptGenerationMachine = setup({
     output: {} as GenerateInitialResponse,
   },
   actors: {
-    generateInitialScript: fromPromise(async ({ input, emit }) => {
+    generateDraftScript: fromPromise(async ({ input, emit }) => {
       const typedInput = input as ScriptGenerationContext
       if (typedInput.interactionTimestamp) {
         await logInteraction(
           typedInput.interactionTimestamp,
           'stateMachine',
-          'Starting initial script generation',
+          'Starting draft script generation',
           { prompt: typedInput.prompt }
         )
       }
-      return generateScript('/api/generate-initial', typedInput, emit)
+      return generateScript('/api/generate-draft', typedInput, emit)
     }),
-    generateRefinedScript: fromPromise(async ({ input, emit }) => {
+    generateFinalScript: fromPromise(async ({ input, emit }) => {
       const typedInput = input as ScriptGenerationContext
       if (typedInput.interactionTimestamp) {
         await logInteraction(
           typedInput.interactionTimestamp,
           'stateMachine',
-          'Starting refined script generation',
+          'Starting final script generation',
           { scriptId: typedInput.scriptId }
         )
       }
-      return generateScript('/api/generate', typedInput, emit)
+      return generateScript('/api/generate-final', typedInput, emit)
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
@@ -379,38 +379,15 @@ export const scriptGenerationMachine = setup({
             })),
           ],
         },
-        GENERATE_INITIAL: [
-          {
-            target: 'thinkingInitial',
-            guard: ({ context }) =>
-              context.prompt.trim().length >= 15 && context.usageCount < context.usageLimit,
-            actions: [
-              assign({
-                interactionTimestamp: ({ event }) => event.timestamp,
-                isFromLucky: ({ context }) => context.isFromLucky,
-                luckyRequestId: ({ context }) => context.luckyRequestId,
-              }),
-              createLogAction('Initial generation started', context => ({
-                promptLength: context.prompt.trim().length,
-                usageCount: context.usageCount,
-                isFromLucky: context.isFromLucky,
-              })),
-            ],
-          },
-          {
-            target: 'idle',
-            actions: [
-              assign({
-                error: () => 'Prompt too short or usage limit reached',
-              }),
-              createLogAction('Generation rejected', context => ({
-                promptLength: context.prompt.trim().length,
-                usageCount: context.usageCount,
-                usageLimit: context.usageLimit,
-              })),
-            ],
-          },
-        ],
+        GENERATE_DRAFT: {
+          target: 'thinkingDraft',
+          actions: [
+            assign({
+              interactionTimestamp: ({ event }) => event.timestamp,
+              requestId: () => Math.random().toString(36).substring(7),
+            }),
+          ],
+        },
         SET_USAGE: {
           actions: [
             assign({
@@ -430,7 +407,7 @@ export const scriptGenerationMachine = setup({
      * Initial thinking state - preparing for generation.
      * Sets up request ID and clears previous state.
      */
-    thinkingInitial: {
+    thinkingDraft: {
       entry: [
         assign({
           error: () => null,
@@ -439,43 +416,15 @@ export const scriptGenerationMachine = setup({
         }),
         ({ context }) => {
           if (context.interactionTimestamp) {
-            logStateTransition('thinkingInitial', context.interactionTimestamp, {
+            logStateTransition('thinkingDraft', context.interactionTimestamp, {
               requestId: context.requestId,
             }).catch(console.error)
           }
         },
       ],
       on: {
-        START_STREAMING_INITIAL: {
-          target: 'generatingInitial',
-          actions: [
-            assign({
-              lastRefinementRequestId: null,
-            }),
-            createLogAction('Starting initial stream', context => ({
-              requestId: context.requestId,
-            })),
-          ],
-        },
-        CANCEL_GENERATION: {
-          target: 'idle',
-          actions: [
-            assign({
-              error: () => null,
-              editableScript: () => '',
-              lastRefinementRequestId: () => null,
-            }),
-            createLogAction('Generation cancelled', context => ({ requestId: context.requestId })),
-          ],
-        },
-        SET_ERROR: {
-          actions: [
-            assign({
-              error: ({ event }) => String(event.error),
-            }),
-            createLogAction('Error set', context => ({ error: context.error })),
-          ],
-        },
+        START_STREAMING_DRAFT: 'generatingDraft',
+        CANCEL_GENERATION: 'idle',
       },
     },
 
@@ -483,26 +432,26 @@ export const scriptGenerationMachine = setup({
      * Initial generation state - streaming the first version.
      * Handles the streaming response and updates.
      */
-    generatingInitial: {
+    generatingDraft: {
       entry: ({ context }) => {
         if (context.interactionTimestamp) {
-          logStateTransition('generatingInitial', context.interactionTimestamp, {
+          logStateTransition('generatingDraft', context.interactionTimestamp, {
             requestId: context.requestId,
           }).catch(console.error)
         }
       },
       invoke: {
-        src: 'generateInitialScript',
+        src: 'generateDraftScript',
         input: ({ context }) => context,
         onDone: {
-          target: 'thinkingRefined',
+          target: 'thinkingFinal',
           actions: [
             assign(({ event }) => ({
               error: null,
               scriptId: (event as { output: GenerateInitialResponse }).output.scriptId,
               lastRefinementRequestId: null,
             })),
-            createLogAction('Initial generation complete', context => ({
+            createLogAction('Draft generation complete', context => ({
               scriptId: context.scriptId,
               requestId: context.requestId,
             })),
@@ -518,7 +467,7 @@ export const scriptGenerationMachine = setup({
               },
               lastRefinementRequestId: () => null,
             }),
-            createLogAction('Initial generation failed', context => ({
+            createLogAction('Draft generation failed', context => ({
               error: context.error,
               requestId: context.requestId,
             })),
@@ -557,40 +506,17 @@ export const scriptGenerationMachine = setup({
      * Refined thinking state - preparing for refinement.
      * Similar to thinkingInitial but for refinement phase.
      */
-    thinkingRefined: {
+    thinkingFinal: {
       entry: ({ context }) => {
         if (context.interactionTimestamp) {
-          logStateTransition('thinkingRefined', context.interactionTimestamp, {
+          logStateTransition('thinkingFinal', context.interactionTimestamp, {
             scriptId: context.scriptId,
           }).catch(console.error)
         }
       },
       on: {
-        START_STREAMING_REFINED: {
-          target: 'generatingRefined',
-          actions: createLogAction('Starting refined stream', context => ({
-            scriptId: context.scriptId,
-          })),
-        },
-        CANCEL_GENERATION: {
-          target: 'idle',
-          actions: [
-            assign({
-              error: null,
-              editableScript: '',
-              lastRefinementRequestId: null,
-            }),
-            createLogAction('Refinement cancelled', context => ({ scriptId: context.scriptId })),
-          ],
-        },
-        SET_ERROR: {
-          actions: [
-            assign({
-              error: ({ event }) => String(event.error),
-            }),
-            createLogAction('Error during refinement', context => ({ error: context.error })),
-          ],
-        },
+        START_STREAMING_FINAL: 'generatingFinal',
+        CANCEL_GENERATION: 'idle',
       },
     },
 
@@ -598,16 +524,16 @@ export const scriptGenerationMachine = setup({
      * Refined generation state - streaming the refined version.
      * Similar to generatingInitial but for refinement phase.
      */
-    generatingRefined: {
+    generatingFinal: {
       entry: ({ context }) => {
         if (context.interactionTimestamp) {
-          logStateTransition('generatingRefined', context.interactionTimestamp, {
+          logStateTransition('generatingFinal', context.interactionTimestamp, {
             scriptId: context.scriptId,
           }).catch(console.error)
         }
       },
       invoke: {
-        src: 'generateRefinedScript',
+        src: 'generateFinalScript',
         input: ({ context }) => ({
           ...context,
           requestId: context.lastRefinementRequestId,
@@ -622,7 +548,9 @@ export const scriptGenerationMachine = setup({
                 return output.script
               },
             }),
-            createLogAction('Refinement complete', context => ({ scriptId: context.scriptId })),
+            createLogAction('Final generation complete', context => ({
+              scriptId: context.scriptId,
+            })),
           ],
         },
         onError: {
@@ -635,7 +563,7 @@ export const scriptGenerationMachine = setup({
               },
               lastRefinementRequestId: null,
             }),
-            createLogAction('Refinement failed', context => ({
+            createLogAction('Final generation failed', context => ({
               error: context.error,
               scriptId: context.scriptId,
             })),
@@ -653,7 +581,7 @@ export const scriptGenerationMachine = setup({
             assign({
               error: ({ event }) => String(event.error),
             }),
-            createLogAction('Error during refinement', context => ({ error: context.error })),
+            createLogAction('Error during generation', context => ({ error: context.error })),
           ],
         },
         CANCEL_GENERATION: {
@@ -664,7 +592,9 @@ export const scriptGenerationMachine = setup({
               editableScript: '',
               lastRefinementRequestId: null,
             }),
-            createLogAction('Refinement cancelled', context => ({ scriptId: context.scriptId })),
+            createLogAction('Final generation cancelled', context => ({
+              scriptId: context.scriptId,
+            })),
           ],
         },
       },
