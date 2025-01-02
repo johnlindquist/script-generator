@@ -12,6 +12,9 @@ interface ScriptGenerationContext {
   isFromSuggestion: boolean
   scriptId: string | null
   interactionTimestamp: string | null
+  isFromLucky: boolean
+  luckyRequestId: string | null
+  lastRefinementRequestId: string | null
 }
 
 interface GenerateInitialResponse {
@@ -37,6 +40,7 @@ type ScriptGenerationEvent =
   | { type: 'UPDATE_EDITABLE_SCRIPT'; script: string }
   | { type: 'SET_SCRIPT_ID'; scriptId: string }
   | { type: 'COMPLETE_GENERATION'; script: string }
+  | { type: 'SET_LUCKY_REQUEST'; requestId: string }
 
 const generateScript = async (
   url: string,
@@ -53,6 +57,7 @@ const generateScript = async (
       prompt: input.prompt,
       requestId: input.requestId,
       scriptId: input.scriptId,
+      luckyRequestId: input.luckyRequestId,
     }),
   })
 
@@ -171,19 +176,36 @@ export const scriptGenerationMachine = setup({
     isFromSuggestion: false,
     scriptId: null,
     interactionTimestamp: null,
+    isFromLucky: false,
+    luckyRequestId: null,
+    lastRefinementRequestId: null,
   },
   states: {
     idle: {
+      entry: assign({
+        error: null,
+        editableScript: '',
+        generatedScript: null,
+        requestId: null,
+        scriptId: null,
+        isFromLucky: false,
+        luckyRequestId: null,
+        lastRefinementRequestId: null,
+      }),
       on: {
         SET_PROMPT: {
           actions: assign({
             prompt: ({ event }) => event.prompt,
             isFromSuggestion: () => false,
+            isFromLucky: () => false,
+            luckyRequestId: () => null,
           }),
         },
         FROM_SUGGESTION: {
           actions: assign({
             isFromSuggestion: ({ event }) => event.value,
+            isFromLucky: () => false,
+            luckyRequestId: () => null,
           }),
         },
         GENERATE_INITIAL: [
@@ -193,6 +215,8 @@ export const scriptGenerationMachine = setup({
               context.prompt.trim().length >= 15 && context.usageCount < context.usageLimit,
             actions: assign({
               interactionTimestamp: ({ event }) => event.timestamp,
+              isFromLucky: ({ context }) => context.isFromLucky,
+              luckyRequestId: ({ context }) => context.luckyRequestId,
             }),
           },
           {
@@ -218,12 +242,18 @@ export const scriptGenerationMachine = setup({
         requestId: () => crypto.randomUUID(),
       }),
       on: {
-        START_STREAMING_INITIAL: 'generatingInitial',
+        START_STREAMING_INITIAL: {
+          target: 'generatingInitial',
+          actions: assign({
+            lastRefinementRequestId: null,
+          }),
+        },
         CANCEL_GENERATION: {
           target: 'idle',
           actions: assign({
             error: null,
             editableScript: '',
+            lastRefinementRequestId: null,
           }),
         },
         SET_ERROR: {
@@ -243,26 +273,21 @@ export const scriptGenerationMachine = setup({
           actions: assign({
             error: null,
             scriptId: ({ event }) => (event.output as GenerateInitialResponse).scriptId,
+            lastRefinementRequestId: null,
           }),
         },
         onError: {
           target: 'idle',
           actions: assign({
             error: ({ event }) => {
-              const error = event.error
-              return error instanceof Error ? error.message : String(error)
+              const err = event.error as Error
+              return err?.message || 'An unknown error occurred'
             },
+            lastRefinementRequestId: null,
           }),
         },
       },
       on: {
-        CANCEL_GENERATION: {
-          target: 'idle',
-          actions: assign({
-            error: null,
-            editableScript: '',
-          }),
-        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
@@ -273,10 +298,22 @@ export const scriptGenerationMachine = setup({
             error: ({ event }) => String(event.error),
           }),
         },
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: assign({
+            error: null,
+            editableScript: '',
+            lastRefinementRequestId: null,
+          }),
+        },
       },
     },
 
     thinkingRefined: {
+      entry: assign({
+        error: () => null,
+        lastRefinementRequestId: () => crypto.randomUUID(),
+      }),
       on: {
         START_STREAMING_REFINED: 'generatingRefined',
         CANCEL_GENERATION: {
@@ -284,6 +321,7 @@ export const scriptGenerationMachine = setup({
           actions: assign({
             error: null,
             editableScript: '',
+            lastRefinementRequestId: null,
           }),
         },
         SET_ERROR: {
@@ -297,33 +335,32 @@ export const scriptGenerationMachine = setup({
     generatingRefined: {
       invoke: {
         src: 'generateRefinedScript',
-        input: ({ context }) => context,
+        input: ({ context }) => ({
+          ...context,
+          requestId: context.lastRefinementRequestId,
+        }),
         onDone: {
-          target: 'done',
+          target: 'complete',
           actions: assign({
             error: null,
-            editableScript: ({ event }) => (event.output as { script: string }).script,
-            generatedScript: ({ event }) => (event.output as { script: string }).script,
+            generatedScript: ({ event }) => {
+              const output = event.output as { script: string }
+              return output.script
+            },
           }),
         },
         onError: {
           target: 'idle',
           actions: assign({
             error: ({ event }) => {
-              const error = event.error
-              return error instanceof Error ? error.message : String(error)
+              const err = event.error as Error
+              return err?.message || 'An unknown error occurred'
             },
+            lastRefinementRequestId: null,
           }),
         },
       },
       on: {
-        CANCEL_GENERATION: {
-          target: 'idle',
-          actions: assign({
-            error: null,
-            editableScript: '',
-          }),
-        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
@@ -334,75 +371,57 @@ export const scriptGenerationMachine = setup({
             error: ({ event }) => String(event.error),
           }),
         },
-      },
-    },
-
-    done: {
-      on: {
-        SAVE_SCRIPT: { target: 'savingScript' },
-        SAVE_AND_INSTALL: { target: 'saveAndInstall' },
-        RESET: {
+        CANCEL_GENERATION: {
           target: 'idle',
           actions: assign({
-            prompt: () => '',
-            editableScript: () => '',
-            generatedScript: () => null,
-            error: () => null,
-            scriptId: () => null,
-          }),
-        },
-        UPDATE_EDITABLE_SCRIPT: {
-          actions: assign({
-            editableScript: ({ event }) => event.script,
+            error: null,
+            editableScript: '',
+            lastRefinementRequestId: null,
           }),
         },
       },
     },
 
-    savingScript: {
+    complete: {
+      on: {
+        RESET: 'idle',
+        SAVE_SCRIPT: {
+          target: 'saving',
+        },
+        SAVE_AND_INSTALL: {
+          target: 'installing',
+        },
+      },
+    },
+
+    saving: {
       invoke: {
         src: 'saveScriptService',
         input: ({ context }) => context,
-        onDone: {
-          target: 'idle',
-          actions: assign({
-            prompt: () => '',
-            editableScript: () => '',
-            generatedScript: () => null,
-            scriptId: () => null,
-          }),
-        },
+        onDone: 'idle',
         onError: {
-          target: 'done',
+          target: 'complete',
           actions: assign({
             error: ({ event }) => {
-              const error = event.error
-              return error instanceof Error ? error.message : String(error)
+              const err = event.error as Error
+              return err?.message || 'An unknown error occurred'
             },
           }),
         },
       },
     },
 
-    saveAndInstall: {
+    installing: {
       invoke: {
         src: 'saveAndInstallService',
         input: ({ context }) => context,
-        onDone: {
-          target: 'idle',
-          actions: assign({
-            prompt: () => '',
-            editableScript: () => '',
-            generatedScript: () => null,
-            scriptId: () => null,
-          }),
-        },
+        onDone: 'idle',
         onError: {
-          target: 'done',
+          target: 'complete',
           actions: assign({
             error: ({ event }) => {
-              const error = event.error
-              return error instanceof Error ? error.message : String(error)
+              const err = event.error as Error
+              return err?.message || 'An unknown error occurred'
             },
           }),
         },

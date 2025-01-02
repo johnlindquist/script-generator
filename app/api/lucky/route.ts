@@ -5,7 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { logInteraction } from '@/lib/interaction-logger'
 
 const LUCKY_INSTRUCTION =
-  'Use these scripts above for inspiration. Create a new script inspiration by pieces of these scripts, but let it have a single focus and be useful. Avoid a generatic "power tools" scenario where it just combines them all'
+  'Use these scripts above for inspiration. Create a new script inspiration by pieces of these scripts, but let it have a single focus and be useful. Avoid a generic "power tools" scenario where it just combines them all'
 
 // Explicitly declare Node.js runtime since we use file system operations
 export const runtime = 'nodejs'
@@ -13,18 +13,21 @@ export const runtime = 'nodejs'
 const DAILY_LIMIT = 24
 
 export async function GET(req: Request) {
+  const requestId = Math.random().toString(36).substring(7)
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/lucky route')
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/lucky route', { requestId })
 
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request')
+      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request', { requestId })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
       userId: session.user.id,
+      requestId,
+      source: 'lucky',
     })
 
     // Get or create usage record for today
@@ -36,7 +39,9 @@ export async function GET(req: Request) {
     })
 
     if (!dbUser) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database')
+      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database', {
+        requestId,
+      })
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -52,6 +57,8 @@ export async function GET(req: Request) {
     if (!usage) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Creating new usage record', {
         userId: session.user.id,
+        requestId,
+        source: 'lucky',
       })
       usage = await prisma.usage.create({
         data: {
@@ -62,10 +69,20 @@ export async function GET(req: Request) {
       })
     }
 
+    logInteraction(interactionTimestamp, 'serverRoute', 'Current usage status', {
+      userId: session.user.id,
+      currentCount: usage.count,
+      limit: DAILY_LIMIT,
+      requestId,
+      source: 'lucky',
+    })
+
     if (usage.count >= DAILY_LIMIT) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit reached', {
         userId: session.user.id,
         count: usage.count,
+        requestId,
+        source: 'lucky',
       })
       return NextResponse.json(
         {
@@ -116,6 +133,8 @@ export async function GET(req: Request) {
 
       logInteraction(interactionTimestamp, 'serverRoute', 'Selected random scripts', {
         scriptIds: randomScripts.map(s => s.id),
+        requestId,
+        source: 'lucky',
       })
 
       const limitedScripts = randomScripts.map(s => ({
@@ -143,13 +162,17 @@ ${LUCKY_INSTRUCTION}`
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Generated lucky prompt', {
       scriptCount: scripts.length,
+      requestId,
+      source: 'lucky',
     })
 
-    return NextResponse.json({ scripts, combinedPrompt })
+    return NextResponse.json({ scripts, combinedPrompt, requestId })
   } catch (error) {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
     logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/lucky route', {
       error: error instanceof Error ? error.message : String(error),
+      requestId,
+      source: 'lucky',
     })
     return NextResponse.json(
       {

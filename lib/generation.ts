@@ -332,6 +332,12 @@ Here are all the global types included with Script Kit:
 ${getKitTypes()}
 </TYPES>
 
+<SUSPICIOUS_CODE>
+import {foo} from "@johnlindquist/kit" is highly suspicious because we almost always use globals.
+99.9% of the time, it will only be:
+import "@johnlindquist/kit"
+</SUSPICIOUS_CODE>
+
 <GLOBALS>
 You'll notice in <TYPES> that we're providing many of node.js APIs as global types. Please avoid using importing node.js APIs unless they're not specified in <TYPES>.!
 </GLOBALS>

@@ -127,6 +127,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
             prompt: state.context.prompt,
             requestId: state.context.requestId,
             scriptId: state.context.scriptId,
+            luckyRequestId: state.context.luckyRequestId,
           }),
           signal,
         })
@@ -161,9 +162,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
               const text = new TextDecoder().decode(value)
               buffer += text
-              buffer = buffer.trim()
 
-              const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+              // Only trim when checking for script ID
+              const trimmedBuffer = buffer.trim()
+              const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
               if (idMatch) {
                 const scriptId = idMatch[1]
                 buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
@@ -221,6 +223,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     state.context.prompt,
     state.context.requestId,
     state.context.scriptId,
+    state.context.luckyRequestId,
     handleStreamedText,
   ])
 
@@ -338,14 +341,22 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      const luckyRequestId = crypto.randomUUID()
+
+      // Clear any existing state
+      send({ type: 'SET_ERROR', error: '' })
+      send({
+        type: 'SET_PROMPT',
+        prompt: '', // We'll fill in after we fetch /api/lucky
+      })
 
       const res = await fetch('/api/lucky', {
         headers: {
           'Interaction-Timestamp': timestamp,
         },
       })
-      const data = await res.json()
 
+      const data = await res.json()
       if (!res.ok) {
         throw new Error(data.error || 'Failed to get random scripts')
       }
@@ -354,16 +365,22 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         throw new Error('Invalid response format')
       }
 
-      // Clear any existing error and state
-      send({ type: 'RESET' })
-      send({ type: 'SET_ERROR', error: '' })
-
-      // Set the prompt and generate
-      send({ type: 'SET_PROMPT', prompt: data.combinedPrompt })
+      // Set the lucky context before generating
+      send({ type: 'FROM_SUGGESTION', value: false })
+      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: '' })
       send({
-        type: 'GENERATE_INITIAL',
-        timestamp,
+        type: 'SET_PROMPT',
+        prompt: data.combinedPrompt,
       })
+
+      // Store the lucky request ID in the context
+      send({
+        type: 'SET_LUCKY_REQUEST',
+        requestId: luckyRequestId,
+      })
+
+      // Start generation with the timestamp
+      send({ type: 'GENERATE_INITIAL', timestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)
       send({
@@ -507,13 +524,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                   value={state.context.editableScript}
                   onChange={value =>
                     isAuthenticated &&
-                    state.matches('done') &&
+                    state.matches('complete') &&
                     send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
                   }
                   options={{
                     ...monacoOptions,
-                    readOnly: !isAuthenticated || !state.matches('done'),
-                    domReadOnly: !isAuthenticated || !state.matches('done'),
+                    readOnly: !isAuthenticated || !state.matches('complete'),
+                    domReadOnly: !isAuthenticated || !state.matches('complete'),
                   }}
                   onMount={handleEditorDidMount}
                   beforeMount={initializeTheme}
@@ -521,7 +538,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 />
               </div>
             </div>
-            {state.matches('done') && (
+            {state.matches('complete') && (
               <div className="absolute bottom-4 right-4 flex gap-2">
                 {isAuthenticated && (
                   <>
