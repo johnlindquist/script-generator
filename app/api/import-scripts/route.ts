@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { cleanCodeFences } from '@/lib/generation'
+import { extractScriptFromMarkdown } from '@/lib/generation'
 
 const GITHUB_TOKEN = process.env.GITHUB_ACCESS_TOKEN || ''
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Extract code from markdown content if present
-        const cleanedContent = cleanCodeFences(scriptData.content)
+        const cleanedContent = extractScriptFromMarkdown(scriptData.content)
 
         // Create script with the GitHub user as owner
         const script = await prisma.script.create({

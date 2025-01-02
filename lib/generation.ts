@@ -123,14 +123,30 @@ export function getDocsContent() {
   }
 }
 
-// Helper function to clean code fences and language specifiers
+// Simple code fence cleaner for script generation
 export function cleanCodeFences(text: string): string {
-  // If the text starts with common script indicators, it's probably already clean code
+  // First, remove any standalone "typescript" or "ts" lines (case insensitive)
+  let cleaned = text.replace(/^(typescript|ts)\s*$/gim, '')
+
+  // Remove opening code fences with optional language specifier
+  cleaned = cleaned.replace(/^```(?:typescript|ts)?\s*$/gm, '')
+
+  // Remove closing code fences
+  cleaned = cleaned.replace(/^```\s*$/gm, '')
+
+  // Clean up any triple or more newlines while preserving exactly two
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
+
+  // Return without trimming to preserve whitespace
+  return cleaned
+}
+
+// Advanced code extractor for importing scripts from markdown
+export function extractScriptFromMarkdown(text: string): string {
   if (text.trim().startsWith('//') || text.trim().startsWith('import ')) {
     return text.trim()
   }
 
-  // Look for code blocks with various formats
   const codeBlockPatterns = [
     // Standard code blocks with language
     /```(?:typescript|ts|js|javascript)\r?\n([\s\S]*?)```/m,
@@ -216,7 +232,7 @@ export function parseScriptFromMarkdown(content: string): {
 
   if (codeBlocks && codeBlocks.length > 0) {
     // Use the first code block found
-    codeContent = cleanCodeFences(codeBlocks[0])
+    codeContent = extractScriptFromMarkdown(codeBlocks[0])
   } else {
     // If no code blocks found, use everything after metadata
     codeContent = lines.slice(contentStartIndex).join('\n')
