@@ -119,7 +119,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         const url = state.matches('thinkingInitial') ? '/api/generate-initial' : '/api/generate'
         const response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Interaction-Timestamp': state.context.interactionTimestamp || '',
+          },
           body: JSON.stringify({
             prompt: state.context.prompt,
             requestId: state.context.requestId,
@@ -278,7 +281,12 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       return
     }
 
-    send({ type: 'GENERATE_INITIAL' })
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+
+    send({
+      type: 'GENERATE_INITIAL',
+      timestamp,
+    })
   }
 
   // Handle keyboard submission
@@ -290,7 +298,12 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         signIn()
         return
       }
-      send({ type: 'GENERATE_INITIAL' })
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+
+      send({
+        type: 'GENERATE_INITIAL',
+        timestamp,
+      })
     }
   }
 
@@ -312,7 +325,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
       state.context.prompt.trim().length >= 15 &&
       isAuthenticated
     ) {
-      send({ type: 'GENERATE_INITIAL' })
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      send({ type: 'GENERATE_INITIAL', timestamp })
     }
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
@@ -323,7 +337,13 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
     }
 
     try {
-      const res = await fetch('/api/lucky')
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+
+      const res = await fetch('/api/lucky', {
+        headers: {
+          'Interaction-Timestamp': timestamp,
+        },
+      })
       const data = await res.json()
 
       if (!res.ok) {
@@ -340,7 +360,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
       // Set the prompt and generate
       send({ type: 'SET_PROMPT', prompt: data.combinedPrompt })
-      send({ type: 'GENERATE_INITIAL' })
+      send({
+        type: 'GENERATE_INITIAL',
+        timestamp,
+      })
     } catch (err) {
       console.error('Lucky generation failed:', err)
       send({

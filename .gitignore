@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Debug files
 tmp/debug/
+
+# Interaction logs
+logs/interactions/

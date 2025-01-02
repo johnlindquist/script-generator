@@ -5,7 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { SECOND_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
-import { debugLog, writeDebugFile } from '@/lib/debug-node'
+import { logInteraction } from '@/lib/interaction-logger'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -14,46 +14,37 @@ const DAILY_LIMIT = 24
 
 const generateScript = async (req: NextRequest) => {
   try {
+    const interactionId = req.headers.get('Interaction-ID')
+    logInteraction(interactionId || 'unknown', 'serverRoute', 'Started /api/generate route')
+
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      debugLog('generate', 'Unauthorized - No valid user ID')
-      return NextResponse.json(
-        {
-          error: 'Unauthorized - No valid user ID',
-          details: 'Please try signing out and signing back in',
-        },
-        { status: 401 }
-      )
+    if (!session?.user) {
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Unauthorized request')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user exists in database
+    const { scriptId } = await req.json()
+    if (!scriptId) {
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Missing scriptId')
+      return NextResponse.json({ error: 'Missing scriptId' }, { status: 400 })
+    }
+
+    logInteraction(interactionId || 'unknown', 'serverRoute', 'Checking user usage', {
+      userId: session.user.id,
+    })
+
+    // Get or create usage record for today
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
     })
 
     if (!dbUser) {
-      debugLog('generate', 'Creating new user', { userId: session.user.id })
-      // Create user if they don't exist
-      await prisma.user.create({
-        data: {
-          id: session.user.id,
-          username:
-            session.user.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ??
-            session.user.email?.split('@')[0] ??
-            'unknown-user',
-        },
-      })
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'User not found in database')
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    const { scriptId } = await req.json()
-    if (!scriptId) {
-      debugLog('generate', 'Missing script ID')
-      return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
-    }
-
-    // Check and increment usage count
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
 
     let usage = await prisma.usage.findUnique({
       where: {
@@ -65,7 +56,9 @@ const generateScript = async (req: NextRequest) => {
     })
 
     if (!usage) {
-      debugLog('generate', 'Creating new usage record', { userId: session.user.id })
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Creating new usage record', {
+        userId: session.user.id,
+      })
       usage = await prisma.usage.create({
         data: {
           userId: session.user.id,
@@ -76,7 +69,10 @@ const generateScript = async (req: NextRequest) => {
     }
 
     if (usage.count >= DAILY_LIMIT) {
-      debugLog('generate', 'Daily limit reached', { userId: session.user.id, count: usage.count })
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Daily limit reached', {
+        userId: session.user.id,
+        count: usage.count,
+      })
       return NextResponse.json(
         {
           error: 'Daily generation limit reached',
@@ -99,22 +95,34 @@ const generateScript = async (req: NextRequest) => {
       },
     })
 
+    logInteraction(interactionId || 'unknown', 'serverRoute', 'Usage incremented', {
+      userId: session.user.id,
+      newCount: usage.count + 1,
+    })
+
     // Get the initial script from the database
     const initialScript = await prisma.script.findUnique({
       where: { id: scriptId },
     })
 
     if (!initialScript) {
-      debugLog('generate', 'Script not found', { scriptId })
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Script not found', { scriptId })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
     if (initialScript.ownerId !== session.user.id) {
-      debugLog('generate', 'Unauthorized script access', { scriptId, userId: session.user.id })
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Unauthorized script access', {
+        scriptId,
+        userId: session.user.id,
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     if (initialScript.status !== 'IN_PROGRESS') {
+      logInteraction(interactionId || 'unknown', 'serverRoute', 'Invalid script status', {
+        scriptId,
+        status: initialScript.status,
+      })
       return NextResponse.json({ error: 'Script is not ready for refinement' }, { status: 400 })
     }
 
@@ -129,11 +137,10 @@ const generateScript = async (req: NextRequest) => {
       .replace('{prompt}', initialScript.summary || '')
       .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
 
-    // Write debug files
-    writeDebugFile(`refinement_input_id_${scriptId}`, initialScript.content)
-    writeDebugFile(`refinement_prompt_id_${scriptId}`, refinementPrompt)
-
-    debugLog('generate', 'Starting refinement', { scriptId })
+    logInteraction(interactionId || 'unknown', 'serverRoute', 'Starting refinement', {
+      scriptId,
+      prompt: initialScript.summary,
+    })
 
     const result = await model.generateContentStream(refinementPrompt)
 
@@ -145,7 +152,9 @@ const generateScript = async (req: NextRequest) => {
         try {
           for await (const chunk of result.stream) {
             if (aborted) {
-              debugLog('generate', 'Refinement aborted', { scriptId })
+              logInteraction(interactionId || 'unknown', 'serverRoute', 'Refinement aborted', {
+                scriptId,
+              })
               break
             }
             const text = cleanCodeFences(chunk.text())
@@ -163,10 +172,9 @@ const generateScript = async (req: NextRequest) => {
                 },
               })
 
-              debugLog('generate', 'Refinement completed successfully', { scriptId })
-
-              // Write debug file for final refined script
-              writeDebugFile(`refinement_output_id_${scriptId}`, fullScript)
+              logInteraction(interactionId || 'unknown', 'serverRoute', 'Refinement completed', {
+                scriptId,
+              })
 
               // Store the pre-refinement version
               await prisma.scriptVersion.create({
@@ -189,7 +197,7 @@ const generateScript = async (req: NextRequest) => {
             } catch (dbError) {
               const errorMessage =
                 dbError instanceof Error ? dbError.message : 'Database error occurred'
-              debugLog('generate', 'Database error during refinement', {
+              logInteraction(interactionId || 'unknown', 'serverRoute', 'Database error', {
                 scriptId,
                 error: errorMessage,
               })
@@ -198,30 +206,23 @@ const generateScript = async (req: NextRequest) => {
           } else {
             controller.close()
           }
-        } catch (streamError) {
-          const errorMessage =
-            streamError instanceof Error ? streamError.message : 'Stream error occurred'
-          debugLog('generate', 'Stream error during refinement', { scriptId, error: errorMessage })
-          controller.error(new Error(errorMessage))
+        } catch (error) {
+          logInteraction(interactionId || 'unknown', 'serverRoute', 'Stream error', {
+            scriptId,
+            error: error instanceof Error ? error.message : String(error),
+          })
+          controller.error(error)
         }
       },
       cancel() {
-        debugLog('generate', 'Refinement cancelled', { scriptId })
         aborted = true
       },
     })
 
-    return new NextResponse(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-        'X-Script-Id': scriptId,
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    })
+    return new NextResponse(stream)
   } catch (error) {
-    debugLog('generate', 'Error generating script', {
+    const interactionId = req.headers.get('Interaction-ID')
+    logInteraction(interactionId || 'unknown', 'serverRoute', 'Error in /api/generate route', {
       error: error instanceof Error ? error.message : String(error),
     })
     return NextResponse.json(

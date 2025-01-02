@@ -11,6 +11,7 @@ interface ScriptGenerationContext {
   requestId: string | null
   isFromSuggestion: boolean
   scriptId: string | null
+  interactionTimestamp: string | null
 }
 
 interface GenerateInitialResponse {
@@ -20,7 +21,7 @@ interface GenerateInitialResponse {
 
 type ScriptGenerationEvent =
   | { type: 'SET_PROMPT'; prompt: string }
-  | { type: 'GENERATE_INITIAL' }
+  | { type: 'GENERATE_INITIAL'; timestamp: string }
   | { type: 'START_STREAMING_INITIAL' }
   | { type: 'START_STREAMING_REFINED' }
   | { type: 'START_REFINING' }
@@ -44,7 +45,10 @@ const generateScript = async (
 ) => {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(input.interactionTimestamp && { 'Interaction-Timestamp': input.interactionTimestamp }),
+    },
     body: JSON.stringify({
       prompt: input.prompt,
       requestId: input.requestId,
@@ -166,6 +170,7 @@ export const scriptGenerationMachine = setup({
     requestId: null,
     isFromSuggestion: false,
     scriptId: null,
+    interactionTimestamp: null,
   },
   states: {
     idle: {
@@ -186,6 +191,9 @@ export const scriptGenerationMachine = setup({
             target: 'thinkingInitial',
             guard: ({ context }) =>
               context.prompt.trim().length >= 15 && context.usageCount < context.usageLimit,
+            actions: assign({
+              interactionTimestamp: ({ event }) => event.timestamp,
+            }),
           },
           {
             target: 'idle',
