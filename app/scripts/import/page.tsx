@@ -6,10 +6,22 @@ import { useSession } from 'next-auth/react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
 import { STRINGS } from '@/lib/strings'
 
+const PLACEHOLDER = `[
+  {
+    "name": "script-name",
+    "description": "script description",
+    "content": "\`\`\`typescript\\nimport \\"@johnlindquist/kit\\"\\n// Your script code here\\n\`\`\`",
+    "author": "John Doe",
+    "user": "johndoe",
+    "github": "https://github.com/johndoe",
+    "twitter": "@johndoe"
+  }
+]`
+
 export default function ImportScriptsPage() {
   const { data: session } = useSession()
   const router = useRouter()
-  const [jsonContent, setJsonContent] = useState('')
+  const [content, setContent] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -19,8 +31,8 @@ export default function ImportScriptsPage() {
     setError('')
 
     try {
-      // Validate JSON format
-      const scripts = JSON.parse(jsonContent)
+      // Parse JSON array
+      const scripts = JSON.parse(content)
       if (!Array.isArray(scripts)) {
         throw new Error(STRINGS.IMPORT_SCRIPTS.error.invalidJson)
       }
@@ -28,7 +40,7 @@ export default function ImportScriptsPage() {
       const res = await fetch('/api/import-scripts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: jsonContent,
+        body: content,
       })
 
       if (!res.ok) {
@@ -60,24 +72,14 @@ export default function ImportScriptsPage() {
 
         <form onSubmit={handleImport} className="space-y-6">
           <div>
-            <label htmlFor="jsonContent" className="block text-sm font-medium text-gray-200 mb-2">
+            <label htmlFor="content" className="block text-sm font-medium text-gray-200 mb-2">
               {STRINGS.IMPORT_SCRIPTS.inputLabel}
             </label>
             <textarea
-              id="jsonContent"
-              value={jsonContent}
-              onChange={e => setJsonContent(e.target.value)}
-              placeholder={`[
-  {
-    "name": "script-name",
-    "description": "script description",
-    "content": "script content",
-    "author": "John Doe",
-    "user": "johndoe",
-    "github": "https://github.com/johndoe",
-    "twitter": "@johndoe"
-  }
-]`}
+              id="content"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder={PLACEHOLDER}
               className="w-full h-96 px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-200 placeholder-gray-500 font-mono"
               required
             />
