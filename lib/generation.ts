@@ -248,28 +248,26 @@ export function parseScriptFromMarkdown(content: string): {
     if (line.startsWith('//')) {
       const [key, ...valueParts] = line.slice(2).trim().split(':')
       const value = valueParts.join(':').trim()
-      if (key.toLowerCase() === 'name') metadata.name = value
-      if (key.toLowerCase() === 'description') metadata.description = value
-      if (key.toLowerCase() === 'author') metadata.author = value
-      contentStartIndex = i + 1
-    } else if (line === '') {
+      if (key && value) {
+        metadata[key.toLowerCase()] = value
+      }
       contentStartIndex = i + 1
     } else {
       break
     }
   }
 
-  // Extract code content
-  let codeContent = ''
-  const codeBlocks = content.match(/```(?:typescript|ts)?\n([\s\S]*?)```/g)
-
-  if (codeBlocks && codeBlocks.length > 0) {
-    // Use the first code block found
-    codeContent = extractScriptFromMarkdown(codeBlocks[0])
-  } else {
-    // If no code blocks found, use everything after metadata
-    codeContent = lines.slice(contentStartIndex).join('\n')
+  // If we found a 'Name' field, let's keep it short
+  if (metadata.name) {
+    // Truncate metadata.name if it's too long
+    const maxNameLength = 30
+    if (metadata.name.length > maxNameLength) {
+      metadata.name = metadata.name.slice(0, maxNameLength)
+    }
   }
+
+  // Get the actual code content
+  const codeContent = lines.slice(contentStartIndex).join('\n')
 
   return {
     name: metadata.name,
