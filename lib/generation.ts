@@ -1,6 +1,39 @@
 import fs from 'fs'
 import path from 'path'
 
+// Interface for consistent user info across generation
+export interface UserInfo {
+  name: string | null
+  username: string
+  fullName: string | null
+  image: string | null
+}
+
+interface SessionUser {
+  id: string
+  name?: string | null | undefined
+  email?: string | null | undefined
+  image?: string | null | undefined
+}
+
+interface DbUser {
+  id: string
+  username: string
+}
+
+// Helper to extract user info consistently
+export function extractUserInfo(session: { user: SessionUser }, dbUser: DbUser | null): UserInfo {
+  return {
+    name: session.user.name || null,
+    username:
+      dbUser?.username ||
+      session.user.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ||
+      'unknown-user',
+    fullName: session.user.name || null,
+    image: session.user.image || null,
+  }
+}
+
 export function getKitTypes() {
   const typesPath = path.join(process.cwd(), 'kit', 'types')
   let allTypesContent = ''
@@ -302,6 +335,10 @@ ${getKitTypes()}
 <GLOBALS>
 You'll notice in <TYPES> that we're providing many of node.js APIs as global types. Please avoid using importing node.js APIs unless they're not specified in <TYPES>.!
 </GLOBALS>
+
+<LEGACY>
+The "npm" function is deprecated. Please use standard esm/typescript imports.
+</LEGACY>
 
 Focus ONLY on improving the script above. Do not reference or combine with other scripts.
 Re-generate the improved script content paying extra attention to the types.

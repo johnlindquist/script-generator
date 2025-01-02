@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { INITIAL_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
+import { INITIAL_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { writeDebugFile, debugLog } from '@/lib/debug'
 
@@ -98,10 +98,7 @@ const generateInitialScript = async (req: NextRequest) => {
     // Generate initial script using Gemini
     const initialPrompt = INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
       '{userInfo}',
-      JSON.stringify({
-        name: session.user.name,
-        image: session.user.image,
-      })
+      JSON.stringify(extractUserInfo(session, dbUser))
     )
 
     // Debug the incoming prompt
@@ -177,7 +174,7 @@ const generateInitialScript = async (req: NextRequest) => {
                 `initial_prompt_id_${script.id}`,
                 INITIAL_PASS_PROMPT.replace('{prompt}', prompt).replace(
                   '{userInfo}',
-                  JSON.stringify({ name: session.user.name, image: session.user.image })
+                  JSON.stringify(extractUserInfo(session, dbUser))
                 )
               )
 

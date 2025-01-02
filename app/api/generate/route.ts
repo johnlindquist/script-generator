@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { SECOND_PASS_PROMPT, cleanCodeFences } from '@/lib/generation'
+import { SECOND_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { writeDebugFile, debugLog } from '@/lib/debug'
 
@@ -117,13 +117,7 @@ const generateScript = async (req: NextRequest) => {
     // Generate refined script using Gemini
     const refinementPrompt = SECOND_PASS_PROMPT.replace('{script}', initialScript.content)
       .replace('{prompt}', initialScript.summary || '')
-      .replace(
-        '{userInfo}',
-        JSON.stringify({
-          name: session.user.name,
-          image: session.user.image,
-        })
-      )
+      .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
 
     // Write debug files
     writeDebugFile(`refinement_input_id_${scriptId}`, initialScript.content)
