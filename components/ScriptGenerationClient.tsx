@@ -18,6 +18,7 @@ import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
 import { Tooltip } from '@nextui-org/react'
+import type { Suggestion } from '@/lib/getRandomSuggestions'
 
 interface EditorRef {
   getModel: () => {
@@ -31,6 +32,7 @@ interface EditorRef {
 interface Props {
   isAuthenticated: boolean
   heading: string
+  suggestions: Suggestion[]
 }
 
 const AnimatedText = ({ text }: { text: string }) => {
@@ -72,7 +74,7 @@ const handleUnauthorized = () => {
   }, 2500)
 }
 
-export default function ScriptGenerationClient({ isAuthenticated, heading }: Props) {
+export default function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
   const [state, send] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -514,6 +516,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
               }}
               setIsFromSuggestion={() => {}}
               className="mb-4"
+              suggestions={suggestions}
             />
           )}
         </div>

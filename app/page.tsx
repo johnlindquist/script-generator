@@ -7,6 +7,7 @@ import ScriptSearch from '@/components/ScriptSearch'
 import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import { getRandomHeading } from '@/lib/getRandomHeading'
+import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
 import {
   getMacIntelRelease,
   getMacSiliconRelease,
@@ -22,6 +23,7 @@ export const dynamic = 'force-dynamic'
 export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
+  const suggestions = getRandomSuggestions()
 
   const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
@@ -42,7 +44,11 @@ export default async function Home() {
         </div>
 
         {/* Script Generation Client - always visible */}
-        <ScriptGenerationClient isAuthenticated={!!session} heading={heading} />
+        <ScriptGenerationClient
+          isAuthenticated={!!session}
+          heading={heading}
+          suggestions={suggestions}
+        />
 
         <hr className="my-8 border-zinc-800" />
 
