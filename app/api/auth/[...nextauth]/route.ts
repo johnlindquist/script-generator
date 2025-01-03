@@ -72,13 +72,30 @@ export const authOptions: AuthOptions = {
         }
 
         // Create or update test user in DB
-        const user = await prisma.user.upsert({
-          where: { id: TEST_USER.id },
-          update: {
-            username: TEST_USER.username,
-            fullName: TEST_USER.name,
-          },
-          create: {
+        const existingUser = await prisma.user.findUnique({
+          where: { username: TEST_USER.username },
+        })
+
+        if (existingUser) {
+          const user = await prisma.user.update({
+            where: { username: TEST_USER.username },
+            data: {
+              id: TEST_USER.id,
+              fullName: TEST_USER.name,
+            },
+          })
+          return {
+            id: user.id,
+            username: user.username,
+            fullName: user.fullName,
+            email: TEST_USER.email,
+            image: TEST_USER.image,
+            githubId: TEST_USER.id,
+          }
+        }
+
+        const user = await prisma.user.create({
+          data: {
             id: TEST_USER.id,
             username: TEST_USER.username,
             fullName: TEST_USER.name,
@@ -100,19 +117,30 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'github' && profile) {
         try {
-          // Ensure we update the user in our database with latest GitHub info
-          await prisma.user.upsert({
-            where: { id: user.id },
-            update: {
-              username: profile.login as string,
-              fullName: profile.name || null,
-            },
-            create: {
-              id: user.id,
-              username: profile.login as string,
-              fullName: profile.name || null,
-            },
+          // First try to find user by username
+          const existingUser = await prisma.user.findUnique({
+            where: { username: profile.login },
           })
+
+          if (existingUser) {
+            // Update existing user
+            await prisma.user.update({
+              where: { username: profile.login },
+              data: {
+                id: user.id,
+                fullName: profile.name || null,
+              },
+            })
+          } else {
+            // Create new user
+            await prisma.user.create({
+              data: {
+                id: user.id,
+                username: profile.login,
+                fullName: profile.name || null,
+              },
+            })
+          }
           return true
         } catch (error) {
           console.error('Failed to update user:', error)
