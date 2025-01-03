@@ -3,6 +3,7 @@ import { authOptions } from './api/auth/[...nextauth]/route'
 import NavBar from '@/components/NavBar'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ViewToggle from '@/components/ViewToggle'
+import ScriptSearch from '@/components/ScriptSearch'
 import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import {
@@ -42,6 +43,11 @@ export default async function Home() {
         <ScriptGenerationClient isAuthenticated={!!session} />
 
         <hr className="my-8 border-zinc-800" />
+
+        {/* Search Scripts */}
+        <div className="mb-8">
+          <ScriptSearch />
+        </div>
 
         {/* Community Scripts Section */}
         <div className="mt-12">

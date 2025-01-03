@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ScriptLite } from '@/types/script'
 import useSWR from 'swr'
 import ScriptCard from './ScriptCard'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 
 interface ScriptGridWithSuspenseProps {
   scripts: ScriptLite[]
@@ -32,11 +32,16 @@ export default function ScriptGridWithSuspense({
   fallbackData,
 }: ScriptGridWithSuspenseProps) {
   const params = useParams()
+  const searchParams = useSearchParams()
   const username = params?.username as string | undefined
   const [deletedScriptIds, setDeletedScriptIds] = useState<Set<string>>(new Set())
 
-  // Use different API endpoints based on whether we're on a user page or homepage
-  const apiUrl = username ? `/${username}/api/scripts?page=${page}` : `/api/scripts?page=${page}`
+  // Construct the API URL with all search parameters
+  const apiUrl = (() => {
+    const baseUrl = username ? `/${username}/api/scripts` : '/api/scripts'
+    const urlParams = new URLSearchParams(searchParams.toString())
+    return `${baseUrl}?${urlParams.toString()}`
+  })()
 
   const { data, mutate } = useSWR<ScriptsResponse>(apiUrl, fetcher, {
     fallbackData: fallbackData || {

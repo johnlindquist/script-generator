@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Prisma } from '@prisma/client'
 import { useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import ScriptCard from './ScriptCard'
 import { StarIcon, ArrowDownTrayIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
 
@@ -24,6 +25,7 @@ type ScriptWithRelations = Prisma.ScriptGetPayload<{
 
 export default function ScriptListAll() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [scripts, setScripts] = useState<ScriptWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +34,9 @@ export default function ScriptListAll() {
   useEffect(() => {
     const fetchScripts = async () => {
       try {
-        const res = await fetch('/api/scripts-all')
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('limit', '100')
+        const res = await fetch(`/api/scripts?${params.toString()}`)
         if (!res.ok) {
           throw new Error('Failed to fetch scripts')
         }
@@ -48,6 +52,8 @@ export default function ScriptListAll() {
         setScripts(transformedScripts)
         if (transformedScripts.length > 0) {
           setSelectedScript(transformedScripts[0])
+        } else {
+          setSelectedScript(null)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch scripts')
@@ -56,7 +62,7 @@ export default function ScriptListAll() {
       }
     }
     fetchScripts()
-  }, [])
+  }, [searchParams])
 
   const handleScriptDeleted = (scriptId: string) => {
     setScripts(prev => prev.filter(s => s.id !== scriptId))

@@ -29,6 +29,12 @@ export default function ScriptListClient({
   const page = Number(searchParams.get('page') ?? '1')
   const [totalPages] = useState(initialData.totalPages)
 
+  const getPageUrl = (pageNum: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', pageNum.toString())
+    return `/?${params.toString()}`
+  }
+
   const generatePaginationItems = () => {
     const items = []
     const maxVisible = 5 // Maximum number of page numbers to show
@@ -45,7 +51,7 @@ export default function ScriptListClient({
     if (start > 1) {
       items.push(
         <PaginationItem key="1">
-          <PaginationLink href="/?page=1">1</PaginationLink>
+          <PaginationLink href={getPageUrl(1)}>1</PaginationLink>
         </PaginationItem>
       )
       if (start > 2) {
@@ -61,7 +67,7 @@ export default function ScriptListClient({
     for (let i = start; i <= end; i++) {
       items.push(
         <PaginationItem key={i}>
-          <PaginationLink href={`/?page=${i}`} isActive={page === i}>
+          <PaginationLink href={getPageUrl(i)} isActive={page === i}>
             {i}
           </PaginationLink>
         </PaginationItem>
@@ -79,7 +85,7 @@ export default function ScriptListClient({
       }
       items.push(
         <PaginationItem key={totalPages}>
-          <PaginationLink href={`/?page=${totalPages}`}>{totalPages}</PaginationLink>
+          <PaginationLink href={getPageUrl(totalPages)}>{totalPages}</PaginationLink>
         </PaginationItem>
       )
     }
@@ -106,7 +112,7 @@ export default function ScriptListClient({
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href={`/?page=${page - 1}`}
+                href={getPageUrl(page - 1)}
                 aria-disabled={page <= 1}
                 className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
               />
@@ -116,7 +122,7 @@ export default function ScriptListClient({
 
             <PaginationItem>
               <PaginationNext
-                href={`/?page=${page + 1}`}
+                href={getPageUrl(page + 1)}
                 aria-disabled={page >= totalPages}
                 className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
               />

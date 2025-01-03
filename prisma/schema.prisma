@@ -25,6 +25,8 @@ model Script {
   requestId     String?         @unique
   title         String
   summary       String?
+  /// The content field is indexed using a GIN trigram index for fast substring searching.
+  /// See scripts/setup-search-index.sql for the index creation.
   content       String
   starred       Boolean         @default(false)
   saved         Boolean         @default(false)

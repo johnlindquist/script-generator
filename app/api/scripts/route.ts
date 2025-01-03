@@ -5,6 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { shouldLockScript } from '@/lib/scripts'
 import { generateDashedName } from '@/lib/names'
 import { parseScriptFromMarkdown } from '@/lib/generation'
+import { Prisma } from '@prisma/client'
 
 const PAGE_SIZE = 12
 
@@ -64,24 +65,42 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
+  const limit = Number(searchParams.get('limit') ?? PAGE_SIZE)
+
+  // Add search functionality
+  const searchTerm = searchParams.get('query')?.trim() || ''
+
+  // Base where clause
+  const whereClause: Prisma.ScriptWhereInput = {
+    status: 'ACTIVE',
+    saved: true,
+  }
+
+  // Add search condition if search term is provided
+  if (searchTerm) {
+    whereClause.content = {
+      contains: searchTerm,
+      mode: 'insensitive',
+    }
+    console.log('🔍 Search request:', {
+      searchTerm,
+      page,
+      limit,
+      whereClause,
+    })
+  }
 
   const [totalScripts, scripts] = await Promise.all([
     prisma.script.count({
-      where: {
-        status: 'ACTIVE',
-        saved: true,
-      },
+      where: whereClause,
     }),
     prisma.script.findMany({
-      where: {
-        status: 'ACTIVE',
-        saved: true,
-      },
+      where: whereClause,
       orderBy: {
         createdAt: 'desc',
       },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * limit,
+      take: limit,
       select: {
         id: true,
         title: true,
@@ -138,6 +157,29 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
+  if (searchTerm) {
+    console.log('🔍 Search results:', {
+      searchTerm,
+      totalResults: totalScripts,
+      resultsOnPage: scripts.length,
+      page,
+      matches: scripts.map(script => {
+        const content = script.content
+        const lines = content.split('\n')
+        const matchingLines = lines
+          .map((line, i) => ({ line, lineNumber: i + 1 }))
+          .filter(({ line }) => line.toLowerCase().includes(searchTerm.toLowerCase()))
+        return {
+          title: script.title,
+          matchingLines: matchingLines.map(({ line, lineNumber }) => ({
+            lineNumber,
+            line: line.trim(),
+          })),
+        }
+      }),
+    })
+  }
+
   const totalPages = Math.ceil(totalScripts / PAGE_SIZE)
 
   const formattedScripts = scripts.map(script => ({
@@ -150,6 +192,7 @@ export async function GET(request: NextRequest) {
     scripts: formattedScripts,
     totalPages,
     currentPage: page,
+    ...(searchTerm ? { searchTerm } : {}),
   })
 }
 

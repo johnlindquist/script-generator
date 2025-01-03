@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import { ListIcon, GridIcon } from '@/components/Icons'
 import ScriptListClient from '@/components/ScriptListClient'
 import ScriptListAll from '@/components/ScriptListAll'
@@ -11,6 +12,7 @@ type ViewMode = 'grid' | 'list'
 
 export default function ViewToggle() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [view, setView] = useState<ViewMode>('grid')
   const [isClient, setIsClient] = useState(false)
   const [initialData, setInitialData] = useState<ScriptsResponse | null>(null)
@@ -26,16 +28,26 @@ export default function ViewToggle() {
     // Fetch initial data for grid view
     const fetchInitialData = async () => {
       try {
-        const res = await fetch('/api/scripts?page=1')
+        const params = new URLSearchParams(searchParams.toString())
+        console.log('📊 Fetching scripts:', {
+          params: Object.fromEntries(params.entries()),
+          url: `/api/scripts?${params.toString()}`,
+        })
+        const res = await fetch(`/api/scripts?${params.toString()}`)
         if (!res.ok) throw new Error('Failed to fetch scripts')
         const data = await res.json()
+        console.log('📊 Fetched scripts:', {
+          totalScripts: data.scripts.length,
+          totalPages: data.totalPages,
+          searchTerm: params.get('query') || 'none',
+        })
         setInitialData(data)
       } catch (error) {
-        console.error('Error fetching initial data:', error)
+        console.error('❌ Error fetching scripts:', error)
       }
     }
     fetchInitialData()
-  }, [])
+  }, [searchParams])
 
   const handleViewChange = (newView: ViewMode) => {
     setView(newView)
