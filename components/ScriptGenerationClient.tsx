@@ -17,6 +17,7 @@ import ScriptSuggestions from '@/components/ScriptSuggestions'
 import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
+import { Tooltip } from '@nextui-org/react'
 
 interface EditorRef {
   getModel: () => {
@@ -458,35 +459,43 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
             )}
           </div>
           <div className="flex justify-center mt-4">
-            <button
-              type="submit"
-              disabled={
-                !isAuthenticated ||
-                state.matches('generatingDraft') ||
-                state.matches('generatingFinal')
-              }
-              className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            <Tooltip
+              content={!isAuthenticated ? STRINGS.SCRIPT_GENERATION.tooltipSignInToGenerate : ''}
             >
-              {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
-                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-              ) : (
-                <RocketLaunchIcon className="w-5 h-5" />
-              )}
-              Generate
-            </button>
-            <button
-              type="button"
-              onClick={handleFeelingLucky}
-              disabled={
-                !isAuthenticated ||
-                state.matches('generatingDraft') ||
-                state.matches('generatingFinal')
-              }
-              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
+              <button
+                type="submit"
+                disabled={
+                  !isAuthenticated ||
+                  state.matches('generatingDraft') ||
+                  state.matches('generatingFinal')
+                }
+                className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
+                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                ) : (
+                  <RocketLaunchIcon className="w-5 h-5" />
+                )}
+                Generate
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={!isAuthenticated ? STRINGS.SCRIPT_GENERATION.tooltipSignInForLucky : ''}
             >
-              <SparklesIcon className="w-5 h-5" />
-              I'm Feeling Lucky
-            </button>
+              <button
+                type="button"
+                onClick={handleFeelingLucky}
+                disabled={
+                  !isAuthenticated ||
+                  state.matches('generatingDraft') ||
+                  state.matches('generatingFinal')
+                }
+                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                I'm Feeling Lucky
+              </button>
+            </Tooltip>
           </div>
         </form>
       )}

@@ -104,6 +104,10 @@ export const STRINGS = {
     startOver: 'Start Over',
     generating: 'Generating...',
 
+    // Tooltips
+    tooltipSignInToGenerate: 'Please sign in to generate scripts',
+    tooltipSignInForLucky: "Please sign in to use I'm Feeling Lucky",
+
     // Form
     promptPlaceholderDefault:
       'Example: A script that finds all large files in a directory and shows their sizes in human-readable format',
