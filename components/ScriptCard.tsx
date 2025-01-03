@@ -37,7 +37,7 @@ interface ScriptCardProps {
   currentUserId?: string
   onDeleted?: (scriptId: string) => void
   onScriptChanged?: () => void | Promise<ScriptsResponse | undefined>
-  view?: 'grid' | 'list'
+  truncate?: boolean
 }
 
 export default function ScriptCard({
@@ -45,14 +45,14 @@ export default function ScriptCard({
   isAuthenticated,
   currentUserId,
   onDeleted,
-  view = 'grid',
+  truncate = false,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
 
   return (
     <div
       className={`w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90 ${
-        view === 'grid' ? 'h-auto sm:h-[500px]' : 'h-full'
+        truncate ? 'h-auto sm:h-[500px]' : 'h-full'
       }`}
       data-script-id={script.id}
       data-debug={JSON.stringify({
@@ -100,10 +100,14 @@ export default function ScriptCard({
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
-            <Highlight theme={themes.nightOwl} code={script.content} language="typescript">
+            <Highlight
+              theme={themes.nightOwl}
+              code={truncate ? script.content.slice(0, 500) : script.content}
+              language="typescript"
+            >
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
                 <pre
-                  className={`${className} p-4 h-full overflow-y-auto`}
+                  className={`${className} p-4 h-full ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
                   style={{
                     ...style,
                     margin: 0,

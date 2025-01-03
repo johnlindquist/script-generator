@@ -77,6 +77,7 @@ export default function ScriptGridWithSuspense({
             // Just trigger a revalidation instead of a full page reload
             mutate()
           }}
+          truncate={true}
         />
       ))}
     </div>
