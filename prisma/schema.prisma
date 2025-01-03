@@ -18,6 +18,7 @@ model User {
   scripts       Script[]
   requestedBy   Script[]       @relation("RequestedBy")
   usage         Usage[]
+  sponsorship   GithubSponsor?  @relation("UserSponsor")
 }
 
 model Script {
@@ -121,6 +122,16 @@ model Favorite {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, scriptId])
+}
+
+model GithubSponsor {
+  id           String   @id
+  login        String   @unique
+  nodeId       String   @unique
+  databaseId   Int      @unique
+  user         User     @relation("UserSponsor", fields: [id], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 enum ScriptStatus {
