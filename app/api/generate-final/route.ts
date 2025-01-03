@@ -26,10 +26,10 @@ const generateFinalScript = async (req: NextRequest) => {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { scriptId, luckyRequestId } = await req.json()
-    if (!scriptId) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Missing scriptId', { requestId })
-      return NextResponse.json({ error: 'Missing scriptId' }, { status: 400 })
+    const { scriptId, luckyRequestId, draftScript } = await req.json()
+    if (!scriptId || !draftScript) {
+      logInteraction(interactionTimestamp, 'serverRoute', 'Missing required fields', { requestId })
+      return NextResponse.json({ error: 'Missing scriptId or draftScript' }, { status: 400 })
     }
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
@@ -121,59 +121,16 @@ const generateFinalScript = async (req: NextRequest) => {
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
-    // Get the draft script from the database
-    const draftScript = await prisma.script.findUnique({
-      where: { id: scriptId },
-    })
-
-    if (!draftScript) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Script not found', {
-        scriptId,
-        requestId,
-      })
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 })
-    }
-
-    if (draftScript.ownerId !== session.user.id) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized script access', {
-        scriptId,
-        userId: session.user.id,
-        requestId,
-      })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-
-    if (draftScript.status !== 'IN_PROGRESS') {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Invalid script status', {
-        scriptId,
-        status: draftScript.status,
-        requestId,
-      })
-      return NextResponse.json(
-        { error: 'Script is not ready for final generation' },
-        { status: 400 }
-      )
-    }
-
-    // Update status to show we're still generating final version
-    await prisma.script.update({
-      where: { id: scriptId },
-      data: {
-        status: 'IN_PROGRESS',
-        requestId: requestId, // Track the request ID to prevent duplicates
-      },
-    })
-
     logInteraction(interactionTimestamp, 'serverRoute', 'Starting final generation', {
       scriptId,
-      prompt: draftScript.summary,
+      prompt: draftScript,
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
     // Generate final script using Gemini
-    const finalPrompt = FINAL_PASS_PROMPT.replace('{script}', draftScript.content)
-      .replace('{prompt}', draftScript.summary || '')
+    const finalPrompt = FINAL_PASS_PROMPT.replace('{script}', draftScript)
+      .replace('{prompt}', draftScript || '')
       .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
 
     const result = await model.generateContentStream(finalPrompt)
@@ -237,7 +194,7 @@ const generateFinalScript = async (req: NextRequest) => {
               await prisma.scriptVersion.create({
                 data: {
                   scriptId,
-                  content: draftScript.content,
+                  content: draftScript,
                 },
               })
 

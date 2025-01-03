@@ -6,6 +6,7 @@ import { model } from '@/lib/gemini'
 import { DRAFT_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
+import crypto from 'crypto'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -111,23 +112,6 @@ const generateDraftScript = async (req: NextRequest) => {
       )
     }
 
-    // Create a new script record
-    const script = await prisma.script.create({
-      data: {
-        ownerId: session.user.id,
-        summary: prompt,
-        status: 'IN_PROGRESS',
-        title: prompt.slice(0, 100),
-        content: '',
-      },
-    })
-
-    logInteraction(interactionTimestamp, 'serverRoute', 'Created new script record', {
-      scriptId: script.id,
-      requestId,
-      source: luckyRequestId ? 'lucky' : 'direct',
-    })
-
     // Generate draft script using Gemini
     const draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
       '{userInfo}',
@@ -135,7 +119,6 @@ const generateDraftScript = async (req: NextRequest) => {
     )
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Starting draft generation', {
-      scriptId: script.id,
       prompt,
       requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
@@ -143,72 +126,43 @@ const generateDraftScript = async (req: NextRequest) => {
 
     const result = await model.generateContentStream(draftPrompt)
 
-    let fullScript = ''
     let aborted = false
+    // Generate a script ID for client compatibility
+    const scriptId = crypto.randomUUID()
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Send script ID first
-          controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${script.id}__SCRIPT_ID__`))
+          controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
 
           for await (const chunk of result.stream) {
             if (aborted) {
               logInteraction(interactionTimestamp, 'serverRoute', 'Generation aborted', {
-                scriptId: script.id,
+                scriptId,
                 requestId,
                 source: luckyRequestId ? 'lucky' : 'direct',
               })
               break
             }
             const text = cleanCodeFences(chunk.text())
-            fullScript += text
             controller.enqueue(new TextEncoder().encode(text))
           }
 
           if (!aborted) {
-            try {
-              await prisma.script.update({
-                where: { id: script.id },
-                data: {
-                  content: fullScript,
-                  status: 'IN_PROGRESS',
-                },
-              })
+            logInteraction(interactionTimestamp, 'serverRoute', 'Draft generation completed', {
+              scriptId,
+              requestId,
+              source: luckyRequestId ? 'lucky' : 'direct',
+            })
 
-              logInteraction(interactionTimestamp, 'serverRoute', 'Draft generation completed', {
-                scriptId: script.id,
-                requestId,
-                source: luckyRequestId ? 'lucky' : 'direct',
-              })
-
-              // Store the draft version
-              await prisma.scriptVersion.create({
-                data: {
-                  scriptId: script.id,
-                  content: fullScript,
-                },
-              })
-
-              controller.enqueue(new TextEncoder().encode(''))
-              controller.close()
-            } catch (dbError) {
-              const errorMessage =
-                dbError instanceof Error ? dbError.message : 'Database error occurred'
-              logInteraction(interactionTimestamp, 'serverRoute', 'Database error', {
-                scriptId: script.id,
-                error: errorMessage,
-                requestId,
-                source: luckyRequestId ? 'lucky' : 'direct',
-              })
-              controller.error(new Error(errorMessage))
-            }
+            controller.enqueue(new TextEncoder().encode(''))
+            controller.close()
           } else {
             controller.close()
           }
         } catch (error) {
           logInteraction(interactionTimestamp, 'serverRoute', 'Stream error', {
-            scriptId: script.id,
+            scriptId,
             error: error instanceof Error ? error.message : String(error),
             requestId,
             source: luckyRequestId ? 'lucky' : 'direct',

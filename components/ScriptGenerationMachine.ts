@@ -185,6 +185,110 @@ const generateScript = async (
   return { script: buffer, scriptId }
 }
 
+const generateFinalScript = async (
+  url: string,
+  input: ScriptGenerationContext,
+  emit: (event: ScriptGenerationEvent) => void
+) => {
+  if (input.interactionTimestamp) {
+    logInteraction(input.interactionTimestamp, 'stateMachine', 'Starting final script generation', {
+      scriptId: input.scriptId,
+    })
+  }
+
+  if (!input.editableScript) {
+    throw new Error('No draft script available')
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(input.interactionTimestamp && { 'Interaction-Timestamp': input.interactionTimestamp }),
+    },
+    body: JSON.stringify({
+      scriptId: input.scriptId,
+      draftScript: input.editableScript,
+      requestId: input.lastRefinementRequestId,
+      luckyRequestId: input.luckyRequestId,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    const error = errorData.details || 'Failed to generate final script'
+    if (input.interactionTimestamp) {
+      logInteraction(input.interactionTimestamp, 'stateMachine', 'Final script generation failed', {
+        error,
+      })
+    }
+    throw new Error(error)
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    const error = 'No reader available'
+    if (input.interactionTimestamp) {
+      logInteraction(input.interactionTimestamp, 'stateMachine', 'Final script generation failed', {
+        error,
+      })
+    }
+    throw new Error(error)
+  }
+
+  let buffer = ''
+  let scriptId = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const text = new TextDecoder().decode(value)
+      buffer += text
+
+      // Send partial text updates immediately
+      emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
+
+      // Check for script ID after updating the buffer
+      const trimmedBuffer = buffer.trim()
+      const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+      if (idMatch) {
+        scriptId = idMatch[1]
+        buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+        emit({ type: 'SET_SCRIPT_ID', scriptId })
+        // Send another update after removing the script ID
+        emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
+      }
+    }
+  } catch (error) {
+    if (input.interactionTimestamp) {
+      logInteraction(
+        input.interactionTimestamp,
+        'stateMachine',
+        'Error during final generation streaming',
+        {
+          error: error instanceof Error ? error.message : String(error),
+        }
+      )
+    }
+    throw error
+  }
+
+  if (input.interactionTimestamp) {
+    logInteraction(
+      input.interactionTimestamp,
+      'stateMachine',
+      'Final script generation completed',
+      {
+        scriptId,
+      }
+    )
+  }
+
+  return { script: buffer, scriptId }
+}
+
 export const scriptGenerationMachine = setup({
   types: {
     context: {} as ScriptGenerationContext,
@@ -215,7 +319,7 @@ export const scriptGenerationMachine = setup({
           { scriptId: typedInput.scriptId }
         )
       }
-      return generateScript('/api/generate-final', typedInput, emit)
+      return generateFinalScript('/api/generate-final', typedInput, emit)
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
@@ -444,12 +548,12 @@ export const scriptGenerationMachine = setup({
         src: 'generateDraftScript',
         input: ({ context }) => context,
         onDone: {
-          target: 'thinkingFinal',
+          target: 'generatingFinal',
           actions: [
             assign(({ event }) => ({
               error: null,
               scriptId: (event as { output: GenerateInitialResponse }).output.scriptId,
-              lastRefinementRequestId: null,
+              lastRefinementRequestId: crypto.randomUUID(),
             })),
             createLogAction('Draft generation complete', context => ({
               scriptId: context.scriptId,
@@ -465,7 +569,7 @@ export const scriptGenerationMachine = setup({
                 const err = event.error as Error
                 return err?.message || 'An unknown error occurred'
               },
-              lastRefinementRequestId: () => null,
+              lastRefinementRequestId: null,
             }),
             createLogAction('Draft generation failed', context => ({
               error: context.error,
@@ -502,36 +606,19 @@ export const scriptGenerationMachine = setup({
       },
     },
 
-    /**
-     * Refined thinking state - preparing for refinement.
-     * Similar to thinkingInitial but for refinement phase.
-     */
-    thinkingFinal: {
-      entry: ({ context }) => {
-        if (context.interactionTimestamp) {
-          logStateTransition('thinkingFinal', context.interactionTimestamp, {
-            scriptId: context.scriptId,
-          }).catch(console.error)
-        }
-      },
-      on: {
-        START_STREAMING_FINAL: 'generatingFinal',
-        CANCEL_GENERATION: 'idle',
-      },
-    },
-
-    /**
-     * Refined generation state - streaming the refined version.
-     * Similar to generatingInitial but for refinement phase.
-     */
     generatingFinal: {
-      entry: ({ context }) => {
-        if (context.interactionTimestamp) {
-          logStateTransition('generatingFinal', context.interactionTimestamp, {
-            scriptId: context.scriptId,
-          }).catch(console.error)
-        }
-      },
+      entry: [
+        ({ context }) => {
+          if (context.interactionTimestamp) {
+            logStateTransition('generatingFinal', context.interactionTimestamp, {
+              scriptId: context.scriptId,
+            }).catch(console.error)
+          }
+        },
+        createLogAction('Starting final script generation', context => ({
+          scriptId: context.scriptId,
+        })),
+      ],
       invoke: {
         src: 'generateFinalScript',
         input: ({ context }) => ({

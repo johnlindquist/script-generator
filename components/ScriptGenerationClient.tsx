@@ -113,8 +113,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
   // Attach the handler to the state machine
   useEffect(() => {
-    // Only start streaming if we're in a thinking state
-    if (!state.matches('thinkingDraft') && !state.matches('thinkingFinal')) {
+    // Start streaming if we're in a thinking or generating state
+    if (!state.matches('thinkingDraft') && !state.matches('generatingFinal')) {
       return
     }
 
@@ -144,6 +144,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
             prompt: state.context.prompt,
             requestId: state.context.requestId,
             scriptId: state.context.scriptId,
+            draftScript: state.context.editableScript,
             luckyRequestId: state.context.luckyRequestId,
           }),
           signal,
@@ -165,12 +166,10 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
         try {
           let buffer = ''
-          // Transition to streaming state
-          send({
-            type: state.matches('thinkingDraft')
-              ? 'START_STREAMING_DRAFT'
-              : 'START_STREAMING_FINAL',
-          })
+          // Transition to streaming state if in thinking state
+          if (state.matches('thinkingDraft')) {
+            send({ type: 'START_STREAMING_DRAFT' })
+          }
 
           while (true) {
             try {
@@ -228,10 +227,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     return () => {
       // Only abort if we're not transitioning between generation phases
-      if (
-        (state.matches('thinkingDraft') && !state.matches('generatingDraft')) ||
-        (state.matches('thinkingFinal') && !state.matches('generatingFinal'))
-      ) {
+      if (state.matches('thinkingDraft') && !state.matches('generatingDraft')) {
         controller.abort()
       }
     }
@@ -320,16 +316,14 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
   }
 
   const isGenerating = state.matches('generatingDraft') || state.matches('generatingFinal')
-  const isThinking = state.matches('thinkingDraft') || state.matches('thinkingFinal')
+  const isThinking = state.matches('thinkingDraft')
   const generationPhase = state.matches('thinkingDraft')
     ? 'thinkingDraft'
     : state.matches('generatingDraft')
       ? 'generatingDraft'
-      : state.matches('thinkingFinal')
-        ? 'thinkingFinal'
-        : state.matches('generatingFinal')
-          ? 'generatingFinal'
-          : null
+      : state.matches('generatingFinal')
+        ? 'generatingFinal'
+        : null
 
   useEffect(() => {
     if (
@@ -409,9 +403,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
                 ? STRINGS.SCRIPT_GENERATION.headingThinkingDraft
                 : generationPhase === 'generatingDraft'
                   ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
-                  : generationPhase === 'thinkingFinal'
-                    ? STRINGS.SCRIPT_GENERATION.headingThinkingFinal
-                    : STRINGS.SCRIPT_GENERATION.headingWhileRefining
+                  : STRINGS.SCRIPT_GENERATION.headingWhileRefining
             }
           />
         ) : state.context.generatedScript ? (
