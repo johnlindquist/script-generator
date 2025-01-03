@@ -37,6 +37,7 @@ interface ScriptCardProps {
   currentUserId?: string
   onDeleted?: (scriptId: string) => void
   onScriptChanged?: () => void | Promise<ScriptsResponse | undefined>
+  view?: 'grid' | 'list'
 }
 
 export default function ScriptCard({
@@ -44,39 +45,26 @@ export default function ScriptCard({
   isAuthenticated,
   currentUserId,
   onDeleted,
+  view = 'grid',
 }: ScriptCardProps) {
-  const isOwner = currentUserId === script.owner.id
-
-  // Debug logging
-  // console.log(
-  //   'ScriptCard Debug:',
-  //   JSON.stringify({
-  //     scriptId: script.id,
-  //     scriptTitle: script.title,
-  //     isLocked: script.locked,
-  //     isOwner,
-  //     currentUserId,
-  //     ownerId: script.owner.id,
-  //     favoriteCount: script._count?.favorites ?? 0,
-  //     verificationCount: script._count?.verifications ?? 0,
-  //     installCount: script._count?.installs ?? 0,
-  //   })
-  // )
+  const isOwner = currentUserId === script.owner?.id
 
   return (
     <div
-      className="w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col h-auto sm:h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90"
+      className={`w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90 ${
+        view === 'grid' ? 'h-auto sm:h-[500px]' : 'h-full'
+      }`}
       data-script-id={script.id}
       data-debug={JSON.stringify({
         isLocked: script.locked,
         isOwner,
         currentUserId,
-        ownerId: script.owner.id,
+        ownerId: script.owner?.id,
       })}
     >
-      <div className="mb-4">
+      <div className="mb-4 flex-shrink-0">
         <Link
-          href={`/${script.owner.username}/${script.id}`}
+          href={`/${script.owner?.username}/${script.id}`}
           className="block hover:opacity-75 transition-opacity"
         >
           <h2 className="text-xl font-semibold mb-2 text-amber-300">{script.title}</h2>
@@ -85,14 +73,14 @@ export default function ScriptCard({
         <div className="flex justify-between">
           <div className="text-slate-400 text-sm flex items-center gap-2">
             <Link
-              href={`/${script.owner.username}`}
+              href={`/${script.owner?.username}`}
               className="hover:text-amber-300 transition-colors"
             >
-              {script.owner.fullName || script.owner.username}
+              {script.owner?.fullName || script.owner?.username}
             </Link>
 
             <Link
-              href={`https://github.com/${script.owner.username}`}
+              href={`https://github.com/${script.owner?.username}`}
               className="hover:opacity-75 transition-opacity"
             >
               <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
@@ -109,8 +97,8 @@ export default function ScriptCard({
           )}
         </div>
       </div>
-      <div className="flex-grow flex flex-col overflow-hidden">
-        <Link href={`/${script.owner.username}/${script.id}`} className="block flex-grow min-h-0">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
             <Highlight theme={themes.nightOwl} code={script.content} language="typescript">
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
@@ -135,7 +123,7 @@ export default function ScriptCard({
           </div>
         </Link>
       </div>
-      <div className="flex flex-wrap justify-between items-start gap-y-4 mt-6 pt-5 border-t border-neutral-700">
+      <div className="flex flex-wrap justify-between items-start gap-y-4 mt-6 pt-5 border-t border-neutral-700 flex-shrink-0">
         <div className="flex gap-2 min-w-fit">
           <CopyButtonClient content={script.content} />
 

@@ -2,9 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from './api/auth/[...nextauth]/route'
 import NavBar from '@/components/NavBar'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
-import ScriptListClient from '@/components/ScriptListClient'
+import ViewToggle from '@/components/ViewToggle'
 import { STRINGS } from '@/lib/strings'
-import { prisma } from '@/lib/prisma'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import {
   getMacIntelRelease,
@@ -15,64 +14,11 @@ import {
   getLinuxarm64Release,
   getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
-import { ScriptsResponse } from '@/types/script'
 
 export const dynamic = 'force-dynamic'
 
-async function getInitialScripts(page: number = 1): Promise<ScriptsResponse> {
-  const PAGE_SIZE = 12
-  const [totalScripts, scripts] = await Promise.all([
-    prisma.script.count({
-      where: {
-        status: 'ACTIVE',
-        saved: true,
-      },
-    }),
-    prisma.script.findMany({
-      where: {
-        status: 'ACTIVE',
-        saved: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: {
-        owner: {
-          select: {
-            username: true,
-            id: true,
-            fullName: true,
-          },
-        },
-        _count: {
-          select: {
-            verifications: true,
-            favorites: true,
-            installs: true,
-          },
-        },
-      },
-    }),
-  ])
-
-  return {
-    scripts: scripts.map(script => ({
-      ...script,
-      isVerified: false,
-      isFavorited: false,
-    })),
-    totalPages: Math.ceil(totalScripts / PAGE_SIZE),
-    currentPage: page,
-  }
-}
-
-export default async function Home({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function Home() {
   const session = await getServerSession(authOptions)
-  const params = await searchParams
-  const page = Number(params.page ?? '1')
-  const initialData = await getInitialScripts(page)
 
   const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
@@ -92,23 +38,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
         </div>
 
-        {/* Client-side script generation form */}
+        {/* Script Generation Client - always visible */}
         <ScriptGenerationClient isAuthenticated={!!session} />
 
         <hr className="my-8 border-zinc-800" />
 
-        {/* Community Scripts Header */}
-        <h2 className="text-3xl font-bold text-gray-300 mb-8 mt-12 text-center">
-          Community Scripts
-        </h2>
-
-        {/* Client-side script list with pagination */}
-        <div className="mt-8">
-          <ScriptListClient
-            isAuthenticated={!!session}
-            currentUserId={session?.user?.id}
-            initialData={initialData}
-          />
+        {/* Community Scripts Section */}
+        <div className="mt-12">
+          <ViewToggle />
         </div>
 
         <hr className="my-8 border-zinc-800" />
