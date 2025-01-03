@@ -123,7 +123,17 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     const fetchWithStreaming = async () => {
       try {
-        const url = state.matches('thinkingDraft') ? '/api/generate-draft' : '/api/generate-final'
+        // Toggle this to switch between real and mock endpoints
+        const USE_MOCK_ENDPOINTS = false
+
+        const url = state.matches('thinkingDraft')
+          ? USE_MOCK_ENDPOINTS
+            ? '/api/mock-generate-draft'
+            : '/api/generate-draft'
+          : USE_MOCK_ENDPOINTS
+            ? '/api/mock-generate-final'
+            : '/api/generate-final'
+
         const response = await fetch(url, {
           method: 'POST',
           headers: {
