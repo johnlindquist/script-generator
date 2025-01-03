@@ -65,7 +65,7 @@ export default function ScriptCard({
 
   return (
     <div
-      className="border border-neutral-700 rounded-lg px-6 py-4 shadow-2xl flex flex-col h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90"
+      className="w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col h-auto sm:h-[500px] break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90"
       data-script-id={script.id}
       data-debug={JSON.stringify({
         isLocked: script.locked,
@@ -135,8 +135,8 @@ export default function ScriptCard({
           </div>
         </Link>
       </div>
-      <div className="flex justify-between items-center mt-6 pt-5 border-t border-neutral-700">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap justify-between items-start gap-y-4 mt-6 pt-5 border-t border-neutral-700">
+        <div className="flex gap-2 min-w-fit">
           <CopyButtonClient content={script.content} />
 
           {isOwner && !script.locked && (
@@ -155,12 +155,14 @@ export default function ScriptCard({
           )}
         </div>
 
-        <div className="flex gap-2">
-          <InstallButtonClient
-            scriptId={script.id}
-            dashedName={script.dashedName}
-            initialInstallCount={script._count?.installs ?? 0}
-          />
+        <div className="flex gap-2 min-w-fit">
+          <div className="hidden sm:block">
+            <InstallButtonClient
+              scriptId={script.id}
+              dashedName={script.dashedName}
+              initialInstallCount={script._count?.installs ?? 0}
+            />
+          </div>
 
           <VerifyButtonClient
             scriptId={script.id}
