@@ -16,6 +16,7 @@ import { STRINGS } from '@/lib/strings'
 import ScriptSuggestions from '@/components/ScriptSuggestions'
 import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
+import toast from 'react-hot-toast'
 
 interface EditorRef {
   getModel: () => {
@@ -53,6 +54,20 @@ const AnimatedText = ({ text }: { text: string }) => {
       </motion.div>
     </div>
   )
+}
+
+const handleUnauthorized = () => {
+  toast.error('Session expired. Please sign in again.')
+
+  // Show a second toast after a brief delay
+  setTimeout(() => {
+    toast.loading('Refreshing page...', { duration: 2000 })
+  }, 500)
+
+  // Reload after giving time to read both toasts
+  setTimeout(() => {
+    window.location.reload()
+  }, 2500)
 }
 
 export default function ScriptGenerationClient({ isAuthenticated }: Props) {
@@ -123,43 +138,30 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
 
     const fetchWithStreaming = async () => {
       try {
-        // Toggle this to switch between real and mock endpoints
-        const USE_MOCK_ENDPOINTS = false
-
-        const url = state.matches('thinkingDraft')
-          ? USE_MOCK_ENDPOINTS
-            ? '/api/mock-generate-draft'
-            : '/api/generate-draft'
-          : USE_MOCK_ENDPOINTS
-            ? '/api/mock-generate-final'
-            : '/api/generate-final'
-
-        const response = await fetch(url, {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+        const res = await fetch('/api/generate-draft', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Interaction-Timestamp': state.context.interactionTimestamp || '',
+            'Interaction-Timestamp': timestamp,
           },
           body: JSON.stringify({
             prompt: state.context.prompt,
-            requestId: state.context.requestId,
-            scriptId: state.context.scriptId,
-            draftScript: state.context.editableScript,
             luckyRequestId: state.context.luckyRequestId,
           }),
-          signal,
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          const errorMessage =
-            response.status === 429
-              ? 'Rate limit exceeded. Please wait a moment before trying again.'
-              : errorData.details || 'Failed to generate script'
-          throw new Error(errorMessage)
+        if (res.status === 401) {
+          handleUnauthorized()
+          return
         }
 
-        const reader = response.body?.getReader()
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || 'Failed to generate draft')
+        }
+
+        const reader = res.body?.getReader()
         if (!reader) {
           throw new Error('No reader available')
         }
@@ -213,13 +215,8 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           }
         }
       } catch (error) {
-        if (!signal.aborted) {
-          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
-          // First cancel the generation to go back to idle
-          send({ type: 'CANCEL_GENERATION' })
-          // Then set the error message
-          send({ type: 'SET_ERROR', error: errorMessage })
-        }
+        console.error('Error generating draft:', error)
+        toast.error(error instanceof Error ? error.message : 'Generation failed')
       }
     }
 
@@ -358,6 +355,11 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
           'Interaction-Timestamp': timestamp,
         },
       })
+
+      if (res.status === 401) {
+        handleUnauthorized()
+        return
+      }
 
       const data = await res.json()
       if (!res.ok) {

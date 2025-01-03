@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request', { requestId })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
     }
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {

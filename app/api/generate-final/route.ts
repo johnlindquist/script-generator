@@ -20,10 +20,11 @@ const generateFinalScript = async (req: NextRequest) => {
       requestId,
     })
 
+    // Early session validation
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request', { requestId })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
     }
 
     const { scriptId, luckyRequestId, draftScript } = await req.json()

@@ -99,52 +99,57 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'github' && profile) {
-        // Ensure we update the user in our database with latest GitHub info
-        await prisma.user.upsert({
-          where: { id: user.id },
-          update: {
-            username: profile.login as string,
-            fullName: profile.name || null,
-          },
-          create: {
-            id: user.id,
-            username: profile.login as string,
-            fullName: profile.name || null,
-          },
-        })
+        try {
+          // Ensure we update the user in our database with latest GitHub info
+          await prisma.user.upsert({
+            where: { id: user.id },
+            update: {
+              username: profile.login as string,
+              fullName: profile.name || null,
+            },
+            create: {
+              id: user.id,
+              username: profile.login as string,
+              fullName: profile.name || null,
+            },
+          })
+          return true
+        } catch (error) {
+          console.error('Failed to update user:', error)
+          return false
+        }
       }
       return true
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.userId = user.id
+        token.id = user.id
         token.username = user.username
-        token.fullName = user.fullName ?? null
-      }
-      // If it's a GitHub sign in, ensure we have latest profile info
-      if (account?.provider === 'github' && profile) {
-        token.username = profile.login as string
-        token.fullName = profile.name || null
       }
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.userId
-        session.user.username = token.username
-        session.user.fullName = token.fullName ?? null
+      if (token && session.user) {
+        session.user.id = token.id as string
+        session.user.username = token.username as string
       }
       return session
     },
   },
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/error',
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 12 * 60 * 60, // 12 hours instead of 30 days
   },
   debug: process.env.NODE_ENV === 'development',
+  events: {
+    async signOut() {
+      // Clean up any user-specific resources if needed
+    },
+  },
 }
 
 const handler = NextAuth(authOptions)

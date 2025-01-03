@@ -16,6 +16,12 @@ const DAILY_LIMIT = 24
 const generateDraftScript = async (req: NextRequest) => {
   const requestId = Math.random().toString(36).substring(7)
   try {
+    // Early session validation
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
+    }
+
     const interactionTimestamp = req.headers.get('Interaction-Timestamp')
     const body = await req.json().catch(() => ({}))
     const { prompt, luckyRequestId } = body
@@ -31,12 +37,6 @@ const generateDraftScript = async (req: NextRequest) => {
       luckyRequestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
-
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request', { requestId })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     if (!prompt) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt', { requestId })
