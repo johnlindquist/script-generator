@@ -483,6 +483,18 @@ export const scriptGenerationMachine = setup({
             })),
           ],
         },
+        SET_LUCKY_REQUEST: {
+          actions: [
+            assign({
+              luckyRequestId: ({ event }) => event.requestId,
+              isFromLucky: () => true,
+            }),
+            createLogAction('Lucky request ID set', context => ({
+              luckyRequestId: context.luckyRequestId,
+              isFromLucky: context.isFromLucky,
+            })),
+          ],
+        },
         GENERATE_DRAFT: {
           target: 'thinkingDraft',
           actions: [
