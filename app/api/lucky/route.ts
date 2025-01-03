@@ -94,42 +94,16 @@ export async function GET(req: Request) {
     }
 
     const { scripts, combinedPrompt } = await prisma.$transaction(async tx => {
-      // First get all script IDs
-      const scriptIds = await tx.script.findMany({
-        where: {
-          status: 'ACTIVE',
-          saved: true,
-        },
-        select: {
-          id: true,
-        },
-      })
-
-      if (scriptIds.length === 0) {
-        logInteraction(interactionTimestamp, 'serverRoute', 'No scripts found')
-        throw new Error('No scripts found')
-      }
-
-      // Randomly select 5 unique IDs
-      const selectedIds = new Set<string>()
-      while (selectedIds.size < Math.min(5, scriptIds.length)) {
-        const randomId = scriptIds[Math.floor(Math.random() * scriptIds.length)].id
-        selectedIds.add(randomId)
-      }
-
-      // Fetch just those specific scripts
-      const randomScripts = await tx.script.findMany({
-        where: {
-          id: {
-            in: Array.from(selectedIds),
-          },
-        },
-        select: {
-          id: true,
-          title: true,
-          content: true,
-        },
-      })
+      // Fetch 5 truly random scripts directly from the database
+      const randomScripts = await tx.$queryRaw<
+        { id: string; title: string | null; content: string | null }[]
+      >`
+        SELECT id, title, content
+        FROM "Script"
+        WHERE status = 'ACTIVE' AND saved = true
+        ORDER BY RANDOM()
+        LIMIT 5
+      `
 
       logInteraction(interactionTimestamp, 'serverRoute', 'Selected random scripts', {
         scriptIds: randomScripts.map(s => s.id),
