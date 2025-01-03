@@ -30,6 +30,7 @@ interface EditorRef {
 
 interface Props {
   isAuthenticated: boolean
+  heading: string
 }
 
 const AnimatedText = ({ text }: { text: string }) => {
@@ -71,7 +72,7 @@ const handleUnauthorized = () => {
   }, 2500)
 }
 
-export default function ScriptGenerationClient({ isAuthenticated }: Props) {
+export default function ScriptGenerationClient({ isAuthenticated, heading }: Props) {
   const [state, send] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -412,7 +413,7 @@ export default function ScriptGenerationClient({ isAuthenticated }: Props) {
         ) : state.context.generatedScript ? (
           STRINGS.SCRIPT_GENERATION.headingDone
         ) : (
-          STRINGS.SCRIPT_GENERATION.headingDefault
+          heading
         )}
       </h2>
       {!state.context.generatedScript && !isGenerating && !isThinking && (
