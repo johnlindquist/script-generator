@@ -1,6 +1,5 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from './api/auth/[...nextauth]/route'
-import NavBar from '@/components/NavBar'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ViewToggle from '@/components/ViewToggle'
 import ScriptSearch from '@/components/ScriptSearch'
@@ -36,45 +35,42 @@ export default async function Home() {
   ])
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black">
-      <NavBar isAuthenticated={!!session} />
-      <div className="container mx-auto px-4 sm:px-4 py-8">
-        <div className="mb-4 text-center">
-          <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
-        </div>
+    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black py-4">
+      <div className="mb-4 text-center">
+        <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
+      </div>
 
-        {/* Script Generation Client - always visible */}
-        <ScriptGenerationClient
-          isAuthenticated={!!session}
-          heading={heading}
-          suggestions={suggestions}
+      {/* Script Generation Client - always visible */}
+      <ScriptGenerationClient
+        isAuthenticated={!!session}
+        heading={heading}
+        suggestions={suggestions}
+      />
+
+      <hr className="my-8 border-zinc-800" />
+
+      {/* Search Scripts */}
+      <div className="mb-8">
+        <ScriptSearch />
+      </div>
+
+      {/* Community Scripts Section */}
+      <div className="mt-12">
+        <ViewToggle />
+      </div>
+
+      <hr className="my-8 border-zinc-800" />
+
+      <div className="flex justify-center items-center w-full">
+        <ScriptKitDownload
+          macIntelRelease={macIntel}
+          macSiliconRelease={macSilicon}
+          windowsx64Release={winx64}
+          windowsarm64Release={winarm64}
+          linuxx64Release={linuxx64}
+          linuxarm64Release={linuxarm64}
+          betaRelease={beta}
         />
-
-        <hr className="my-8 border-zinc-800" />
-
-        {/* Search Scripts */}
-        <div className="mb-8">
-          <ScriptSearch />
-        </div>
-
-        {/* Community Scripts Section */}
-        <div className="mt-12">
-          <ViewToggle />
-        </div>
-
-        <hr className="my-8 border-zinc-800" />
-
-        <div className="flex justify-center items-center w-full">
-          <ScriptKitDownload
-            macIntelRelease={macIntel}
-            macSiliconRelease={macSilicon}
-            windowsx64Release={winx64}
-            windowsarm64Release={winarm64}
-            linuxx64Release={linuxx64}
-            linuxarm64Release={linuxarm64}
-            betaRelease={beta}
-          />
-        </div>
       </div>
     </main>
   )
