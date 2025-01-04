@@ -17,9 +17,9 @@ type SortMode = 'alphabetical' | 'username' | 'favorites' | 'downloads' | 'verif
 const sortOptions = [
   { id: 'alphabetical', name: 'Alphabetical' },
   { id: 'username', name: 'Username' },
-  { id: 'favorites', name: 'Most Favorited' },
-  { id: 'downloads', name: 'Most Downloaded' },
-  { id: 'verified', name: 'Most Verified' },
+  { id: 'favorites', name: 'Favorites' },
+  { id: 'downloads', name: 'Downloads' },
+  { id: 'verified', name: 'Verifications' },
 ]
 
 export default function ViewToggle() {
