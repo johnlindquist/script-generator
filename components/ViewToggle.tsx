@@ -47,7 +47,7 @@ export default function ViewToggle() {
     // Fetch initial data for grid view
     const fetchInitialData = async () => {
       try {
-        const params = new URLSearchParams(searchParams.toString())
+        const params = new URLSearchParams(searchParams?.toString() ?? '')
         console.log('📊 Fetching scripts:', {
           params: Object.fromEntries(params.entries()),
           url: `/api/scripts?${params.toString()}`,
@@ -76,7 +76,7 @@ export default function ViewToggle() {
   const handleSortChange = (newSort: SortMode) => {
     setSort(newSort)
     localStorage.setItem('scriptSortMode', newSort)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.set('sort', newSort)
     params.set('page', '1') // Reset to first page when changing sort
     router.replace(`/?${params.toString()}`, { scroll: false })

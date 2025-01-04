@@ -26,11 +26,11 @@ export default function ScriptListClient({
   initialData,
 }: ScriptListClientProps) {
   const searchParams = useSearchParams()
-  const page = Number(searchParams.get('page') ?? '1')
+  const page = Number(searchParams?.get('page') ?? '1')
   const [totalPages] = useState(initialData.totalPages)
 
   const getPageUrl = (pageNum: number) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.set('page', pageNum.toString())
     return `/?${params.toString()}`
   }

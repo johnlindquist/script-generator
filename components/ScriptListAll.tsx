@@ -34,7 +34,7 @@ export default function ScriptListAll() {
   useEffect(() => {
     const fetchScripts = async () => {
       try {
-        const params = new URLSearchParams(searchParams.toString())
+        const params = new URLSearchParams(searchParams?.toString() ?? '')
         params.set('limit', '100')
         const res = await fetch(`/api/scripts?${params.toString()}`)
         if (!res.ok) {

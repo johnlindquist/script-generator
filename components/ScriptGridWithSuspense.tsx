@@ -39,7 +39,7 @@ export default function ScriptGridWithSuspense({
   // Construct the API URL with all search parameters
   const apiUrl = (() => {
     const baseUrl = username ? `/${username}/api/scripts` : '/api/scripts'
-    const urlParams = new URLSearchParams(searchParams.toString())
+    const urlParams = new URLSearchParams(searchParams?.toString() ?? '')
     return `${baseUrl}?${urlParams.toString()}`
   })()
 

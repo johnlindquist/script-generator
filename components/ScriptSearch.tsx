@@ -8,12 +8,12 @@ export default function ScriptSearch() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('query') ?? '')
+  const [searchTerm, setSearchTerm] = useState(searchParams?.get('query') ?? '')
 
   const updateSearch = useCallback(
     (term: string) => {
       console.log('🔍 Initiating search:', { term, source: 'updateSearch' })
-      const params = new URLSearchParams(searchParams)
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
       if (term) {
         params.set('query', term)
         params.set('page', '1')

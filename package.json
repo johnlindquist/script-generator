@@ -11,10 +11,11 @@
     "postinstall": "prisma generate",
     "prepare": "husky",
     "check": "tsc --noEmit && eslint .",
-    "vercel-build": "pnpm check && pnpm build",
+    "vercel-build": "pnpm fetch-sponsors && pnpm check && pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "fetch-sponsors": "tsx scripts/fetch-sponsors.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -89,6 +90,7 @@
     "prettier": "^3.4.2",
     "prisma": "^6.1.0",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "tsc-files": "^1.1.4",
     "tsx": "^4.19.2",
     "typescript": "^5",
