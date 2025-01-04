@@ -5,6 +5,7 @@ import ViewToggle from '@/components/ViewToggle'
 import ScriptSearch from '@/components/ScriptSearch'
 import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
+import SponsorsWall from '@/components/SponsorsWall'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
 import {
@@ -57,6 +58,13 @@ export default async function Home() {
       {/* Community Scripts Section */}
       <div className="mt-12">
         <ViewToggle />
+      </div>
+
+      <hr className="my-8 border-zinc-800" />
+
+      {/* Sponsors Wall */}
+      <div className="mb-12">
+        <SponsorsWall />
       </div>
 
       <hr className="my-8 border-zinc-800" />
