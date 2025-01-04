@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
   const limit = Number(searchParams.get('limit') ?? PAGE_SIZE)
+  const sort = searchParams.get('sort') || 'alphabetical'
 
   // Add search functionality
   const searchTerm = searchParams.get('query')?.trim() || ''
@@ -90,15 +91,50 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  // Build orderBy based on sort parameter
+  let orderBy: Prisma.ScriptOrderByWithRelationInput = {}
+  switch (sort) {
+    case 'username':
+      orderBy = {
+        owner: {
+          username: 'asc',
+        },
+      }
+      break
+    case 'favorites':
+      orderBy = {
+        favorites: {
+          _count: 'desc',
+        },
+      }
+      break
+    case 'downloads':
+      orderBy = {
+        installs: {
+          _count: 'desc',
+        },
+      }
+      break
+    case 'verified':
+      orderBy = {
+        verifications: {
+          _count: 'desc',
+        },
+      }
+      break
+    default:
+      // 'alphabetical'
+      orderBy = { title: 'asc' }
+      break
+  }
+
   const [totalScripts, scripts] = await Promise.all([
     prisma.script.count({
       where: whereClause,
     }),
     prisma.script.findMany({
       where: whereClause,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
       select: {
