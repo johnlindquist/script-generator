@@ -5,7 +5,7 @@ import ViewToggle from '@/components/ViewToggle'
 import ScriptSearch from '@/components/ScriptSearch'
 import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
-import SponsorsWall from '@/components/SponsorsWall'
+import SponsorBackground from '@/components/SponsorBackground'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
 import {
@@ -36,49 +36,53 @@ export default async function Home() {
   ])
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black py-4">
-      <div className="mb-4 text-center">
-        <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
-      </div>
+    <main className="relative min-h-screen bg-gradient-to-b from-zinc-900 to-black py-4">
+      {/* Content container with proper z-index */}
+      <div className="relative z-[1] max-w-7xl mx-auto px-4">
+        <div className="mb-4 text-center">
+          <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
+        </div>
 
-      {/* Script Generation Client - always visible */}
-      <ScriptGenerationClient
-        isAuthenticated={!!session}
-        heading={heading}
-        suggestions={suggestions}
-      />
+        {/* Main prompt area with sponsor background */}
+        <div className="relative">
+          {/* Sponsor background container - matches parent height exactly */}
+          <div className="absolute inset-0">
+            <SponsorBackground />
+          </div>
 
-      <hr className="my-8 border-zinc-800" />
+          {/* Script Generation Client - always visible */}
+          <ScriptGenerationClient
+            isAuthenticated={!!session}
+            heading={heading}
+            suggestions={suggestions}
+          />
+        </div>
 
-      {/* Search Scripts */}
-      <div className="mb-8">
-        <ScriptSearch />
-      </div>
+        <hr className="my-8 border-zinc-800" />
 
-      {/* Community Scripts Section */}
-      <div className="mt-12">
-        <ViewToggle />
-      </div>
+        {/* Search Scripts */}
+        <div className="mb-8">
+          <ScriptSearch />
+        </div>
 
-      <hr className="my-8 border-zinc-800" />
+        {/* Community Scripts Section */}
+        <div className="mt-12">
+          <ViewToggle />
+        </div>
 
-      {/* Sponsors Wall */}
-      <div className="mb-12">
-        <SponsorsWall />
-      </div>
+        <hr className="my-8 border-zinc-800" />
 
-      <hr className="my-8 border-zinc-800" />
-
-      <div className="flex justify-center items-center w-full">
-        <ScriptKitDownload
-          macIntelRelease={macIntel}
-          macSiliconRelease={macSilicon}
-          windowsx64Release={winx64}
-          windowsarm64Release={winarm64}
-          linuxx64Release={linuxx64}
-          linuxarm64Release={linuxarm64}
-          betaRelease={beta}
-        />
+        <div className="flex justify-center items-center w-full">
+          <ScriptKitDownload
+            macIntelRelease={macIntel}
+            macSiliconRelease={macSilicon}
+            windowsx64Release={winx64}
+            windowsarm64Release={winarm64}
+            linuxx64Release={linuxx64}
+            linuxarm64Release={linuxarm64}
+            betaRelease={beta}
+          />
+        </div>
       </div>
     </main>
   )

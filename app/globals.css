@@ -28,6 +28,59 @@ body {
   background-color: var(--background);
 }
 
+/* Sponsor background styles */
+.sponsor-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -2;
+  height: 100%;
+  width: 100%;
+}
+
+.sponsor-circle {
+  transform: translate(-50%, -50%);
+  transition: all 0.3s ease-in-out;
+  opacity: 0.6;
+  mix-blend-mode: screen;
+  z-index: -2;
+  will-change: transform;
+}
+
+.sponsor-circle:hover {
+  opacity: 0.8;
+}
+
+/* Ensure ALL content is above background */
+.relative {
+  position: relative;
+  z-index: 1;
+}
+
+/* Text elements should be above background */
+h1, h2, h3, h4, h5, h6, p, span {
+  position: relative;
+  z-index: 1;
+}
+
+/* Higher z-index for interactive elements */
+button, a, input, select, textarea, [role="button"] {
+  position: relative;
+  z-index: 5;
+}
+
+/* Ensure textareas have solid background */
+textarea {
+  background-color: rgb(24, 24, 27); /* matches zinc-900 */
+}
+
+/* Highest z-index for modals/dropdowns */
+[role="dialog"], [role="menu"], [role="listbox"] {
+  position: relative;
+  z-index: 10;
+}
+
 @layer utilities {
   .masonry-3 {
     column-count: 3;
