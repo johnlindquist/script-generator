@@ -431,7 +431,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
                   ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
                   : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
             }
-            className="w-full h-32 p-4 bg-black/20 border border-amber-400/20 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none"
+            className="w-full h-32 p-4 bg-black/75 border border-amber-300/50 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none shadow-amber-300/10 shadow-sm"
             disabled={!isAuthenticated || state.context.usageCount === state.context.usageLimit}
           />
 

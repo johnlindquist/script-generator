@@ -28,28 +28,55 @@ body {
   background-color: var(--background);
 }
 
+/* Star icon styles */
+.star-icon {
+  transition: all 0.3s ease;
+  will-change: transform, opacity;
+  cursor: pointer;
+  transform-origin: center;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.star-icon:hover {
+  transform: rotate(0deg) scale(1.5) !important;
+  opacity: 1 !important;
+}
+
 /* Sponsor background styles */
 .sponsor-background {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  pointer-events: none;
-  z-index: -2;
+  z-index: 0;
   height: 100%;
   width: 100%;
+  pointer-events: none;
 }
 
 .sponsor-circle {
+  position: absolute;
   transform: translate(-50%, -50%);
-  transition: all 0.3s ease-in-out;
-  opacity: 0.6;
   mix-blend-mode: screen;
-  z-index: -2;
-  will-change: transform;
+  z-index: 2;
+  pointer-events: auto;
+  transition: z-index 0s;
 }
 
 .sponsor-circle:hover {
-  opacity: 0.8;
+  transform: translate(-50%, -50%) scale(1.8) !important;
+  z-index: 5 !important;
+}
+
+/* Gradient overlay */
+.gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgb(0, 0, 0) 30%, transparent 90%);
+  opacity: 0.98;
+  z-index: 3;
+  pointer-events: none;
 }
 
 /* Ensure ALL content is above background */
