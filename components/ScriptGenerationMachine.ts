@@ -465,8 +465,6 @@ export const scriptGenerationMachine = setup({
             assign({
               prompt: ({ event }) => event.prompt,
               isFromSuggestion: () => false,
-              isFromLucky: () => false,
-              luckyRequestId: () => null,
             }),
             createLogAction('Prompt set', context => ({ prompt: context.prompt })),
           ],
@@ -475,8 +473,6 @@ export const scriptGenerationMachine = setup({
           actions: [
             assign({
               isFromSuggestion: ({ event }) => event.value,
-              isFromLucky: () => false,
-              luckyRequestId: () => null,
             }),
             createLogAction('Suggestion status updated', context => ({
               isFromSuggestion: context.isFromSuggestion,
@@ -491,7 +487,6 @@ export const scriptGenerationMachine = setup({
             }),
             createLogAction('Lucky request ID set', context => ({
               luckyRequestId: context.luckyRequestId,
-              isFromLucky: context.isFromLucky,
             })),
           ],
         },

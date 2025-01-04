@@ -345,7 +345,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      const luckyRequestId = crypto.randomUUID()
 
       // Clear any existing state
       send({ type: 'SET_ERROR', error: '' })
@@ -385,10 +384,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       // Store the lucky request ID in the context
       send({
         type: 'SET_LUCKY_REQUEST',
-        requestId: luckyRequestId,
+        requestId: data.requestId, // Use the requestId from the lucky endpoint
       })
 
-      // Start generation with the timestamp
+      // Now do the standard "GENERATE_DRAFT" call with the same timestamp
       send({ type: 'GENERATE_DRAFT', timestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)

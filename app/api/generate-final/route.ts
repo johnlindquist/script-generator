@@ -130,9 +130,10 @@ const generateFinalScript = async (req: NextRequest) => {
     })
 
     // Generate final script using Gemini
-    const finalPrompt = FINAL_PASS_PROMPT.replace('{script}', draftScript)
-      .replace('{prompt}', draftScript || '')
-      .replace('{userInfo}', JSON.stringify(extractUserInfo(session, dbUser)))
+    const finalPrompt = FINAL_PASS_PROMPT.replace('{script}', draftScript).replace(
+      '{userInfo}',
+      JSON.stringify(extractUserInfo(session, dbUser))
+    )
 
     const result = await model.generateContentStream(finalPrompt)
 

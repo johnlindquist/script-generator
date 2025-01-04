@@ -309,8 +309,9 @@ Generate ONLY the script content, no additional explanations or markdown.
 // Second pass prompt - extensive verification and refinement
 export const FINAL_PASS_PROMPT = `You are a TypeScript script generator and code reviewer.
 Your task is to verify, correct, refine, and format the provided script according to best practices.
+IMPORTANT: You MUST preserve the exact core functionality of the provided script. Do not change what the script does.
 
-Review and improve the following aspects:
+Review and improve the following aspects while keeping the same functionality:
 1. Code style and formatting
 2. Error handling and edge cases
 3. Type safety and TypeScript features
@@ -322,7 +323,7 @@ Review and improve the following aspects:
 {userInfo}
 </USER_INFO>
 
-Here is the script to verify and improve:
+Here is the script to verify and improve. You MUST keep its core functionality exactly the same:
 
 <SCRIPT>
 {script}
@@ -350,6 +351,9 @@ The "npm" function is deprecated. Please use standard esm/typescript imports.
 Focus ONLY on improving the script above. Do not reference or combine with other scripts.
 Re-generate the improved script content paying extra attention to the types.
 If there's any overly complex logic, please add inline comments explaining it.
+
+CRITICAL: The improved script MUST do exactly the same thing as the original script.
+Do not change its core purpose or functionality. Only improve its implementation.
 
 Be absolutely sure to include the following metadata in the script:
 
