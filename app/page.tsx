@@ -6,6 +6,7 @@ import ScriptSearch from '@/components/ScriptSearch'
 import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import SponsorBackground from '@/components/SponsorBackground'
+import SponsorRibbon from '@/components/SponsorRibbon'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
 import {
@@ -37,6 +38,7 @@ export default async function Home() {
 
   return (
     <main className="relative min-h-screen bg-gradient-to-b from-zinc-900 to-black py-4">
+      <SponsorRibbon />
       {/* Content container with proper z-index */}
       <div className="relative z-[1] max-w-7xl mx-auto px-4">
         <div className="mb-4 text-center">
