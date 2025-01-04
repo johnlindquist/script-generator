@@ -18,11 +18,14 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
 
   return (
     <nav className="flex justify-between items-center mb-8">
-      <Link
-        href="/"
-        className="text-4xl font-bold text-amber-300 hover:text-amber-200 transition-colors"
-      >
-        {STRINGS.NAVBAR.homeLinkLabel}
+      <Link href="/" className="flex items-center">
+        <div className="flex items-center justify-center w-10 h-10 tracking-tighter">
+          <Image src="/assets/logo-v2.png" alt="Script Kit Logo" width={40} height={40} />
+        </div>
+        <div className="pl-2">
+          <div className="text-lg font-semibold leading-none">Script Kit</div>
+          <div className="text-sm opacity-80 leading-none">by John Lindquist</div>
+        </div>
       </Link>
       <div className="flex gap-4 items-center">
         {process.env.NODE_ENV === 'development' && !isAuthenticated && (
