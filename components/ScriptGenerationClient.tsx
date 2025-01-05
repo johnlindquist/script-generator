@@ -19,6 +19,7 @@ import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
 import { Tooltip } from '@nextui-org/react'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
+import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
 
 interface EditorRef {
   getModel: () => {
@@ -140,91 +141,44 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     const controller = new AbortController()
     const signal = controller.signal
 
-    const fetchWithStreaming = async () => {
+    const startStreaming = async () => {
       try {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-        const res = await fetch('/api/generate-draft', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Interaction-Timestamp': timestamp,
-          },
-          body: JSON.stringify({
-            prompt: state.context.prompt,
-            luckyRequestId: state.context.luckyRequestId,
-          }),
-        })
 
-        if (res.status === 401) {
-          handleUnauthorized()
-          return
-        }
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || 'Failed to generate draft')
-        }
-
-        const reader = res.body?.getReader()
-        if (!reader) {
-          throw new Error('No reader available')
-        }
-
-        try {
-          let buffer = ''
-          // Transition to streaming state if in thinking state
-          if (state.matches('thinkingDraft')) {
-            send({ type: 'START_STREAMING_DRAFT' })
-          }
-
-          while (true) {
-            try {
-              const { done, value } = await reader.read()
-              if (done) break
-
-              const text = new TextDecoder().decode(value)
-              buffer += text
-
-              // Only trim when checking for script ID
-              const trimmedBuffer = buffer.trim()
-              const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-              if (idMatch) {
-                const scriptId = idMatch[1]
-                buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
-                send({ type: 'SET_SCRIPT_ID', scriptId })
+        await generateDraftWithStream(
+          state.context.prompt,
+          state.context.luckyRequestId,
+          timestamp,
+          signal,
+          {
+            onStartStreaming: () => {
+              if (state.matches('thinkingDraft')) {
+                send({ type: 'START_STREAMING_DRAFT' })
               }
-
-              handleStreamedText(buffer)
-            } catch {
-              if (signal.aborted) {
-                // Clean abort during state transition, not an error
+            },
+            onScriptId: scriptId => {
+              send({ type: 'SET_SCRIPT_ID', scriptId })
+            },
+            onChunk: text => {
+              handleStreamedText(text)
+              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
+            },
+            onError: error => {
+              if (error.message === 'UNAUTHORIZED') {
+                handleUnauthorized()
                 return
               }
-              // If we get a read error but have a buffer, we can still use it
-              if (buffer) {
-                handleStreamedText(buffer)
-              }
-              break
-            }
+              console.error('Error generating draft:', error)
+              toast.error(error.message)
+            },
           }
-
-          // Only proceed if we have a valid buffer and haven't been aborted
-          if (buffer && !signal.aborted) {
-            // Make sure we preserve the final buffer
-            send({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-          }
-        } finally {
-          if (!signal.aborted) {
-            reader.cancel().catch(() => {})
-          }
-        }
-      } catch (error) {
-        console.error('Error generating draft:', error)
-        toast.error(error instanceof Error ? error.message : 'Generation failed')
+        )
+      } catch {
+        // Error handling is done in the callbacks
       }
     }
 
-    fetchWithStreaming()
+    startStreaming()
 
     return () => {
       // Only abort if we're not transitioning between generation phases
@@ -241,26 +195,23 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     handleStreamedText,
   ])
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchUsage()
-    }
-  }, [isAuthenticated])
-
   // Fetch usage on mount and after each generation
-  const fetchUsage = async () => {
+  const fetchUsageData = async () => {
     if (!isAuthenticated) return
 
     try {
-      const response = await fetch('/api/usage')
-      if (response.ok) {
-        const data = await response.json()
-        send({ type: 'SET_USAGE', count: data.count, limit: data.limit })
-      }
+      const data = await fetchUsage()
+      send({ type: 'SET_USAGE', count: data.count, limit: data.limit })
     } catch (error) {
       console.error('Failed to fetch usage:', error)
     }
   }
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUsageData()
+    }
+  }, [isAuthenticated])
 
   const handleEditorDidMount = (editor: EditorRef) => {
     editorRef.current = editor
@@ -353,25 +304,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         prompt: '', // We'll fill in after we fetch /api/lucky
       })
 
-      const res = await fetch('/api/lucky', {
-        headers: {
-          'Interaction-Timestamp': timestamp,
-        },
-      })
-
-      if (res.status === 401) {
-        handleUnauthorized()
-        return
-      }
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to get random scripts')
-      }
-
-      if (!data.combinedPrompt) {
-        throw new Error('Invalid response format')
-      }
+      const data = await generateLucky(timestamp)
 
       // Set the lucky context before generating
       send({ type: 'FROM_SUGGESTION', value: false })
@@ -384,13 +317,17 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       // Store the lucky request ID in the context
       send({
         type: 'SET_LUCKY_REQUEST',
-        requestId: data.requestId, // Use the requestId from the lucky endpoint
+        requestId: data.requestId,
       })
 
       // Now do the standard "GENERATE_DRAFT" call with the same timestamp
       send({ type: 'GENERATE_DRAFT', timestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)
+      if (err instanceof Error && err.message === 'UNAUTHORIZED') {
+        handleUnauthorized()
+        return
+      }
       send({
         type: 'SET_ERROR',
         error: err instanceof Error ? err.message : 'Failed to generate random script',

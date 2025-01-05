@@ -1,6 +1,7 @@
 import { setup, assign, fromPromise } from 'xstate'
 import { toast } from 'react-hot-toast'
 import { logInteraction } from '@/lib/interaction-logger'
+import { generateDraft, generateFinal, saveScript, saveAndInstallScript } from '@/lib/apiService'
 
 /**
  * The contextual data for the scriptGenerationMachine.
@@ -107,186 +108,33 @@ const generateScript = async (
   emit: (event: ScriptGenerationEvent) => void
 ) => {
   if (input.interactionTimestamp) {
-    logInteraction(input.interactionTimestamp, 'stateMachine', 'Starting script generation', {
+    await logInteraction(input.interactionTimestamp, 'stateMachine', 'Starting script generation', {
       url,
       prompt: input.prompt,
     })
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(input.interactionTimestamp && { 'Interaction-Timestamp': input.interactionTimestamp }),
-    },
-    body: JSON.stringify({
-      prompt: input.prompt,
-      requestId: input.requestId,
-      scriptId: input.scriptId,
-      luckyRequestId: input.luckyRequestId,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    const error = errorData.details || 'Failed to generate script'
-    if (input.interactionTimestamp) {
-      logInteraction(input.interactionTimestamp, 'stateMachine', 'Script generation failed', {
-        error,
-      })
-    }
-    throw new Error(error)
-  }
-
-  const reader = response.body?.getReader()
-  if (!reader) {
-    const error = 'No reader available'
-    if (input.interactionTimestamp) {
-      logInteraction(input.interactionTimestamp, 'stateMachine', 'Script generation failed', {
-        error,
-      })
-    }
-    throw new Error(error)
-  }
-
-  let buffer = ''
-  let scriptId = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    const text = new TextDecoder().decode(value)
-    buffer += text
-
-    const trimmedBuffer = buffer.trim()
-    const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-    if (idMatch) {
-      scriptId = idMatch[1]
-      buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
-      emit({ type: 'SET_SCRIPT_ID', scriptId })
-      if (input.interactionTimestamp) {
-        logInteraction(input.interactionTimestamp, 'stateMachine', 'Script ID received', {
-          scriptId,
-        })
-      }
-    }
-
-    // Send partial text updates
-    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-  }
-
-  if (input.interactionTimestamp) {
-    logInteraction(input.interactionTimestamp, 'stateMachine', 'Script generation completed', {
-      scriptId,
-    })
-  }
-
-  return { script: buffer, scriptId }
-}
-
-const generateFinalScript = async (
-  url: string,
-  input: ScriptGenerationContext,
-  emit: (event: ScriptGenerationEvent) => void
-) => {
-  if (input.interactionTimestamp) {
-    logInteraction(input.interactionTimestamp, 'stateMachine', 'Starting final script generation', {
-      scriptId: input.scriptId,
-    })
-  }
-
-  if (!input.editableScript) {
-    throw new Error('No draft script available')
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(input.interactionTimestamp && { 'Interaction-Timestamp': input.interactionTimestamp }),
-    },
-    body: JSON.stringify({
-      scriptId: input.scriptId,
-      draftScript: input.editableScript,
-      requestId: input.lastRefinementRequestId,
-      luckyRequestId: input.luckyRequestId,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    const error = errorData.details || 'Failed to generate final script'
-    if (input.interactionTimestamp) {
-      logInteraction(input.interactionTimestamp, 'stateMachine', 'Final script generation failed', {
-        error,
-      })
-    }
-    throw new Error(error)
-  }
-
-  const reader = response.body?.getReader()
-  if (!reader) {
-    const error = 'No reader available'
-    if (input.interactionTimestamp) {
-      logInteraction(input.interactionTimestamp, 'stateMachine', 'Final script generation failed', {
-        error,
-      })
-    }
-    throw new Error(error)
-  }
-
-  let buffer = ''
-  let scriptId = ''
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const text = new TextDecoder().decode(value)
-      buffer += text
-
-      // Send partial text updates immediately
-      emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-
-      // Check for script ID after updating the buffer
-      const trimmedBuffer = buffer.trim()
-      const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-      if (idMatch) {
-        scriptId = idMatch[1]
-        buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
-        emit({ type: 'SET_SCRIPT_ID', scriptId })
-        // Send another update after removing the script ID
-        emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: buffer })
-      }
-    }
-  } catch (error) {
-    if (input.interactionTimestamp) {
-      logInteraction(
-        input.interactionTimestamp,
-        'stateMachine',
-        'Error during final generation streaming',
-        {
-          error: error instanceof Error ? error.message : String(error),
-        }
-      )
-    }
-    throw error
-  }
-
-  if (input.interactionTimestamp) {
-    logInteraction(
-      input.interactionTimestamp,
-      'stateMachine',
-      'Final script generation completed',
-      {
-        scriptId,
-      }
+  if (url.includes('generate-draft')) {
+    const result = await generateDraft(
+      input.prompt,
+      input.requestId,
+      input.luckyRequestId,
+      input.interactionTimestamp
     )
+    emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
+    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
+    return { script: result.script, scriptId: result.scriptId }
+  } else {
+    const result = await generateFinal(
+      input.scriptId || '',
+      input.editableScript,
+      input.requestId,
+      input.luckyRequestId,
+      input.interactionTimestamp
+    )
+    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
+    return { script: result.script, scriptId: result.scriptId }
   }
-
-  return { script: buffer, scriptId }
 }
 
 export const scriptGenerationMachine = setup({
@@ -319,7 +167,7 @@ export const scriptGenerationMachine = setup({
           { scriptId: typedInput.scriptId }
         )
       }
-      return generateFinalScript('/api/generate-final', typedInput, emit)
+      return generateScript('/api/generate-final', typedInput, emit)
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
@@ -328,29 +176,7 @@ export const scriptGenerationMachine = setup({
           scriptId: typedInput.scriptId,
         })
       }
-      const response = await fetch('/api/scripts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: typedInput.prompt,
-          code: typedInput.editableScript,
-          saved: true,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = 'Failed to save script'
-        if (typedInput.interactionTimestamp) {
-          await logInteraction(
-            typedInput.interactionTimestamp,
-            'stateMachine',
-            'Script save failed',
-            { error }
-          )
-        }
-        throw new Error(error)
-      }
-
+      await saveScript(typedInput.prompt, typedInput.editableScript)
       toast.success('Script saved successfully!')
       window.location.reload()
     }),
@@ -364,56 +190,8 @@ export const scriptGenerationMachine = setup({
           { scriptId: typedInput.scriptId }
         )
       }
-
-      const response = await fetch('/api/scripts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: typedInput.prompt,
-          code: typedInput.editableScript,
-          saved: true,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = 'Failed to save script'
-        if (typedInput.interactionTimestamp) {
-          await logInteraction(
-            typedInput.interactionTimestamp,
-            'stateMachine',
-            'Script save failed during install',
-            { error }
-          )
-        }
-        throw new Error(error)
-      }
-
-      const { id, dashedName } = await response.json()
-
-      const installResponse = await fetch('/api/install', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scriptId: id }),
-      })
-
-      if (!installResponse.ok) {
-        const error = 'Failed to track install'
-        if (typedInput.interactionTimestamp) {
-          await logInteraction(
-            typedInput.interactionTimestamp,
-            'stateMachine',
-            'Script install failed',
-            { error, scriptId: id }
-          )
-        }
-        throw new Error(error)
-      }
-
+      await saveAndInstallScript(typedInput.prompt, typedInput.editableScript)
       toast.success('Script saved and installed successfully!')
-
-      const baseUrl =
-        typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
-      window.location.href = `/api/new?name=${encodeURIComponent(dashedName || 'script-name-not-found')}&url=${encodeURIComponent(`${baseUrl}/scripts/${id}/raw/${dashedName || 'script'}.ts`)}`
     }),
   },
 }).createMachine({
