@@ -28,14 +28,14 @@ export default function StarIcon({
   return (
     <Tooltip
       content={`Thank you ${displayName}!`}
-      delay={300}
+      delay={0}
       closeDelay={0}
       classNames={{
         content: ['bg-black/90'],
       }}
     >
       <div
-        className="star-icon group transition-opacity duration-500"
+        className="star-icon opacity-transition"
         style={{
           transform: `rotate(${rotation}deg)`,
           opacity: isLoaded ? opacity : 0,
@@ -52,11 +52,12 @@ export default function StarIcon({
             <div className="absolute inset-0 [mask-image:url(#starMask)] [mask-size:100%] [mask-repeat:no-repeat] [mask-position:center] flex items-center justify-center translate-x-[1px] translate-y-[2px]">
               <div className="relative w-[90%] h-[90%] transform translate-y-[2px]">
                 <Image
-                  src={`https://github.com/${login}.png`}
+                  src={`https://github.com/${login}.png?size=56`}
                   alt={`${displayName} avatar`}
                   fill
-                  sizes="(max-width: 768px) 100vw, 28px"
-                  className="object-cover"
+                  sizes="28px"
+                  quality={95}
+                  className="object-cover rounded-full"
                   onLoad={onLoad}
                 />
               </div>
