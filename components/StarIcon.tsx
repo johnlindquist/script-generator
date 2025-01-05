@@ -8,6 +8,9 @@ interface StarIconProps {
   username?: string | null
   rotation?: number
   opacity?: number
+  onLoad?: () => void
+  isLoaded?: boolean
+  delay?: number
 }
 
 export default function StarIcon({
@@ -16,6 +19,9 @@ export default function StarIcon({
   username,
   rotation = 0,
   opacity = 0.6,
+  onLoad,
+  isLoaded = false,
+  delay = 0,
 }: StarIconProps) {
   const displayName = fullName || username || login
 
@@ -28,7 +34,14 @@ export default function StarIcon({
         content: ['bg-black/90'],
       }}
     >
-      <div className="star-icon group" style={{ transform: `rotate(${rotation}deg)`, opacity }}>
+      <div
+        className="star-icon group transition-opacity duration-500"
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          opacity: isLoaded ? opacity : 0,
+          transitionDelay: `${delay}ms`,
+        }}
+      >
         <div className="relative w-7 h-7">
           {/* Star background with masked avatar */}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -44,6 +57,7 @@ export default function StarIcon({
                   fill
                   sizes="(max-width: 768px) 100vw, 28px"
                   className="object-cover"
+                  onLoad={onLoad}
                 />
               </div>
             </div>

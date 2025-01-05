@@ -12,38 +12,28 @@ export async function GET() {
     const fileData = fs.readFileSync(filePath, 'utf-8')
     const sponsors = JSON.parse(fileData)
 
-    // Transform the data to match the expected format
-    const mergedSponsors = sponsors.map(
-      (sponsor: {
-        login: string
-        user: {
-          username: string
-          fullName: string
-        }
-      }) => ({
-        login: sponsor.login,
-        user: sponsor.user,
-      })
-    )
-
-    console.log(
-      `[${requestId}] Successfully loaded ${mergedSponsors.length} sponsors from static file`
-    )
-    return NextResponse.json(mergedSponsors)
+    console.log(`[${requestId}] Successfully loaded ${sponsors.length} sponsors from static file`)
+    return NextResponse.json(sponsors)
   } catch (error) {
     console.error(`[${requestId}] Error reading static-sponsors.json:`, error)
 
     // Return mock data in case of error
     return NextResponse.json([
       {
+        __typename: 'User',
         login: 'johnlindquist',
+        id: 'MDQ6VXNlcjE2Mzk=',
+        databaseId: 1639,
         user: {
           username: 'johnlindquist',
           fullName: 'John Lindquist',
         },
       },
       {
+        __typename: 'User',
         login: 'cursor',
+        id: 'MDQ6VXNlcjQ2Mjc2',
+        databaseId: 46276,
         user: {
           username: 'cursor',
           fullName: 'Cursor',
