@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { ListIcon, GridIcon } from '@/components/Icons'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { ChevronUpDownIcon, CheckIcon } from '@heroicons/react/20/solid'
 import ScriptListClient from '@/components/ScriptListClient'
 import ScriptListAll from '@/components/ScriptListAll'
+import ScriptListMobile from '@/components/ScriptListMobile'
 import { ScriptsResponse } from '@/types/script'
 
 type ViewMode = 'grid' | 'list'
@@ -25,7 +26,6 @@ const sortOptions = [
 export default function ViewToggle() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
-  const router = useRouter()
   const [view, setView] = useState<ViewMode>('grid')
   const [isClient, setIsClient] = useState(false)
   const [initialData, setInitialData] = useState<ScriptsResponse | null>(null)
@@ -35,6 +35,7 @@ export default function ViewToggle() {
     }
     return 'alphabetical'
   })
+  const [isMobile, setIsMobile] = useState(false)
 
   // Initialize from localStorage on mount and fetch initial data
   useEffect(() => {
@@ -44,28 +45,29 @@ export default function ViewToggle() {
       setView(savedView)
     }
 
-    // Fetch initial data for grid view
+    // Check if mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    // Fetch initial data
     const fetchInitialData = async () => {
       try {
         const params = new URLSearchParams(searchParams?.toString() ?? '')
-        console.log('📊 Fetching scripts:', {
-          params: Object.fromEntries(params.entries()),
-          url: `/api/scripts?${params.toString()}`,
-        })
         const res = await fetch(`/api/scripts?${params.toString()}`)
         if (!res.ok) throw new Error('Failed to fetch scripts')
         const data = await res.json()
-        console.log('📊 Fetched scripts:', {
-          totalScripts: data.scripts.length,
-          totalPages: data.totalPages,
-          searchTerm: params.get('query') || 'none',
-        })
         setInitialData(data)
       } catch (error) {
-        console.error('❌ Error fetching scripts:', error)
+        console.error('Error fetching scripts:', error)
       }
     }
     fetchInitialData()
+
+    return () => window.removeEventListener('resize', checkMobile)
   }, [searchParams])
 
   const handleViewChange = (newView: ViewMode) => {
@@ -79,7 +81,7 @@ export default function ViewToggle() {
     const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.set('sort', newSort)
     params.set('page', '1') // Reset to first page when changing sort
-    router.replace(`/?${params.toString()}`, { scroll: false })
+    window.location.href = `/?${params.toString()}`
   }
 
   // Avoid hydration mismatch
@@ -91,6 +93,12 @@ export default function ViewToggle() {
     )
   }
 
+  // Mobile view
+  if (isMobile) {
+    return <ScriptListMobile initialData={initialData} />
+  }
+
+  // Desktop view
   return (
     <div>
       {/* Header with View Toggle */}
@@ -118,12 +126,7 @@ export default function ViewToggle() {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items
-                  portal
-                  anchor="bottom"
-                  style={{ width: 'var(--button-width)' }}
-                  className="absolute z-50 origin-top-right rounded-md bg-zinc-800 py-1 text-sm shadow-lg border border-zinc-700 focus:outline-none"
-                >
+                <Menu.Items className="absolute z-50 origin-top-right rounded-md bg-zinc-800 py-1 text-sm shadow-lg border border-zinc-700 focus:outline-none">
                   {sortOptions.map(option => (
                     <Menu.Item key={option.id}>
                       {({ active }) => (
@@ -134,7 +137,9 @@ export default function ViewToggle() {
                           } ${sort === option.id ? 'text-amber-400' : ''}`}
                         >
                           <span
-                            className={`block truncate ${sort === option.id ? 'font-medium' : 'font-normal'}`}
+                            className={`block truncate ${
+                              sort === option.id ? 'font-medium' : 'font-normal'
+                            }`}
                           >
                             {option.name}
                           </span>

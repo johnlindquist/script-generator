@@ -40,8 +40,8 @@ export default async function ScriptPage({
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
-      <div className="container mx-auto px-4 py-8">
+    <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-0 sm:px-8 py-4">
+      <div className="container mx-auto max-w-[98%] sm:max-w-4xl py-0 sm:py-8">
         <ScriptCard
           script={{
             ...script,
