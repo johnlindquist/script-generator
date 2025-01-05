@@ -15,10 +15,13 @@ const DAILY_LIMIT = 24
 
 const generateDraftScript = async (req: NextRequest) => {
   const requestId = Math.random().toString(36).substring(7)
+  console.log('[API Route] Starting generateDraftScript:', { requestId })
+
   try {
     // Early session validation
     const session = await getServerSession(authOptions)
     if (!session?.user) {
+      console.log('[API Route] No valid session:', { requestId })
       return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
     }
 
@@ -26,8 +29,18 @@ const generateDraftScript = async (req: NextRequest) => {
     const body = await req.json().catch(() => ({}))
     const { prompt, luckyRequestId } = body
 
+    console.log('[API Route] Request details:', {
+      requestId,
+      luckyRequestId,
+      hasPrompt: !!prompt,
+      hasTimestamp: !!interactionTimestamp,
+      userId: session.user.id,
+      source: luckyRequestId ? 'lucky' : 'direct',
+    })
+
     if (!interactionTimestamp) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      console.error('[API Route] Missing interaction timestamp:', { requestId, timestamp })
       logInteraction(timestamp, 'serverRoute', 'Missing interaction timestamp')
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
@@ -39,13 +52,14 @@ const generateDraftScript = async (req: NextRequest) => {
     })
 
     if (!prompt) {
+      console.error('[API Route] Missing prompt:', { requestId })
       logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt', { requestId })
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
-      userId: session.user.id,
+    console.log('[API Route] Checking user usage:', {
       requestId,
+      userId: session.user.id,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
@@ -58,6 +72,7 @@ const generateDraftScript = async (req: NextRequest) => {
     })
 
     if (!dbUser) {
+      console.error('[API Route] User not found:', { requestId, userId: session.user.id })
       logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database', {
         requestId,
       })
@@ -74,10 +89,9 @@ const generateDraftScript = async (req: NextRequest) => {
     })
 
     if (!usage) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Creating new usage record', {
-        userId: session.user.id,
+      console.log('[API Route] Creating new usage record:', {
         requestId,
-        source: luckyRequestId ? 'lucky' : 'direct',
+        userId: session.user.id,
       })
       usage = await prisma.usage.create({
         data: {
@@ -88,20 +102,19 @@ const generateDraftScript = async (req: NextRequest) => {
       })
     }
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Current usage status', {
+    console.log('[API Route] Current usage status:', {
+      requestId,
       userId: session.user.id,
       currentCount: usage.count,
       limit: DAILY_LIMIT,
-      requestId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
     if (usage.count >= DAILY_LIMIT) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit reached', {
+      console.log('[API Route] Daily limit reached:', {
+        requestId,
         userId: session.user.id,
         count: usage.count,
-        requestId,
-        source: luckyRequestId ? 'lucky' : 'direct',
       })
       return NextResponse.json(
         {
@@ -118,9 +131,9 @@ const generateDraftScript = async (req: NextRequest) => {
       JSON.stringify(extractUserInfo(session, dbUser))
     )
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Starting draft generation', {
-      prompt,
+    console.log('[API Route] Starting draft generation:', {
       requestId,
+      prompt,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
@@ -130,53 +143,59 @@ const generateDraftScript = async (req: NextRequest) => {
     // Generate a script ID for client compatibility
     const scriptId = crypto.randomUUID()
 
+    console.log('[API Route] Created script ID:', { requestId, scriptId })
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          console.log('[API Route] Starting stream:', { requestId, scriptId })
           controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
 
           for await (const chunk of result.stream) {
             if (aborted) {
-              logInteraction(interactionTimestamp, 'serverRoute', 'Generation aborted', {
-                scriptId,
-                requestId,
-                source: luckyRequestId ? 'lucky' : 'direct',
-              })
+              console.log('[API Route] Generation aborted:', { requestId, scriptId })
               break
             }
             const text = cleanCodeFences(chunk.text())
+            console.log('[API Route] Streaming chunk:', {
+              requestId,
+              scriptId,
+              chunkSize: text.length,
+            })
             controller.enqueue(new TextEncoder().encode(text))
           }
 
           if (!aborted) {
-            logInteraction(interactionTimestamp, 'serverRoute', 'Draft generation completed', {
-              scriptId,
-              requestId,
-              source: luckyRequestId ? 'lucky' : 'direct',
-            })
-
+            console.log('[API Route] Draft generation completed:', { requestId, scriptId })
             controller.enqueue(new TextEncoder().encode(''))
             controller.close()
           } else {
+            console.log('[API Route] Closing aborted stream:', { requestId, scriptId })
             controller.close()
           }
         } catch (error) {
-          logInteraction(interactionTimestamp, 'serverRoute', 'Stream error', {
+          console.error('[API Route] Stream error:', {
+            requestId,
             scriptId,
             error: error instanceof Error ? error.message : String(error),
-            requestId,
-            source: luckyRequestId ? 'lucky' : 'direct',
           })
           controller.error(error)
         }
       },
       cancel() {
+        console.log('[API Route] Stream cancelled:', { requestId, scriptId })
         aborted = true
       },
     })
 
+    console.log('[API Route] Returning stream response:', { requestId, scriptId })
     return new NextResponse(stream)
   } catch (error) {
+    console.error('[API Route] Error in generateDraftScript:', {
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+
     const interactionTimestamp =
       req.headers.get('Interaction-Timestamp') ||
       new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')

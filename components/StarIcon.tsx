@@ -36,12 +36,13 @@ export default function StarIcon({
             <HeroStarIcon className="w-7 h-7 text-amber-500/90 stroke-[1.5]" />
 
             {/* Masked avatar */}
-            <div className="absolute inset-0 [mask-image:url(#starMask)] [mask-size:100%] [mask-repeat:no-repeat] [mask-position:center] flex items-center justify-center translate-x-[1px] translate-y-[3px]">
+            <div className="absolute inset-0 [mask-image:url(#starMask)] [mask-size:100%] [mask-repeat:no-repeat] [mask-position:center] flex items-center justify-center translate-x-[1px] translate-y-[2px]">
               <div className="relative w-[90%] h-[90%] transform translate-y-[2px]">
                 <Image
                   src={`https://github.com/${login}.png`}
                   alt={`${displayName} avatar`}
                   fill
+                  sizes="(max-width: 768px) 100vw, 28px"
                   className="object-cover"
                 />
               </div>

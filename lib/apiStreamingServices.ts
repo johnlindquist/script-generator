@@ -62,8 +62,84 @@ export const generateDraftWithStream = async (
 }
 
 export const generateFinalWithStream = async (
-  input: StreamingServiceInput,
-  emit: (event: ScriptGenerationEvent) => void
-): Promise<StreamingServiceResult> => {
-  return generateScript('/api/generate-final', input, emit)
+  params: {
+    prompt: string
+    requestId: string | null
+    luckyRequestId: string | null
+    interactionTimestamp: string
+    scriptId: string | null
+    editableScript: string
+  },
+  callbacks: {
+    onStartStreaming: () => void
+    onChunk: (text: string) => void
+    onError: (error: { message: string }) => void
+  }
+): Promise<{ script: string }> => {
+  console.log('[API] Starting generateFinalWithStream:', {
+    prompt: params.prompt,
+    scriptId: params.scriptId,
+    timestamp: params.interactionTimestamp,
+  })
+
+  try {
+    callbacks.onStartStreaming()
+
+    const response = await fetch('/api/generate-final', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Interaction-Timestamp': params.interactionTimestamp,
+      },
+      body: JSON.stringify({
+        scriptId: params.scriptId,
+        draftScript: params.editableScript,
+        luckyRequestId: params.luckyRequestId,
+        requestId: params.requestId,
+      }),
+    })
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        callbacks.onError({ message: 'Daily generation limit reached. Try again tomorrow!' })
+      } else if (response.status === 401) {
+        callbacks.onError({ message: 'Session expired. Please sign in again.' })
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: 'Failed to generate final script' }))
+        callbacks.onError({ message: errorData.error || 'Failed to generate final script' })
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('No reader available')
+    }
+
+    let finalScript = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = new TextDecoder().decode(value)
+      finalScript += chunk
+      callbacks.onChunk(finalScript)
+    }
+
+    return { script: finalScript }
+  } catch (error) {
+    console.error('[API] Stream reading error:', error)
+    if (error instanceof Response && error.status === 429) {
+      callbacks.onError({
+        message: 'Daily generation limit reached. Try again tomorrow!',
+      })
+    } else {
+      callbacks.onError({
+        message: error instanceof Error ? error.message : 'Failed to generate final script',
+      })
+    }
+    throw error
+  }
 }

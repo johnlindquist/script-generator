@@ -188,6 +188,13 @@ export async function generateDraftWithStream(
   signal: AbortSignal,
   callbacks: StreamCallbacks = {}
 ): Promise<void> {
+  console.log('[API] Starting generateDraftWithStream:', {
+    prompt,
+    luckyRequestId,
+    timestamp,
+    isAborted: signal.aborted,
+  })
+
   try {
     const res = await fetch('/api/generate-draft', {
       method: 'POST',
@@ -202,28 +209,45 @@ export async function generateDraftWithStream(
       signal,
     })
 
+    console.log('[API] Fetch response received:', {
+      status: res.status,
+      ok: res.ok,
+      timestamp: new Date().toISOString(),
+    })
+
     if (res.status === 401) {
+      console.error('[API] Unauthorized error')
       throw new Error('UNAUTHORIZED')
     }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
+      console.error('[API] Response not OK:', {
+        status: res.status,
+        data,
+        timestamp: new Date().toISOString(),
+      })
       throw new Error(data.error || 'Failed to generate draft')
     }
 
     const reader = res.body?.getReader()
     if (!reader) {
+      console.error('[API] No reader available')
       throw new Error('No reader available')
     }
 
     try {
       let buffer = ''
+      console.log('[API] Starting stream reading')
       callbacks.onStartStreaming?.()
 
       while (true) {
         try {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            console.log('[API] Stream reading complete')
+            break
+          }
 
           const text = new TextDecoder().decode(value)
           buffer += text
@@ -233,17 +257,26 @@ export async function generateDraftWithStream(
           const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
           if (idMatch) {
             const scriptId = idMatch[1]
+            console.log('[API] Script ID received:', scriptId)
             buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
             callbacks.onScriptId?.(scriptId)
           }
 
+          console.log('[API] Chunk received:', {
+            chunkSize: text.length,
+            totalBufferSize: buffer.length,
+            timestamp: new Date().toISOString(),
+          })
           callbacks.onChunk?.(buffer)
-        } catch {
+        } catch (readError) {
+          console.error('[API] Error during stream read:', readError)
           if (signal.aborted) {
+            console.log('[API] Stream aborted')
             return
           }
           // If we get a read error but have a buffer, we can still use it
           if (buffer) {
+            console.log('[API] Using existing buffer despite read error')
             callbacks.onChunk?.(buffer)
           }
           break
@@ -252,14 +285,22 @@ export async function generateDraftWithStream(
 
       // Only proceed if we have a valid buffer and haven't been aborted
       if (buffer && !signal.aborted) {
+        console.log('[API] Final buffer delivery:', {
+          bufferSize: buffer.length,
+          timestamp: new Date().toISOString(),
+        })
         callbacks.onChunk?.(buffer)
       }
     } finally {
       if (!signal.aborted) {
-        reader.cancel().catch(() => {})
+        console.log('[API] Cancelling reader')
+        reader.cancel().catch(err => {
+          console.error('[API] Error cancelling reader:', err)
+        })
       }
     }
   } catch (error) {
+    console.error('[API] Error in generateDraftWithStream:', error)
     const err = error instanceof Error ? error : new Error('Generation failed')
     callbacks.onError?.(err)
     throw err

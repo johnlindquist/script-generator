@@ -20,6 +20,7 @@ import toast from 'react-hot-toast'
 import { Tooltip } from '@nextui-org/react'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
+import { generateFinalWithStream } from '@/lib/apiStreamingServices'
 
 interface EditorRef {
   getModel: () => {
@@ -76,7 +77,7 @@ const handleUnauthorized = () => {
 }
 
 export default function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
-  const [state, send] = useMachine(scriptGenerationMachine, {
+  const [state, send, service] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
       editableScript: '',
@@ -93,6 +94,28 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       lastRefinementRequestId: null,
     },
   })
+
+  // Add state transition observer
+  useEffect(() => {
+    const subscription = service.subscribe(snapshot => {
+      console.log('[XSTATE] State transition:', {
+        state: snapshot.value,
+        context: {
+          prompt: snapshot.context.prompt,
+          scriptId: snapshot.context.scriptId,
+          requestId: snapshot.context.requestId,
+          luckyRequestId: snapshot.context.luckyRequestId,
+          isFromLucky: snapshot.context.isFromLucky,
+          isFromSuggestion: snapshot.context.isFromSuggestion,
+          error: snapshot.context.error,
+          timestamp: new Date().toISOString(),
+        },
+      })
+    })
+
+    return () => subscription.unsubscribe()
+  }, [service])
+
   const [streamedText, setStreamedText] = useState('')
   const editorRef = useRef<EditorRef | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -128,13 +151,28 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
   // Handle streaming text updates
   const handleStreamedText = useCallback((text: string) => {
+    console.log('handleStreamedText called with text length:', text.length)
     setStreamedText(text)
   }, [])
 
-  // Attach the handler to the state machine
+  // Handle draft generation streaming
   useEffect(() => {
-    // Start streaming if we're in a thinking or generating state
-    if (!state.matches('thinkingDraft') && !state.matches('generatingFinal')) {
+    // Debug logging
+    console.log('===========================')
+    console.log('Draft useEffect TRIGGERED!')
+    console.log('Current state:', {
+      isThinkingDraft: state.matches('thinkingDraft'),
+      isGeneratingFinal: state.matches('generatingFinal'),
+      prompt: state.context.prompt,
+      requestId: state.context.requestId,
+      scriptId: state.context.scriptId,
+      luckyRequestId: state.context.luckyRequestId,
+      timestamp: new Date().toISOString(),
+    })
+    console.log('===========================')
+
+    if (!state.matches('thinkingDraft')) {
+      console.log('Not in thinkingDraft state, returning early')
       return
     }
 
@@ -142,6 +180,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     const signal = controller.signal
 
     const startStreaming = async () => {
+      console.log('>> Starting generateDraftWithStream call <<', {
+        prompt: state.context.prompt,
+        luckyRequestId: state.context.luckyRequestId,
+        timestamp: new Date().toISOString(),
+      })
+
       try {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
 
@@ -152,48 +196,128 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           signal,
           {
             onStartStreaming: () => {
+              console.log('onStartStreaming callback invoked')
               if (state.matches('thinkingDraft')) {
+                console.log('Transitioning to START_STREAMING_DRAFT')
                 send({ type: 'START_STREAMING_DRAFT' })
               }
             },
             onScriptId: scriptId => {
+              console.log('onScriptId callback invoked with:', scriptId)
               send({ type: 'SET_SCRIPT_ID', scriptId })
             },
             onChunk: text => {
+              console.log('onChunk callback invoked with length:', text.length)
               handleStreamedText(text)
               send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
             },
             onError: error => {
+              console.error('onError callback invoked:', error)
               if (error.message === 'UNAUTHORIZED') {
                 handleUnauthorized()
                 return
               }
-              console.error('Error generating draft:', error)
               toast.error(error.message)
             },
           }
         )
-      } catch {
-        // Error handling is done in the callbacks
+        console.log('>> Completed generateDraftWithStream call successfully <<')
+      } catch (err) {
+        console.error('generateDraftWithStream threw an exception:', err)
       }
     }
 
     startStreaming()
 
     return () => {
-      // Only abort if we're not transitioning between generation phases
-      if (state.matches('thinkingDraft') && !state.matches('generatingDraft')) {
-        controller.abort()
-      }
+      console.log('Cleaning up draft streaming effect - aborting controller')
+      controller.abort()
     }
   }, [
-    state.matches,
     state.context.prompt,
     state.context.requestId,
     state.context.scriptId,
     state.context.luckyRequestId,
     handleStreamedText,
+    state.matches,
+    send,
   ])
+
+  // Effect for final generation streaming
+  useEffect(() => {
+    let isMounted = true
+    let isStreaming = false
+
+    const startStreaming = async () => {
+      if (!state.matches('generatingFinal') || !state.context.scriptId) {
+        return
+      }
+
+      if (isStreaming) {
+        console.log('Already streaming final, skipping...')
+        return
+      }
+
+      console.log('Final useEffect TRIGGERED!')
+      console.log('Current state:', {
+        isThinkingDraft: state.matches('thinkingDraft'),
+        isGeneratingFinal: state.matches('generatingFinal'),
+        prompt: state.context.prompt,
+        requestId: state.context.requestId,
+        scriptId: state.context.scriptId,
+        editableScript: state.context.editableScript,
+      })
+
+      console.log('===========================')
+
+      try {
+        isStreaming = true
+        await generateFinalWithStream(
+          {
+            prompt: state.context.prompt,
+            requestId: state.context.requestId,
+            luckyRequestId: state.context.luckyRequestId,
+            interactionTimestamp: new Date().toISOString(),
+            scriptId: state.context.scriptId,
+            editableScript: state.context.editableScript || '',
+          },
+          {
+            onStartStreaming: () => {
+              if (!isMounted) return
+              console.log('Started streaming final')
+            },
+            onChunk: (text: string) => {
+              if (!isMounted) return
+              console.log('onChunk callback invoked for final with length:', text.length)
+              handleStreamedText(text)
+            },
+            onError: (error: { message: string }) => {
+              if (!isMounted) return
+              console.log('onError callback invoked for final:', error)
+              send({ type: 'SET_ERROR', error: error.message })
+            },
+          }
+        )
+
+        if (isMounted) {
+          console.log('>> Completed generateFinalWithStream call successfully <<')
+        }
+      } catch (error) {
+        if (!isMounted) return
+        console.log('generateFinalWithStream threw an exception:', error)
+      } finally {
+        isStreaming = false
+      }
+    }
+
+    startStreaming()
+
+    return () => {
+      console.log('Cleaning up final streaming effect')
+      isMounted = false
+      isStreaming = false
+    }
+  }, [state.matches, state.context.scriptId, handleStreamedText, send])
 
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {
@@ -289,24 +413,35 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
   const handleFeelingLucky = async () => {
+    console.log('=== handleFeelingLucky called ===')
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to sign in')
       signIn()
       return
     }
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      console.log('Starting lucky generation with timestamp:', timestamp)
 
       // Clear any existing state
+      console.log('Clearing existing state...')
       send({ type: 'SET_ERROR', error: '' })
       send({
         type: 'SET_PROMPT',
         prompt: '', // We'll fill in after we fetch /api/lucky
       })
 
+      console.log('Fetching lucky prompt...')
       const data = await generateLucky(timestamp)
+      console.log('Lucky data received:', {
+        combinedPrompt: data.combinedPrompt,
+        requestId: data.requestId,
+        timestamp,
+      })
 
       // Set the lucky context before generating
+      console.log('Setting up lucky context...')
       send({ type: 'FROM_SUGGESTION', value: false })
       send({ type: 'UPDATE_EDITABLE_SCRIPT', script: '' })
       send({
@@ -315,12 +450,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       })
 
       // Store the lucky request ID in the context
+      console.log('Setting lucky request ID:', data.requestId)
       send({
         type: 'SET_LUCKY_REQUEST',
         requestId: data.requestId,
       })
 
       // Now do the standard "GENERATE_DRAFT" call with the same timestamp
+      console.log('Dispatching GENERATE_DRAFT with timestamp:', timestamp)
       send({ type: 'GENERATE_DRAFT', timestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)

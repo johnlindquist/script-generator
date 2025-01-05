@@ -83,7 +83,6 @@ export const scriptGenerationMachine = setup({
     context: {} as ScriptGenerationContext,
     events: {} as ScriptGenerationEvent,
     input: {} as ScriptGenerationContext,
-    output: {} as GenerateInitialResponse,
   },
   actors: {
     generateDraftScript: fromPromise(async ({ input, emit }) => {
@@ -108,7 +107,47 @@ export const scriptGenerationMachine = setup({
           { scriptId: typedInput.scriptId }
         )
       }
-      return generateFinalWithStream(typedInput, emit)
+      try {
+        const result = await generateFinalWithStream(
+          {
+            prompt: typedInput.prompt,
+            requestId: typedInput.requestId,
+            luckyRequestId: typedInput.luckyRequestId,
+            interactionTimestamp: typedInput.interactionTimestamp || new Date().toISOString(),
+            scriptId: typedInput.scriptId,
+            editableScript: typedInput.editableScript,
+          },
+          {
+            onStartStreaming: () => {
+              emit({ type: 'START_STREAMING_FINAL' } as ScriptGenerationEvent)
+            },
+            onChunk: text => {
+              emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: text } as ScriptGenerationEvent)
+            },
+            onError: error => {
+              if (error.message === 'UNAUTHORIZED') {
+                window.location.href = '/sign-in'
+                return
+              }
+              emit({ type: 'SET_ERROR', error: error.message } as ScriptGenerationEvent)
+            },
+          }
+        )
+        return result
+      } catch (error) {
+        if (error instanceof Response && error.status === 429) {
+          emit({
+            type: 'SET_ERROR',
+            error: 'Daily generation limit reached. Try again tomorrow!',
+          } as ScriptGenerationEvent)
+        } else {
+          emit({
+            type: 'SET_ERROR',
+            error: error instanceof Error ? error.message : 'Failed to generate final script',
+          } as ScriptGenerationEvent)
+        }
+        throw error
+      }
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
@@ -182,7 +221,7 @@ export const scriptGenerationMachine = setup({
         SET_PROMPT: {
           actions: [
             assign({
-              prompt: ({ event }) => event.prompt,
+              prompt: ({ event }) => (event as { type: 'SET_PROMPT'; prompt: string }).prompt,
               isFromSuggestion: () => false,
             }),
             createLogAction('Prompt set', context => ({ prompt: context.prompt })),
@@ -191,7 +230,8 @@ export const scriptGenerationMachine = setup({
         FROM_SUGGESTION: {
           actions: [
             assign({
-              isFromSuggestion: ({ event }) => event.value,
+              isFromSuggestion: ({ event }) =>
+                (event as { type: 'FROM_SUGGESTION'; value: boolean }).value,
             }),
             createLogAction('Suggestion status updated', context => ({
               isFromSuggestion: context.isFromSuggestion,
@@ -201,7 +241,8 @@ export const scriptGenerationMachine = setup({
         SET_LUCKY_REQUEST: {
           actions: [
             assign({
-              luckyRequestId: ({ event }) => event.requestId,
+              luckyRequestId: ({ event }) =>
+                (event as { type: 'SET_LUCKY_REQUEST'; requestId: string }).requestId,
               isFromLucky: () => true,
             }),
             createLogAction('Lucky request ID set', context => ({
@@ -213,21 +254,41 @@ export const scriptGenerationMachine = setup({
           target: 'thinkingDraft',
           actions: [
             assign({
-              interactionTimestamp: ({ event }) => event.timestamp,
+              interactionTimestamp: ({ event }) =>
+                (event as { type: 'GENERATE_DRAFT'; timestamp: string }).timestamp,
               requestId: () => Math.random().toString(36).substring(7),
+            }),
+          ],
+        },
+        UPDATE_EDITABLE_SCRIPT: {
+          actions: [
+            assign({
+              editableScript: ({ event }) =>
+                (event as { type: 'UPDATE_EDITABLE_SCRIPT'; script: string }).script,
+            }),
+          ],
+        },
+        SET_ERROR: {
+          actions: [
+            assign({
+              error: ({ event }) => (event as { type: 'SET_ERROR'; error: string }).error,
+            }),
+          ],
+        },
+        SET_SCRIPT_ID: {
+          actions: [
+            assign({
+              scriptId: ({ event }) =>
+                (event as { type: 'SET_SCRIPT_ID'; scriptId: string }).scriptId,
             }),
           ],
         },
         SET_USAGE: {
           actions: [
             assign({
-              usageCount: ({ event }) => event.count,
-              usageLimit: ({ event }) => event.limit,
+              usageCount: ({ event }) => (event as { type: 'SET_USAGE'; count: number }).count,
+              usageLimit: ({ event }) => (event as { type: 'SET_USAGE'; limit: number }).limit,
             }),
-            createLogAction('Usage updated', context => ({
-              usageCount: context.usageCount,
-              usageLimit: context.usageLimit,
-            })),
           ],
         },
       },
@@ -346,17 +407,19 @@ export const scriptGenerationMachine = setup({
         })),
       ],
       invoke: {
+        id: 'generateFinalScript',
         src: 'generateFinalScript',
-        input: ({ context }) => ({
-          ...context,
-          requestId: context.lastRefinementRequestId,
-        }),
+        input: ({ context }) => context,
         onDone: {
           target: 'complete',
           actions: [
             assign({
               error: null,
               generatedScript: ({ event }) => {
+                const output = event.output as { script: string }
+                return output.script
+              },
+              editableScript: ({ event }) => {
                 const output = event.output as { script: string }
                 return output.script
               },
@@ -371,8 +434,8 @@ export const scriptGenerationMachine = setup({
           actions: [
             assign({
               error: ({ event }) => {
-                const err = event.error as Error
-                return err?.message || 'An unknown error occurred'
+                const error = event.error as Error
+                return error?.message || 'An unknown error occurred'
               },
               lastRefinementRequestId: null,
             }),
