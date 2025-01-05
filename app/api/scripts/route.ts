@@ -94,6 +94,9 @@ export async function GET(request: NextRequest) {
   // Build orderBy based on sort parameter
   let orderBy: Prisma.ScriptOrderByWithRelationInput = {}
   switch (sort) {
+    case 'createdAt':
+      orderBy = { createdAt: 'desc' }
+      break
     case 'username':
       orderBy = {
         owner: {

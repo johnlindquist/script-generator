@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { ListIcon, GridIcon } from '@/components/Icons'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { ChevronUpDownIcon, CheckIcon } from '@heroicons/react/20/solid'
 import ScriptListClient from '@/components/ScriptListClient'
@@ -13,10 +13,11 @@ import ScriptListMobile from '@/components/ScriptListMobile'
 import { ScriptsResponse } from '@/types/script'
 
 type ViewMode = 'grid' | 'list'
-type SortMode = 'alphabetical' | 'username' | 'favorites' | 'downloads' | 'verified'
+type SortMode = 'alphabetical' | 'username' | 'favorites' | 'downloads' | 'verified' | 'createdAt'
 
 const sortOptions = [
-  { id: 'alphabetical', name: 'Alphabetical' },
+  { id: 'createdAt', name: 'Date Created' },
+  { id: 'alphabetical', name: 'Title' },
   { id: 'username', name: 'Username' },
   { id: 'favorites', name: 'Favorites' },
   { id: 'downloads', name: 'Downloads' },
@@ -31,9 +32,9 @@ export default function ViewToggle() {
   const [initialData, setInitialData] = useState<ScriptsResponse | null>(null)
   const [sort, setSort] = useState<SortMode>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('scriptSortMode') as SortMode) || 'alphabetical'
+      return (localStorage.getItem('scriptSortMode') as SortMode) || 'createdAt'
     }
-    return 'alphabetical'
+    return 'createdAt'
   })
   const [isMobile, setIsMobile] = useState(false)
 
@@ -126,9 +127,12 @@ export default function ViewToggle() {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items className="absolute z-50 origin-top-right rounded-md bg-zinc-800 py-1 text-sm shadow-lg border border-zinc-700 focus:outline-none">
+                <MenuItems
+                  className="absolute z-50 origin-top-right rounded-md bg-zinc-800 py-1 text-sm shadow-lg border border-zinc-700 focus:outline-none w-[var(--button-width)]"
+                  anchor={{ to: 'bottom end', gap: 4 }}
+                >
                   {sortOptions.map(option => (
-                    <Menu.Item key={option.id}>
+                    <MenuItem key={option.id}>
                       {({ active }) => (
                         <button
                           onClick={() => handleSortChange(option.id as SortMode)}
@@ -150,9 +154,9 @@ export default function ViewToggle() {
                           ) : null}
                         </button>
                       )}
-                    </Menu.Item>
+                    </MenuItem>
                   ))}
-                </Menu.Items>
+                </MenuItems>
               </Transition>
             </Menu>
           </div>
