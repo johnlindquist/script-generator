@@ -1,7 +1,9 @@
 import { setup, assign, fromPromise } from 'xstate'
 import { toast } from 'react-hot-toast'
 import { logInteraction } from '@/lib/interaction-logger'
-import { generateDraft, generateFinal, saveScript, saveAndInstallScript } from '@/lib/apiService'
+import { saveScript, saveAndInstallScript } from '@/lib/apiService'
+import { generateDraftWithStream, generateFinalWithStream } from '@/lib/apiStreamingServices'
+import { ScriptGenerationEvent } from '@/types/scriptGeneration'
 
 /**
  * The contextual data for the scriptGenerationMachine.
@@ -43,29 +45,6 @@ interface GenerateInitialResponse {
 }
 
 /**
- * All possible events that can be sent to the scriptGenerationMachine
- */
-type ScriptGenerationEvent =
-  | { type: 'SET_PROMPT'; prompt: string }
-  | { type: 'GENERATE_DRAFT'; timestamp: string }
-  | { type: 'START_STREAMING_DRAFT' }
-  | { type: 'START_STREAMING_FINAL' }
-  | { type: 'START_FINAL' }
-  | { type: 'GENERATE_FINAL' }
-  | { type: 'CANCEL_GENERATION' }
-  | { type: 'SAVE_SCRIPT' }
-  | { type: 'SAVE_AND_INSTALL' }
-  | { type: 'RESET' }
-  | { type: 'SET_USAGE'; count: number; limit: number }
-  | { type: 'SET_ERROR'; error: string }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'FROM_SUGGESTION'; value: boolean }
-  | { type: 'UPDATE_EDITABLE_SCRIPT'; script: string }
-  | { type: 'SET_SCRIPT_ID'; scriptId: string }
-  | { type: 'COMPLETE_GENERATION'; script: string }
-  | { type: 'SET_LUCKY_REQUEST'; requestId: string }
-
-/**
  * Helper function to log state transitions
  */
 async function logStateTransition(
@@ -99,44 +78,6 @@ function createLogAction(
   }
 }
 
-/**
- * Generates a script by making a request to the specified endpoint and handling streaming responses
- */
-const generateScript = async (
-  url: string,
-  input: ScriptGenerationContext,
-  emit: (event: ScriptGenerationEvent) => void
-) => {
-  if (input.interactionTimestamp) {
-    await logInteraction(input.interactionTimestamp, 'stateMachine', 'Starting script generation', {
-      url,
-      prompt: input.prompt,
-    })
-  }
-
-  if (url.includes('generate-draft')) {
-    const result = await generateDraft(
-      input.prompt,
-      input.requestId,
-      input.luckyRequestId,
-      input.interactionTimestamp
-    )
-    emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
-    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
-    return { script: result.script, scriptId: result.scriptId }
-  } else {
-    const result = await generateFinal(
-      input.scriptId || '',
-      input.editableScript,
-      input.requestId,
-      input.luckyRequestId,
-      input.interactionTimestamp
-    )
-    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
-    return { script: result.script, scriptId: result.scriptId }
-  }
-}
-
 export const scriptGenerationMachine = setup({
   types: {
     context: {} as ScriptGenerationContext,
@@ -155,7 +96,7 @@ export const scriptGenerationMachine = setup({
           { prompt: typedInput.prompt }
         )
       }
-      return generateScript('/api/generate-draft', typedInput, emit)
+      return generateDraftWithStream(typedInput, emit)
     }),
     generateFinalScript: fromPromise(async ({ input, emit }) => {
       const typedInput = input as ScriptGenerationContext
@@ -167,7 +108,7 @@ export const scriptGenerationMachine = setup({
           { scriptId: typedInput.scriptId }
         )
       }
-      return generateScript('/api/generate-final', typedInput, emit)
+      return generateFinalWithStream(typedInput, emit)
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
