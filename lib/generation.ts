@@ -352,9 +352,6 @@ Focus ONLY on improving the script above. Do not reference or combine with other
 Re-generate the improved script content paying extra attention to the types.
 If there's any overly complex logic, please add inline comments explaining it.
 
-CRITICAL: The improved script MUST do exactly the same thing as the original script.
-Do not change its core purpose or functionality. Only improve its implementation.
-
 Be absolutely sure to include the following metadata in the script:
 
 <METADATA>
@@ -362,6 +359,10 @@ Be absolutely sure to include the following metadata in the script:
 // Description: A short description of the script (max 50 chars)
 // Author: The name from the <USER_INFO>
 </METADATA>
+
+<CRITICAL>
+Refactor any concept of a "main" function to a "top-level await" pattern.
+</CRITICAL>
 
 Generate ONLY the refined script content, no additional explanations or markdown.
 `
