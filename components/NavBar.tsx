@@ -6,7 +6,8 @@ import Image from 'next/image'
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
 import { FaGithub } from 'react-icons/fa'
 import { STRINGS } from '@/lib/strings'
-import { useState } from 'react'
+import { Menu, Transition } from '@headlessui/react'
+import { Fragment } from 'react'
 
 interface NavBarProps {
   isAuthenticated: boolean
@@ -14,7 +15,6 @@ interface NavBarProps {
 
 export default function NavBar({ isAuthenticated }: NavBarProps) {
   const { data: session } = useSession()
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   return (
     <nav className="flex justify-between items-center mb-8">
@@ -44,53 +44,95 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         )}
         {isAuthenticated ? (
           <>
-            <div className="relative">
-              {session?.user?.image && (
-                <Image
-                  src={session.user.image}
-                  alt={STRINGS.NAVBAR.userAvatarAlt}
-                  width={32}
-                  height={32}
-                  className="rounded-full cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                />
-              )}
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-xl border border-amber-400/10 z-50">
-                  <Link
-                    href="/new"
-                    className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-t-lg transition-colors"
-                  >
-                    {STRINGS.NAVBAR.addScript}
-                  </Link>
-                  <Link
-                    href="/scripts/mine"
-                    className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors"
-                  >
-                    My Scripts
-                  </Link>
-                  <Link
-                    href="/scripts/sync"
-                    className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors"
-                  >
-                    Sync GitHub Repo
-                  </Link>
-                  <Link
-                    href="/scripts/import"
-                    className="block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors"
-                  >
-                    Import Scripts
-                  </Link>
-                  <button
-                    onClick={() => signOut()}
-                    className="w-full text-left px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-b-lg transition-colors flex items-center gap-2"
-                  >
-                    <ArrowLeftOnRectangleIcon className="w-4 h-4" />
-                    {STRINGS.NAVBAR.signOut}
-                  </button>
-                </div>
-              )}
-            </div>
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button className="focus:outline-none">
+                {session?.user?.image && (
+                  <Image
+                    src={session.user.image}
+                    alt={STRINGS.NAVBAR.userAvatarAlt}
+                    width={32}
+                    height={32}
+                    className="rounded-full cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all"
+                  />
+                )}
+              </Menu.Button>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items
+                  className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-xl border border-amber-400/10"
+                  anchor={{ to: 'bottom end', gap: 4 }}
+                >
+                  <Menu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/new"
+                        className={`block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-t-lg transition-colors ${
+                          active ? 'bg-neutral-700' : ''
+                        }`}
+                      >
+                        {STRINGS.NAVBAR.addScript}
+                      </Link>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/scripts/mine"
+                        className={`block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors ${
+                          active ? 'bg-neutral-700' : ''
+                        }`}
+                      >
+                        My Scripts
+                      </Link>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/scripts/sync"
+                        className={`block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors ${
+                          active ? 'bg-neutral-700' : ''
+                        }`}
+                      >
+                        Sync GitHub Repo
+                      </Link>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/scripts/import"
+                        className={`block px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 transition-colors ${
+                          active ? 'bg-neutral-700' : ''
+                        }`}
+                      >
+                        Import Scripts
+                      </Link>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => signOut()}
+                        className={`w-full text-left px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-b-lg transition-colors flex items-center gap-2 ${
+                          active ? 'bg-neutral-700' : ''
+                        }`}
+                      >
+                        <ArrowLeftOnRectangleIcon className="w-4 h-4" />
+                        {STRINGS.NAVBAR.signOut}
+                      </button>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Transition>
+            </Menu>
           </>
         ) : (
           <button

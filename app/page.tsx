@@ -3,7 +3,6 @@ import { authOptions } from './api/auth/[...nextauth]/route'
 import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ViewToggle from '@/components/ViewToggle'
 import ScriptSearch from '@/components/ScriptSearch'
-import { STRINGS } from '@/lib/strings'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import SponsorBackground from '@/components/SponsorBackground'
 import { getRandomHeading } from '@/lib/getRandomHeading'
@@ -36,11 +35,11 @@ export default async function Home() {
   ])
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-b from-zinc-900 to-black py-4">
+    <main className="relative min-h-screen bg-gradient-to-b from-zinc-900 to-black">
       <div className="relative z-[1] max-w-7xl mx-auto px-4">
-        <div className="mb-4 text-center">
+        {/* <div className="mb-4 text-center">
           <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
-        </div>
+        </div> */}
 
         {/* Main prompt area with sponsor background */}
         <div className="relative">

@@ -473,8 +473,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   }
 
   return (
-    <div className="mb-4">
-      <h2 className="text-2xl font-bold mb-6 text-center min-h-[32px]">
+    <div className="pb-4">
+      <h2 className="text-2xl font-bold pt-6 mb-6 text-center min-h-[32px]">
         {isGenerating || isThinking ? (
           <AnimatedText
             text={
@@ -492,7 +492,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         )}
       </h2>
       {!state.context.generatedScript && !isGenerating && !isThinking && (
-        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+        <form
+          onSubmit={handleSubmit}
+          className={`max-w-2xl mx-auto ${isAuthenticated ? '' : 'pb-4'}`}
+        >
           <textarea
             ref={textareaRef}
             value={state.context.prompt}
@@ -581,17 +584,15 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           <h3 className="text-lg my-4 text-center">
             {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
           </h3>
-          {isAuthenticated && (
-            <ScriptSuggestions
-              setPrompt={prompt => {
-                send({ type: 'SET_PROMPT', prompt })
-                send({ type: 'FROM_SUGGESTION', value: true })
-              }}
-              setIsFromSuggestion={() => {}}
-              className="mb-4"
-              suggestions={suggestions}
-            />
-          )}
+          <ScriptSuggestions
+            setPrompt={prompt => {
+              send({ type: 'SET_PROMPT', prompt })
+              send({ type: 'FROM_SUGGESTION', value: true })
+            }}
+            setIsFromSuggestion={() => {}}
+            className="mb-4"
+            suggestions={suggestions}
+          />
         </div>
       )}
 
