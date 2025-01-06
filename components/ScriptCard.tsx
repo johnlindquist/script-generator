@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
 import { FaGithub } from 'react-icons/fa'
@@ -108,6 +109,24 @@ function LineIndicator({ count, position }: LineIndicatorProps) {
   )
 }
 
+function highlightText(text: string, searchQuery: string | undefined): React.ReactNode {
+  if (!searchQuery || !text) return <>{text}</>
+
+  const searchLower = searchQuery.toLowerCase()
+  const textLower = text.toLowerCase()
+  const index = textLower.indexOf(searchLower)
+
+  if (index === -1) return <>{text}</>
+
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="bg-amber-300/25">{text.slice(index, index + searchQuery.length)}</span>
+      {text.slice(index + searchQuery.length)}
+    </>
+  )
+}
+
 export default function ScriptCard({
   script,
   isAuthenticated,
@@ -141,7 +160,9 @@ export default function ScriptCard({
           href={`/${script.owner?.username}/${script.id}`}
           className="block hover:opacity-75 transition-opacity"
         >
-          <h2 className="text-xl font-semibold mb-2 text-amber-300">{script.title}</h2>
+          <h2 className="text-xl font-semibold mb-2 text-amber-300">
+            {highlightText(script.title, searchQuery)}
+          </h2>
         </Link>
 
         <div className="flex justify-between">
@@ -150,7 +171,7 @@ export default function ScriptCard({
               href={`/${script.owner?.username}`}
               className="hover:text-amber-300 transition-colors"
             >
-              {script.owner?.fullName || script.owner?.username}
+              {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
             </Link>
 
             <Link
@@ -195,7 +216,7 @@ export default function ScriptCard({
                         <div
                           key={i}
                           {...getLineProps({ line })}
-                          className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/25' : ''}`}
+                          className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/25 w-fit' : ''}`}
                         >
                           {line.map((token, key) => (
                             <span key={key} {...getTokenProps({ token })} />
