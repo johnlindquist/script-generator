@@ -13,6 +13,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Script Kit',
   description: 'Generate shell scripts using AI',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
