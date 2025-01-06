@@ -5,8 +5,10 @@ import ViewToggle from '@/components/ViewToggle'
 import ScriptSearch from '@/components/ScriptSearch'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import SponsorBackground from '@/components/SponsorBackground'
+import Testimonials from '@/components/Testimonials'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
+import { getTestimonials } from '@/lib/get-testimonials'
 import {
   getMacIntelRelease,
   getMacSiliconRelease,
@@ -23,6 +25,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const suggestions = getRandomSuggestions()
+  const testimonials = getTestimonials()
 
   const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
@@ -37,18 +40,11 @@ export default async function Home() {
   return (
     <main className="relative min-h-screen bg-gradient-to-b from-zinc-900 to-black">
       <div className="relative z-[1] max-w-7xl mx-auto px-4">
-        {/* <div className="mb-4 text-center">
-          <p className="text-amber-400/80 text-sm">{STRINGS.HOME.prototype.warning}</p>
-        </div> */}
-
-        {/* Main prompt area with sponsor background */}
         <div className="relative">
-          {/* Sponsor background container - matches parent height exactly */}
           <div className="absolute inset-0">
             <SponsorBackground />
           </div>
 
-          {/* Script Generation Client - always visible */}
           <ScriptGenerationClient
             isAuthenticated={!!session}
             heading={heading}
@@ -58,17 +54,19 @@ export default async function Home() {
 
         <hr className="my-8 border-zinc-800" />
 
-        {/* Search Scripts */}
         <div className="mb-8">
           <ScriptSearch />
         </div>
 
-        {/* Community Scripts Section */}
         <div className="mt-12">
           <ViewToggle />
         </div>
 
         <hr className="my-8 border-zinc-800" />
+
+        <div className="mb-12">
+          <Testimonials testimonials={testimonials} />
+        </div>
 
         <div className="flex justify-center items-center w-full">
           <ScriptKitDownload
