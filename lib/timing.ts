@@ -36,7 +36,8 @@ export async function withTiming<T extends TimedResponse>(
 }
 
 export interface RouteContext {
-  params: Record<string, string>
+  params: Promise<Record<string, string>>
+  searchParams: Promise<Record<string, string>>
 }
 
 export function wrapApiHandler<T extends TimedResponse>(

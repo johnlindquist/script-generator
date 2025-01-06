@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { RouteContext } from '@/lib/timing'
 
-export async function GET(request: NextRequest, { params }: { params: { username: string } }) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { searchParams } = new URL(request.url)
+    const params = await context?.params
+    if (!params) throw new Error('Missing parameters')
     const page = Number(searchParams.get('page')) || 1
     const pageSize = 12
 

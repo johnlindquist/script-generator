@@ -4,6 +4,7 @@ import ScriptGridWithSuspense from '@/components/ScriptGridWithSuspense'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { ScriptLite, ScriptWithMinimalRelations } from '@/types/script'
+import { RouteContext } from '@/lib/timing'
 
 const transformScript = (script: ScriptWithMinimalRelations): ScriptLite => ({
   ...script,
@@ -11,15 +12,10 @@ const transformScript = (script: ScriptWithMinimalRelations): ScriptLite => ({
   isFavorited: false,
 })
 
-export default async function UserScriptsPage({
-  params,
-  searchParams,
-}: {
-  params: { username: string }
-  searchParams: { page?: string }
-}) {
+export default async function UserScriptsPage({ params, searchParams }: RouteContext) {
   const session = await getServerSession(authOptions)
-  const { username } = params
+  const { username } = await params
+  const { page: pageParam } = await searchParams
 
   const user = await prisma.user.findFirst({
     where: { username },
@@ -29,7 +25,7 @@ export default async function UserScriptsPage({
     notFound()
   }
 
-  const page = Number(searchParams.page) || 1
+  const page = Number(pageParam) || 1
   const pageSize = 12
 
   const scripts = await prisma.script.findMany({
