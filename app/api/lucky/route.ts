@@ -3,9 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { logInteraction } from '@/lib/interaction-logger'
-
-const LUCKY_INSTRUCTION =
-  'Use these scripts above for inspiration. Create a new script inspiration by pieces of these scripts, but let it have a single focus and be useful. Avoid a generic "power tools" scenario where it just combines them all'
+import { LUCKY_INSTRUCTION } from './prompt'
 
 // Explicitly declare Node.js runtime since we use file system operations
 export const runtime = 'nodejs'
