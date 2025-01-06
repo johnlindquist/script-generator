@@ -79,10 +79,28 @@ export async function GET(request: NextRequest) {
 
   // Add search condition if search term is provided
   if (searchTerm) {
-    whereClause.content = {
-      contains: searchTerm,
-      mode: 'insensitive',
-    }
+    whereClause.OR = [
+      {
+        content: {
+          contains: searchTerm,
+          mode: 'insensitive',
+        },
+      },
+      {
+        title: {
+          contains: searchTerm,
+          mode: 'insensitive',
+        },
+      },
+      {
+        owner: {
+          username: {
+            contains: searchTerm,
+            mode: 'insensitive',
+          },
+        },
+      },
+    ]
     console.log('🔍 Search request:', {
       searchTerm,
       page,
