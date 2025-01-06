@@ -119,12 +119,29 @@ export const generateFinalWithStream = async (
     }
 
     let finalScript = ''
+    let lastChunkEndsWithNewline = false
+
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
       const chunk = new TextDecoder().decode(value)
+
+      // Handle line breaks at chunk boundaries
+      if (lastChunkEndsWithNewline && chunk.startsWith('\n')) {
+        finalScript = finalScript.slice(0, -1)
+      }
+
       finalScript += chunk
+      lastChunkEndsWithNewline = chunk.endsWith('\n')
+
+      // Ensure proper line breaks around metadata comments
+      finalScript = finalScript.replace(/^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm, '$1\n$4')
+      finalScript = finalScript.replace(
+        /^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm,
+        '$1\n$4'
+      )
+
       callbacks.onChunk(finalScript)
     }
 
