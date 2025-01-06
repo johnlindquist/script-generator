@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { FINAL_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
+import { cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
+import { FINAL_PASS_PROMPT } from './prompt'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -143,20 +144,33 @@ const generateFinalScript = async (req: NextRequest) => {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of result.stream) {
-            if (aborted) {
-              logInteraction(interactionTimestamp, 'serverRoute', 'Final generation aborted', {
+          try {
+            for await (const chunk of result.stream) {
+              if (aborted) {
+                logInteraction(interactionTimestamp, 'serverRoute', 'Final generation aborted', {
+                  scriptId,
+                  requestId,
+                  source: luckyRequestId ? 'lucky' : 'direct',
+                })
+                break
+              }
+              const text = cleanCodeFences(chunk.text())
+
+              // Add the text to our buffer without trimming
+              fullScript += text
+              controller.enqueue(new TextEncoder().encode(text))
+            }
+          } catch (streamError) {
+            if (streamError instanceof Error && streamError.name === 'AbortError') {
+              logInteraction(interactionTimestamp, 'serverRoute', 'Stream aborted', {
                 scriptId,
                 requestId,
                 source: luckyRequestId ? 'lucky' : 'direct',
               })
-              break
+              aborted = true
+              return
             }
-            const text = cleanCodeFences(chunk.text())
-
-            // Add the text to our buffer without trimming
-            fullScript += text
-            controller.enqueue(new TextEncoder().encode(text))
+            throw streamError
           }
 
           if (!aborted) {
@@ -209,7 +223,6 @@ const generateFinalScript = async (req: NextRequest) => {
               })
 
               controller.enqueue(new TextEncoder().encode(''))
-              controller.close()
             } catch (dbError) {
               const errorMessage =
                 dbError instanceof Error ? dbError.message : 'Database error occurred'
@@ -220,10 +233,10 @@ const generateFinalScript = async (req: NextRequest) => {
                 source: luckyRequestId ? 'lucky' : 'direct',
               })
               controller.error(new Error(errorMessage))
+              return
             }
-          } else {
-            controller.close()
           }
+          controller.close()
         } catch (error) {
           logInteraction(interactionTimestamp, 'serverRoute', 'Stream error', {
             scriptId,
