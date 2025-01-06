@@ -137,6 +137,7 @@ export default function ScriptListAll() {
               currentUserId={session?.user?.id}
               onDeleted={handleScriptDeleted}
               truncate={false}
+              searchQuery={searchParams?.get('query') ?? ''}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400">

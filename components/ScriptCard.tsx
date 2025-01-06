@@ -38,6 +38,74 @@ interface ScriptCardProps {
   onDeleted?: (scriptId: string) => void
   onScriptChanged?: () => void | Promise<ScriptsResponse | undefined>
   truncate?: boolean
+  searchQuery?: string
+}
+
+const TRUNCATE_LINES = 12
+const CONTEXT_LINES_BEFORE = 2
+
+interface TruncationInfo {
+  content: string
+  linesBefore: number
+  linesAfter: number
+}
+
+function getRelevantLines(
+  content: string,
+  searchQuery: string | undefined,
+  truncate: boolean
+): TruncationInfo {
+  if (!truncate) return { content, linesBefore: 0, linesAfter: 0 }
+
+  const lines = content.split('\n')
+
+  if (!searchQuery) {
+    // If no search query, return first N lines
+    return {
+      content: lines.slice(0, TRUNCATE_LINES).join('\n'),
+      linesBefore: 0,
+      linesAfter: Math.max(0, lines.length - TRUNCATE_LINES),
+    }
+  }
+
+  // Find the first line that matches the search query
+  const searchLower = searchQuery.toLowerCase()
+  const matchIndex = lines.findIndex(line => line.toLowerCase().includes(searchLower))
+
+  if (matchIndex === -1) {
+    // If no match found, return first N lines
+    return {
+      content: lines.slice(0, TRUNCATE_LINES).join('\n'),
+      linesBefore: 0,
+      linesAfter: Math.max(0, lines.length - TRUNCATE_LINES),
+    }
+  }
+
+  // Calculate the range of lines to show around the match
+  const startLine = Math.max(0, matchIndex - CONTEXT_LINES_BEFORE)
+  const endLine = Math.min(lines.length, startLine + TRUNCATE_LINES)
+
+  return {
+    content: lines.slice(startLine, endLine).join('\n'),
+    linesBefore: startLine,
+    linesAfter: Math.max(0, lines.length - endLine),
+  }
+}
+
+interface LineIndicatorProps {
+  count: number
+  position: 'above' | 'below'
+}
+
+function LineIndicator({ count, position }: LineIndicatorProps) {
+  return (
+    <div
+      className={`-mx-4 ${position === 'above' ? '-mt-4 mb-3' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-sm border-${position === 'above' ? 'b' : 't'} border-amber-400/20 hover:bg-amber-400/20 transition-colors text-center`}
+    >
+      {count} {position === 'above' ? '' : ''}
+      {count === 1 ? 'line' : 'lines'} {position} • View full script
+    </div>
+  )
 }
 
 export default function ScriptCard({
@@ -46,8 +114,14 @@ export default function ScriptCard({
   currentUserId,
   onDeleted,
   truncate = false,
+  searchQuery,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
+  const {
+    content: relevantContent,
+    linesBefore,
+    linesAfter,
+  } = getRelevantLines(script.content, searchQuery, truncate)
 
   return (
     <div
@@ -100,28 +174,45 @@ export default function ScriptCard({
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
           <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
-            <Highlight
-              theme={themes.nightOwl}
-              code={truncate ? script.content.slice(0, 500) : script.content}
-              language="typescript"
-            >
+            <Highlight theme={themes.nightOwl} code={relevantContent} language="typescript">
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                <pre
-                  className={`${className} p-4 h-full ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
-                  style={{
-                    ...style,
-                    margin: 0,
-                    background: 'transparent',
-                  }}
-                >
-                  {tokens.map((line, i) => (
-                    <div key={i} {...getLineProps({ line })} className="whitespace-pre break-all">
-                      {line.map((token, key) => (
-                        <span key={key} {...getTokenProps({ token })} />
-                      ))}
-                    </div>
-                  ))}
-                </pre>
+                <div className="relative flex flex-col h-full">
+                  <pre
+                    className={`${className} p-4 flex-1 ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                    style={{
+                      ...style,
+                      margin: 0,
+                      background: 'transparent',
+                    }}
+                  >
+                    {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
+                    {tokens.map((line, i) => {
+                      const lineContent = line.map(token => token.content).join('')
+                      const shouldHighlight =
+                        searchQuery && lineContent.toLowerCase().includes(searchQuery.toLowerCase())
+
+                      return (
+                        <div
+                          key={i}
+                          {...getLineProps({ line })}
+                          className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/25' : ''}`}
+                        >
+                          {line.map((token, key) => (
+                            <span key={key} {...getTokenProps({ token })} />
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </pre>
+                  {linesAfter > 0 && (
+                    <pre
+                      className={`${className} px-4`}
+                      style={{ background: 'transparent', margin: 0 }}
+                    >
+                      <LineIndicator count={linesAfter} position="below" />
+                    </pre>
+                  )}
+                </div>
               )}
             </Highlight>
           </div>

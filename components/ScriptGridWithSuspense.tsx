@@ -78,6 +78,7 @@ export default function ScriptGridWithSuspense({
             mutate()
           }}
           truncate={true}
+          searchQuery={searchParams?.get('query') ?? ''}
         />
       ))}
     </div>

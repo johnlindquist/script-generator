@@ -51,6 +51,7 @@ export default async function ScriptPage({
           isAuthenticated={!!session}
           currentUserId={session?.user?.id}
           truncate={false}
+          searchQuery=""
         />
       </div>
     </main>
