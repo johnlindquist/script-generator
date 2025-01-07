@@ -1,16 +1,22 @@
 import { StarIcon as HeroStarIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { SponsorCircles } from './SponsorCircles'
-import { Sponsor } from '@/types/sponsor'
+import { headers } from 'next/headers'
 
-async function getSponsors(): Promise<Sponsor[]> {
+interface GitHubSponsor {
+  __typename: string
+  login: string
+  id: string
+  databaseId: number
+}
+
+async function getSponsors(): Promise<GitHubSponsor[]> {
   try {
-    const url =
-      process.env.NODE_ENV === 'development'
-        ? `http://localhost:${process.env.PORT || 3000}/api/get-all-sponsors`
-        : `/api/get-all-sponsors`
+    const headersList = await headers()
+    const host = headersList.get('host') || 'localhost:3000'
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
 
-    const res = await fetch(url, {
+    const res = await fetch(`${protocol}://${host}/api/get-all-sponsors`, {
       headers: {
         'Content-Type': 'application/json',
       },

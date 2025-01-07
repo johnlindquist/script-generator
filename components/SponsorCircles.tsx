@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import StarIcon from './StarIcon'
-import { Position, Sponsor } from '@/types/sponsor'
+import { Position } from '@/types/sponsor'
+
+interface GitHubSponsor {
+  __typename: string
+  login: string
+  id: string
+  databaseId: number
+}
 
 // Calculate distance between two points
 function getDistance(x1: number, y1: number, x2: number, y2: number) {
@@ -71,11 +78,11 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray
 }
 
-export function SponsorCircles({ sponsors }: { sponsors: Sponsor[] }) {
+export function SponsorCircles({ sponsors }: { sponsors: GitHubSponsor[] }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [rotations, setRotations] = useState<number[]>([])
   const [delays, setDelays] = useState<number[]>([])
-  const [shuffledSponsors, setShuffledSponsors] = useState<Sponsor[]>([])
+  const [shuffledSponsors, setShuffledSponsors] = useState<GitHubSponsor[]>([])
   const [isClient, setIsClient] = useState(false)
   const [loadedStars, setLoadedStars] = useState<Set<string>>(new Set())
 
@@ -127,8 +134,7 @@ export function SponsorCircles({ sponsors }: { sponsors: Sponsor[] }) {
           >
             <StarIcon
               login={sponsor.login}
-              fullName={sponsor.user?.fullName}
-              username={sponsor.user?.username}
+              username={sponsor.login}
               rotation={rotation}
               opacity={position.opacity}
               onLoad={() => handleStarLoad(sponsor.login)}
