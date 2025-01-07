@@ -7,11 +7,12 @@ import ScriptCard from '@/components/ScriptCard'
 export default async function ScriptPage({
   params,
 }: {
-  params: { username: string; scriptId: string }
+  params: Promise<{ username: string; scriptId: string }>
 }) {
+  const { username, scriptId } = await params
   const session = await getServerSession(authOptions)
   const user = await prisma.user.findUnique({
-    where: { username: params.username },
+    where: { username },
   })
 
   if (!user) {
@@ -20,7 +21,7 @@ export default async function ScriptPage({
 
   const script = await prisma.script.findFirst({
     where: {
-      id: params.scriptId,
+      id: scriptId,
       ownerId: user.id,
     },
     include: {

@@ -21,6 +21,9 @@ import { Tooltip } from '@nextui-org/react'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
 import { generateFinalWithStream } from '@/lib/apiStreamingServices'
+import { useSession } from 'next-auth/react'
+
+const SPONSOR_DAILY_LIMIT = 100
 
 interface EditorRef {
   getModel: () => {
@@ -94,6 +97,7 @@ const handleUnauthorized = () => {
 }
 
 export default function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
+  const { data: session } = useSession()
   const [state, send, service] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -710,6 +714,25 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {state.context.usageCount >= state.context.usageLimit - 2 && !session?.user?.isSponsor && (
+        <div className="mt-4 p-4 bg-neutral-800 text-amber-200 rounded-md">
+          <p className="mb-2">
+            You're close to your daily limit of {state.context.usageLimit} script generations.
+          </p>
+          <p className="mb-2">
+            Become a GitHub sponsor to get {SPONSOR_DAILY_LIMIT} generations per day!
+          </p>
+          <a
+            href="https://github.com/sponsors/johnlindquist"
+            className="inline-block px-4 py-2 bg-amber-400 text-black rounded hover:bg-amber-300"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Become a Sponsor
+          </a>
         </div>
       )}
     </div>
