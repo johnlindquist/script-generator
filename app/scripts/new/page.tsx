@@ -129,7 +129,7 @@ export default function NewScriptPage() {
                 onChange={value => setContent(value || '')}
                 options={monacoOptions}
                 beforeMount={initializeTheme}
-                theme="brillance-black"
+                theme="gruvboxTheme"
               />
             </div>
           </div>

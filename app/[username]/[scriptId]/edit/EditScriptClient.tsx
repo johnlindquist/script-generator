@@ -51,7 +51,7 @@ export default function EditScriptClient({ initialContent, username, scriptId }:
           onChange={val => setContent(val || '')}
           beforeMount={initializeTheme}
           options={monacoOptions}
-          theme="brillance-black"
+          theme="gruvboxTheme"
         />
       </div>
       <div className="flex justify-end gap-2">

@@ -1,14 +1,43 @@
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
-import { default as BrillanceBlack } from 'monaco-themes/themes/Brilliance Black.json'
 
 export const initializeTheme = (monacoInstance: typeof monaco) => {
-  // Define theme
-  monacoInstance.editor.defineTheme('brillance-black', {
-    ...BrillanceBlack,
+  const gruvBoxTheme = {
     base: 'vs-dark',
-  } as monaco.editor.IStandaloneThemeData)
-  monacoInstance.editor.setTheme('brillance-black')
+    inherit: true,
+    rules: [
+      { token: '', foreground: 'ebdbb2' },
+      { token: 'comment', foreground: 'a89984' },
+      { token: 'keyword', foreground: 'fb4934' },
+      { token: 'string', foreground: 'b8bb26' },
+      { token: 'number', foreground: 'd3869b' },
+      { token: 'regexp', foreground: 'b8bb26' },
+      { token: 'type', foreground: 'fabd2f' },
+      { token: 'function', foreground: 'fabd2f' },
+      { token: 'variable', foreground: 'fb4934' },
+      { token: 'constant', foreground: 'fb4934' },
+      { token: 'delimiter', foreground: 'a89984' },
+      { token: 'tag', foreground: 'fabd2f' },
+    ],
+    colors: {
+      'editor.background': '#000000',
+      'editor.foreground': '#ebdbb2',
+      'editor.selectionBackground': '#7c6f6444',
+      'editor.lineHighlightBackground': '#3c383640',
+      'editorCursor.foreground': '#ebdbb2',
+      'editorWhitespace.foreground': '#3c383680',
+      'editorLineNumber.foreground': '#7c6f64',
+      'editor.selectionHighlightBackground': '#7c6f6444',
+      'editor.wordHighlightBackground': '#7c6f6444',
+      'editor.wordHighlightStrongBackground': '#7c6f6444',
+    },
+  }
+
+  monacoInstance.editor.defineTheme(
+    'gruvboxTheme',
+    gruvBoxTheme as monaco.editor.IStandaloneThemeData
+  )
+  monacoInstance.editor.setTheme('gruvboxTheme')
 
   // Register TypeScript formatter
   monacoInstance.languages.registerDocumentFormattingEditProvider('typescript', {
@@ -79,7 +108,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const monacoOptions = {
-  theme: 'brillance-black',
+  theme: 'gruvboxTheme',
   fontSize: 14,
   minimap: { enabled: false },
   automaticLayout: true,

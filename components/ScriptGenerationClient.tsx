@@ -723,7 +723,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
                     }}
                     onMount={handleEditorDidMount}
                     beforeMount={initializeTheme}
-                    theme="brillance-black"
+                    theme="gruvboxTheme"
                   />
                 </div>
               </div>
