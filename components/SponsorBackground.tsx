@@ -45,9 +45,9 @@ export default async function SponsorBackground() {
         // style={{ zIndex: 0 }}
       >
         {/* Radial gradient overlay for center fade-out effect */}
-        {/* <div className="gradient-overlay" /> */}
+        <div className="gradient-overlay" />
         <SponsorCircles sponsors={sponsors} />
-        {/* <div className="absolute inset-0 pointer-events-none w-full h-full bg-gradient-to-r from-transparent via-background to-transparent z-50" /> */}
+        <div className="absolute inset-0 pointer-events-none w-full h-full bg-gradient-to-r from-transparent via-background to-transparent z-50" />
       </div>
     </>
   )

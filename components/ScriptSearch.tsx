@@ -1,17 +1,14 @@
 'use client'
 
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
-import { Loader } from 'lucide-react'
 import { useQueryState } from 'nuqs'
 import { Input } from './ui/input'
 
 export default function ScriptSearch() {
   const [query, setQuery] = useQueryState('query')
-  const [page, setPage] = useQueryState('page')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await setPage('1') // Reset to first page when searching
   }
 
   return (
@@ -27,7 +24,6 @@ export default function ScriptSearch() {
           value={query ?? ''}
           onChange={async e => {
             await setQuery(e.target.value || null)
-            await setPage('1')
           }}
         />
       </div>

@@ -4,8 +4,10 @@ import ScriptGenerationClient from '@/components/ScriptGenerationClient'
 import ViewToggle from '@/components/ViewToggle'
 import ScriptKitDownload from '@/components/ScriptKitDownload'
 import SponsorBackground from '@/components/SponsorBackground'
+import Testimonials from '@/components/Testimonials'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
+import { getTestimonials } from '@/lib/get-testimonials'
 import {
   getMacIntelRelease,
   getMacSiliconRelease,
@@ -23,6 +25,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const suggestions = getRandomSuggestions()
+  const testimonials = getTestimonials()
 
   const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
     getMacIntelRelease(),
@@ -57,6 +60,9 @@ export default async function Home() {
         <div className="absolute z-0 inset-0">
           <SponsorBackground />
         </div>
+      </div>
+      <div className="mb-12 hidden">
+        <Testimonials testimonials={testimonials} />
       </div>
       <section id="scripts" className="border-t sm:py-16 py-8">
         <div className="w-full container mx-auto px-5">

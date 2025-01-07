@@ -1,4 +1,3 @@
-import { StarIcon as HeroStarIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import { Tooltip } from '@nextui-org/react'
 
@@ -45,14 +44,11 @@ export default function StarIcon({
         <div className="relative w-7 h-7">
           {/* Star background with masked avatar */}
           <div className="absolute inset-0 flex items-center justify-center">
-            {/* Star outline */}
-            {/* <HeroStarIcon className="w-7 h-7 text-amber-500/90 stroke-[1.5]" /> */}
-
             {/* Masked avatar */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div>
                 <Image
-                  src={`https://github.com/${login}.png?size=56`}
+                  src={`https://avatars.githubusercontent.com/${login}?size=56`}
                   alt={`${displayName} avatar`}
                   fill
                   sizes="28px"

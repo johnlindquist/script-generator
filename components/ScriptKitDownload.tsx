@@ -5,14 +5,7 @@ import { type ScriptKitRelease, type BetaRelease } from '@/lib/get-scriptkit-rel
 import cx from 'classnames'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 
 type Props = {
   macIntelRelease: ScriptKitRelease | null
@@ -53,7 +46,7 @@ export default function ScriptKitDownload({
   }, [])
   const [isDownloadsDialogOpen, setIsDownloadsDialogOpen] = React.useState(false)
   return (
-    <div className="w-full flex z-10 border-y flex-col sm:py-24 py-10 items-center justify-center gap-5 max-w-2xl bg-background relative">
+    <div className="w-full flex z-10 border-y flex-col sm:py-24 py-10 items-center justify-center gap-5 max-w-2xl bg-background/0 relative">
       <h2 className="lg:text-4xl sm:text-3xl text-2xl font-semibold mb-5 text-center">
         Download Script Kit
       </h2>
@@ -146,9 +139,9 @@ const MacReleases = ({
   return (
     <div className={cn('flex sm:items-center sm:gap-2 gap-4 sm:flex-row flex-col', className)}>
       <div className="flex justify-center sm:justify-start items-center gap-2 mr-3">
-        <AppleIcon /> MacOs
+        <AppleIcon /> MacOS
       </div>
-      {macReleases.map((release, i) => {
+      {macReleases.map(release => {
         if (!release?.browser_download_url) return null
         return (
           <DownloadButton
@@ -317,23 +310,6 @@ const LinuxIcon = () => (
         fill="#f5bd0c"
       />
     </g>
-  </svg>
-)
-
-const DownloadIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    aria-hidden="true"
-    className={className}
-    width="16"
-  >
-    <path
-      className="-translate-y-0.5 group-hover:translate-y-0 transition"
-      d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"
-    />
-    <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
   </svg>
 )
 

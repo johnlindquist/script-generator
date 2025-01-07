@@ -51,7 +51,7 @@ export default function ScriptListMobile({ initialData }: ScriptListMobileProps)
   }
 
   return (
-    <div className="-mx-5 mt-5">
+    <div className="">
       {/* Script List */}
       <div className="divide-y divide-border overflow-hidden">
         {initialData.scripts.map(script => (

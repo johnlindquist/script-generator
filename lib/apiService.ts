@@ -1,3 +1,5 @@
+import { toast } from 'react-hot-toast'
+
 export async function generateDraft(
   prompt: string,
   requestId: string | null,
@@ -227,6 +229,16 @@ export async function generateDraftWithStream(
         data,
         timestamp: new Date().toISOString(),
       })
+
+      // Add toast notifications for different error cases
+      if (res.status === 429) {
+        toast.error('Daily generation limit reached. Try again tomorrow!')
+      } else if (res.status === 401) {
+        toast.error('Session expired. Please sign in again.')
+      } else {
+        toast.error(data.error || 'Failed to generate draft')
+      }
+
       throw new Error(data.error || 'Failed to generate draft')
     }
 

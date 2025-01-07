@@ -14,7 +14,11 @@ export interface ScriptComputedFields {
  */
 export type ScriptLite = Prisma.ScriptGetPayload<{
   include: {
-    owner: true
+    owner: {
+      include: {
+        sponsorship: true
+      }
+    }
     _count: {
       select: {
         verifications: true
@@ -32,7 +36,11 @@ export type ScriptLite = Prisma.ScriptGetPayload<{
  */
 export type ScriptFull = Prisma.ScriptGetPayload<{
   include: {
-    owner: true
+    owner: {
+      include: {
+        sponsorship: true
+      }
+    }
     verifications: true
     favorites: true
     installs: true

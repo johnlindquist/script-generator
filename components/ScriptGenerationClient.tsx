@@ -5,7 +5,6 @@ import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
 import {
-  RocketLaunchIcon,
   DocumentCheckIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
@@ -17,7 +16,6 @@ import ScriptSuggestions from '@/components/ScriptSuggestions'
 import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
-import { Tooltip } from '@nextui-org/react'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
 import { generateFinalWithStream } from '@/lib/apiStreamingServices'
@@ -41,6 +39,23 @@ interface EditorRef {
     getLineCount: () => number
     getValue: () => string
     setValue: (value: string) => void
+    getFullModelRange: () => {
+      startLineNumber: number
+      startColumn: number
+      endLineNumber: number
+      endColumn: number
+    }
+    applyEdits: (
+      edits: {
+        range: {
+          startLineNumber: number
+          startColumn: number
+          endLineNumber: number
+          endColumn: number
+        }
+        text: string
+      }[]
+    ) => void
   } | null
   revealLine: (line: number) => void
 }
@@ -166,7 +181,33 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Handle streaming text updates
   const handleStreamedText = useCallback((text: string) => {
     console.log('handleStreamedText called with text length:', text.length)
-    setStreamedText(text)
+    const editor = editorRef.current
+    const model = editor?.getModel()
+
+    if (model) {
+      const currentContent = model.getValue()
+      if (text.length > currentContent.length) {
+        // Get the new content to append
+        const newContent = text.slice(currentContent.length)
+
+        // Create an edit operation to append the new content
+        const range = model.getFullModelRange()
+        model.applyEdits([
+          {
+            range: {
+              startLineNumber: range.endLineNumber,
+              startColumn: range.endColumn,
+              endLineNumber: range.endLineNumber,
+              endColumn: range.endColumn,
+            },
+            text: newContent,
+          },
+        ])
+      }
+    } else {
+      // Fallback to setting the entire content if model isn't available
+      setStreamedText(text)
+    }
   }, [])
 
   // Handle draft generation streaming
@@ -286,6 +327,15 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
       try {
         isStreaming = true
+
+        // Clear the editor before starting final generation
+        const editor = editorRef.current
+        const model = editor?.getModel()
+        if (model) {
+          model.setValue('')
+          setStreamedText('')
+        }
+
         await generateFinalWithStream(
           {
             prompt: state.context.prompt,

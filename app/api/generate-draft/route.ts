@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { DRAFT_PASS_PROMPT, cleanCodeFences, extractUserInfo } from '@/lib/generation'
+import { cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
 import crypto from 'crypto'
+import { DRAFT_PASS_PROMPT } from './prompt'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -151,28 +152,34 @@ const generateDraftScript = async (req: NextRequest) => {
           console.log('[API Route] Starting stream:', { requestId, scriptId })
           controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
 
-          for await (const chunk of result.stream) {
-            if (aborted) {
-              console.log('[API Route] Generation aborted:', { requestId, scriptId })
-              break
+          try {
+            for await (const chunk of result.stream) {
+              if (aborted) {
+                console.log('[API Route] Generation aborted:', { requestId, scriptId })
+                break
+              }
+              const text = cleanCodeFences(chunk.text())
+              console.log('[API Route] Streaming chunk:', {
+                requestId,
+                scriptId,
+                chunkSize: text.length,
+              })
+              controller.enqueue(new TextEncoder().encode(text))
             }
-            const text = cleanCodeFences(chunk.text())
-            console.log('[API Route] Streaming chunk:', {
-              requestId,
-              scriptId,
-              chunkSize: text.length,
-            })
-            controller.enqueue(new TextEncoder().encode(text))
+          } catch (streamError) {
+            if (streamError instanceof Error && streamError.name === 'AbortError') {
+              console.log('[API Route] Stream aborted:', { requestId, scriptId })
+              aborted = true
+              return
+            }
+            throw streamError
           }
 
           if (!aborted) {
             console.log('[API Route] Draft generation completed:', { requestId, scriptId })
             controller.enqueue(new TextEncoder().encode(''))
-            controller.close()
-          } else {
-            console.log('[API Route] Closing aborted stream:', { requestId, scriptId })
-            controller.close()
           }
+          controller.close()
         } catch (error) {
           console.error('[API Route] Stream error:', {
             requestId,
