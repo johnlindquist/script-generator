@@ -33,6 +33,7 @@ import {
 import { FaGithub } from 'react-icons/fa'
 import { ArrowUp } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
+import { Loader2 } from 'lucide-react'
 
 interface EditorRef {
   getModel: () => {
@@ -685,63 +686,79 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         </div>
       )}
 
-      {(isGenerating || isThinking || state.context.generatedScript) && (
-        <div className="mt-8">
-          <div className="relative mb-2 max-w-4xl mx-auto">
-            <div className="bg-zinc-900/90 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
-              <div className="w-full h-[600px] relative">
-                <Editor
-                  height="100%"
-                  defaultLanguage="typescript"
-                  value={state.context.editableScript}
-                  onChange={value =>
-                    isAuthenticated &&
-                    state.matches('complete') &&
-                    send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
-                  }
-                  options={{
-                    ...monacoOptions,
-                    readOnly: !isAuthenticated || !state.matches('complete'),
-                    domReadOnly: !isAuthenticated || !state.matches('complete'),
-                  }}
-                  onMount={handleEditorDidMount}
-                  beforeMount={initializeTheme}
-                  theme="brillance-black"
-                />
+      {(isGenerating || isThinking || state.context.generatedScript) &&
+        !state.context.editableScript && (
+          <div className="mt-8">
+            <div className="relative mb-2 max-w-4xl mx-auto">
+              <div className="bg-zinc-900/10 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
+                <div className="w-full h-[600px] relative flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-amber-400" />
+                  </div>
+                </div>
               </div>
             </div>
-            {state.matches('complete') && (
-              <div className="absolute bottom-4 right-4 flex gap-2">
-                {isAuthenticated && (
-                  <>
-                    <button
-                      onClick={() => send({ type: 'SAVE_SCRIPT' })}
-                      className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                    >
-                      <DocumentCheckIcon className="w-5 h-5" />
-                      {STRINGS.SCRIPT_GENERATION.saveScript}
-                    </button>
-                    <button
-                      onClick={() => send({ type: 'SAVE_AND_INSTALL' })}
-                      className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                    >
-                      <ArrowDownTrayIcon className="w-5 h-5" />
-                      {STRINGS.SCRIPT_GENERATION.saveAndInstall}
-                    </button>
-                    <button
-                      onClick={() => send({ type: 'RESET' })}
-                      className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                    >
-                      <ArrowPathIcon className="w-5 h-5" />
-                      {STRINGS.SCRIPT_GENERATION.startOver}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )}
+
+      {(isGenerating || isThinking || state.context.generatedScript) &&
+        state.context.editableScript && (
+          <div className="mt-8">
+            <div className="relative mb-2 max-w-4xl mx-auto">
+              <div className="bg-zinc-900/90 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
+                <div className="w-full h-[600px] relative">
+                  <Editor
+                    height="100%"
+                    defaultLanguage="typescript"
+                    value={state.context.editableScript}
+                    onChange={value =>
+                      isAuthenticated &&
+                      state.matches('complete') &&
+                      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
+                    }
+                    options={{
+                      ...monacoOptions,
+                      readOnly: !isAuthenticated || !state.matches('complete'),
+                      domReadOnly: !isAuthenticated || !state.matches('complete'),
+                    }}
+                    onMount={handleEditorDidMount}
+                    beforeMount={initializeTheme}
+                    theme="brillance-black"
+                  />
+                </div>
+              </div>
+              {state.matches('complete') && (
+                <div className="absolute bottom-4 right-4 flex gap-2">
+                  {isAuthenticated && (
+                    <>
+                      <button
+                        onClick={() => send({ type: 'SAVE_SCRIPT' })}
+                        className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                      >
+                        <DocumentCheckIcon className="w-5 h-5" />
+                        {STRINGS.SCRIPT_GENERATION.saveScript}
+                      </button>
+                      <button
+                        onClick={() => send({ type: 'SAVE_AND_INSTALL' })}
+                        className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                      >
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        {STRINGS.SCRIPT_GENERATION.saveAndInstall}
+                      </button>
+                      <button
+                        onClick={() => send({ type: 'RESET' })}
+                        className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                      >
+                        <ArrowPathIcon className="w-5 h-5" />
+                        {STRINGS.SCRIPT_GENERATION.startOver}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       <Dialog modal={true} open={isSignInModalShowing} onOpenChange={setShowSignInModal}>
         <DialogContent className="z-50">
           <DialogHeader>
