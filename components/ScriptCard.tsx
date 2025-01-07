@@ -2,8 +2,8 @@
 
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Highlight, themes } from 'prism-react-renderer'
-import { FaGithub } from 'react-icons/fa'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { Prisma } from '@prisma/client'
@@ -174,21 +174,28 @@ export default function ScriptCard({
         <div className="flex justify-between">
           <div className="text-slate-400 text-sm flex items-center gap-2">
             {isSponsor && <StarIcon className="w-4 h-4 text-yellow-400" />}
-            <Link
-              href={`/${script.owner?.username}`}
-              className={`hover:text-amber-300 transition-colors ${isSponsor ? 'text-yellow-400' : ''}`}
-            >
-              {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
-            </Link>
-
-            <Link
-              href={`https://github.com/${script.owner?.username}`}
-              className="hover:opacity-75 transition-opacity"
-            >
-              <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
-                <FaGithub className="w-4 h-4" />
-              </span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/${script.owner?.username}`}
+                className={`hover:text-amber-300 transition-colors ${isSponsor ? 'text-yellow-400' : ''}`}
+              >
+                {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
+              </Link>
+              <Link
+                href={`https://github.com/${script.owner?.username}`}
+                className="hover:opacity-75 transition-opacity"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src={`https://github.com/${script.owner?.username}.png?size=256`}
+                  alt={`${script.owner?.username}'s avatar`}
+                  width={24}
+                  height={24}
+                  className="rounded-full"
+                />
+              </Link>
+            </div>
           </div>
 
           {isOwner && script.locked && (
