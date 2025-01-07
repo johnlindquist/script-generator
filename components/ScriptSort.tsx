@@ -11,7 +11,7 @@ export type SortMode =
   | 'verified'
   | 'createdAt'
 
-const sortOptions = [
+export const sortOptions = [
   { id: 'createdAt', name: 'Date Created' },
   { id: 'alphabetical', name: 'Title' },
   { id: 'username', name: 'Username' },

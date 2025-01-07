@@ -51,9 +51,9 @@ export default function ScriptListMobile({ initialData }: ScriptListMobileProps)
   }
 
   return (
-    <div className="space-y-4">
+    <div className="">
       {/* Script List */}
-      <div className="divide-y divide-zinc-800 rounded-lg border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+      <div className="divide-y divide-border overflow-hidden">
         {initialData.scripts.map(script => (
           <Link
             key={script.id}

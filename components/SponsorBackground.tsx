@@ -24,7 +24,7 @@ export default async function SponsorBackground() {
   return (
     <>
       {/* Sponsor Ribbon */}
-      <div className="absolute left-0 top-0 h-32 w-64 overflow-hidden z-10 hidden xl:block">
+      <div className="absolute left-0 top-0 h-32 w-64 overflow-hidden hidden xl:block">
         <div className="absolute -left-4 top-10 -translate-x-8 -rotate-[30deg]">
           <div className="relative z-10 w-72 bg-amber-300/70 py-1 text-center shadow-lg">
             <Link
@@ -40,10 +40,14 @@ export default async function SponsorBackground() {
       </div>
 
       {/* Background container with gradient */}
-      <div className="absolute inset-0 overflow-hidden hidden md:block" style={{ zIndex: 0 }}>
+      <div
+        className="absolute inset-0 border-y overflow-hidden hidden md:block"
+        // style={{ zIndex: 0 }}
+      >
         {/* Radial gradient overlay for center fade-out effect */}
         <div className="gradient-overlay" />
         <SponsorCircles sponsors={sponsors} />
+        <div className="absolute inset-0 pointer-events-none w-full h-full bg-gradient-to-r from-transparent via-background to-transparent z-50" />
       </div>
     </>
   )

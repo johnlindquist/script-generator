@@ -141,7 +141,7 @@ export default function FavoriteButtonClient({
       <button
         onClick={handleFavorite}
         disabled={isLoading || !isAuthenticated}
-        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 min-w-[3.5rem] justify-center ${
+        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-primary/10 text-amber-300 hover:bg-primary/20 transition-colors disabled:opacity-50 min-w-[3.5rem] justify-center ${
           error ? 'border-red-500 border' : ''
         } ${!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
       >

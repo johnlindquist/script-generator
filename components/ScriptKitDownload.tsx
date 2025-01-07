@@ -1,5 +1,11 @@
+'use client'
+
+import React from 'react'
 import { type ScriptKitRelease, type BetaRelease } from '@/lib/get-scriptkit-releases'
 import cx from 'classnames'
+import { Button } from './ui/button'
+import { cn } from '@/lib/utils'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 
 type Props = {
   macIntelRelease: ScriptKitRelease | null
@@ -21,146 +27,216 @@ export default function ScriptKitDownload({
   betaRelease,
 }: Props) {
   const macReleases = [
-    { ...macIntelRelease, label: 'Intel' },
-    { ...macSiliconRelease, label: 'Apple Silicon' },
-  ]
+    macIntelRelease && { ...macIntelRelease, label: 'Intel' },
+    macSiliconRelease && { ...macSiliconRelease, label: 'Apple Silicon' },
+  ].filter(Boolean) as (ScriptKitRelease & { label: string })[]
+  const [systemInfo, setSystemInfo] = React.useState({
+    isOnMacMachine: false,
+    isOnWindowsMachine: false,
+    isOnLinuxMachine: false,
+  })
 
+  React.useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase()
+    setSystemInfo({
+      isOnMacMachine: userAgent.includes('mac'),
+      isOnWindowsMachine: userAgent.includes('win'),
+      isOnLinuxMachine: userAgent.includes('linux'),
+    })
+  }, [])
+  const [isDownloadsDialogOpen, setIsDownloadsDialogOpen] = React.useState(false)
   return (
-    <div className="flex flex-col items-center justify-center gap-5 relative">
-      <h3 className="font-heading tracking-wider sm:text-sm text-xs uppercase text-gray-300">
-        Download Script Kit:
-      </h3>
-      <div className="relative flex md:flex-row flex-col items-center justify-center md:gap-3 gap-5">
-        <div className="relative">
-          <div className="inline-flex items-center gap-5 rounded-xl bg-white text-black pl-4 overflow-hidden">
-            <div className="font-medium flex items-center gap-1 h-full">
-              <AppleIcon /> MacOS
-            </div>
-            <div className="flex items-center border-l border-gray-100">
-              {macReleases.map((release, i) => {
-                if (!release) return null
-                return (
-                  <div key={release.label} className="relative group flex">
-                    <a
-                      className={cx(
-                        'font-medium tracking-tight flex items-center p-4 bg-gray-50 hover:bg-gray-200/70 transition',
-                        {
-                          'border-r border-gray-100': i === 0,
-                        }
-                      )}
-                      href={release?.browser_download_url}
-                      title={release.name}
+    <div className="w-full flex z-10 border-y flex-col sm:py-24 py-10 items-center justify-center gap-5 max-w-2xl bg-background/0 relative">
+      <h2 className="lg:text-4xl sm:text-3xl text-2xl font-semibold mb-5 text-center">
+        Download Script Kit
+      </h2>
+      <div className="flex sm:flex-row flex-col items-center gap-8">
+        <MacReleases
+          className={cx({ hidden: !systemInfo.isOnMacMachine })}
+          macReleases={macReleases}
+        />
+        <WindowsReleases
+          className={cx({ hidden: !systemInfo.isOnWindowsMachine })}
+          windowsx64Release={windowsx64Release}
+          windowsarm64Release={windowsarm64Release}
+        />
+        <LinuxReleases
+          className={cx({ hidden: !systemInfo.isOnLinuxMachine })}
+          linuxx64Release={linuxx64Release}
+          linuxarm64Release={linuxarm64Release}
+        />
+        {betaRelease?.html_url && (
+          <DownloadButton variant="outline" icon={<BeakerIcon />} href={betaRelease?.html_url}>
+            Beta
+          </DownloadButton>
+        )}
+      </div>
+      {true && (
+        <p className="text-sm mt-5 text-gray-500">
+          {windowsx64Release || windowsarm64Release ? 'Windows' : ''}
+          {(windowsx64Release || windowsarm64Release) && (linuxx64Release || linuxarm64Release)
+            ? ' and '
+            : ''}
+          {linuxx64Release || linuxarm64Release ? 'Linux' : ''} versions available{' '}
+          <Button
+            type="button"
+            size="icon"
+            variant="link"
+            className="text-white"
+            onClick={() => {
+              setIsDownloadsDialogOpen(true)
+            }}
+          >
+            here
+          </Button>
+        </p>
+      )}
+      {/* <div className="absolute inset-0 pointer-events-none w-full h-full bg-gradient-to-r from-transparent via-background to-transparent z-10" /> */}
+      <Dialog modal={true} open={isDownloadsDialogOpen} onOpenChange={setIsDownloadsDialogOpen}>
+        <DialogContent className="z-50">
+          <DialogHeader>
+            <DialogTitle>Download Script Kit</DialogTitle>
+            <DialogDescription asChild>
+              <div className="flex flex-col divide-y divide-border py-5 text-white items-start">
+                <MacReleases className="py-4 w-full" macReleases={macReleases} />
+                <WindowsReleases
+                  className="py-4 w-full"
+                  windowsx64Release={windowsx64Release}
+                  windowsarm64Release={windowsarm64Release}
+                />
+                <LinuxReleases
+                  className="py-4 w-full"
+                  linuxx64Release={linuxx64Release}
+                  linuxarm64Release={linuxarm64Release}
+                />
+                {betaRelease?.html_url && (
+                  <div className="py-4 w-full">
+                    <DownloadButton
+                      variant="outline"
+                      icon={<BeakerIcon />}
+                      href={betaRelease?.html_url}
                     >
-                      <DownloadIcon className="flex-shrink-0 text-gray-400/80" />
-                      <span className="pl-1">{release.label}</span>
-                    </a>
+                      Beta
+                    </DownloadButton>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-gray-300 via-gray-200 to-gray-300 bg-gradient-to-r -z-10" />
-        </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
-        <div className="relative">
-          <div className="inline-flex items-center gap-5 rounded-xl overflow-hidden bg-gray-900 text-white pl-4">
-            <div className="font-medium flex items-center gap-1">
-              <WindowsIcon /> Windows
-            </div>
-            <div className="flex items-center bg-gray-800">
-              {windowsx64Release && (
-                <div className="relative group flex">
-                  <a
-                    className="font-normal tracking-tight flex items-center p-4 hover:bg-gray-700/50 transition"
-                    href={windowsx64Release.browser_download_url}
-                    title={windowsx64Release.name}
-                  >
-                    <DownloadIcon className="flex-shrink-0 text-gray-500" />
-                    <span className="pl-1">x64</span>
-                  </a>
-                </div>
-              )}
-              {windowsarm64Release && (
-                <div className="relative group flex">
-                  <a
-                    className="font-normal tracking-tight flex items-center p-4 hover:bg-gray-700/50 transition"
-                    href={windowsarm64Release.browser_download_url}
-                    title={windowsarm64Release.name}
-                  >
-                    <DownloadIcon className="flex-shrink-0 text-gray-500" />
-                    <span className="pl-1">arm64</span>
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-gray-800 via-gray-900 to-gray-900 bg-gradient-to-r -z-10" />
-        </div>
+const MacReleases = ({
+  macReleases,
+  className,
+}: {
+  macReleases: (ScriptKitRelease & { name?: string; label: string })[]
+  className?: string
+}) => {
+  return (
+    <div className={cn('flex sm:items-center sm:gap-2 gap-4 sm:flex-row flex-col', className)}>
+      <div className="flex justify-center sm:justify-start items-center gap-2 mr-3">
+        <AppleIcon /> MacOS
       </div>
+      {macReleases.map(release => {
+        if (!release?.browser_download_url) return null
+        return (
+          <DownloadButton
+            key={release.label}
+            icon={<AppleIcon />}
+            href={release?.browser_download_url}
+          >
+            {release.label}
+          </DownloadButton>
+        )
+      })}
+    </div>
+  )
+}
 
-      <div className="relative">
-        <div className="inline-flex items-center gap-5 rounded-xl overflow-hidden bg-gray-900 text-white pl-4">
-          <div className="font-medium flex items-center gap-1">
-            <LinuxIcon /> Linux (Community)
-          </div>
-          <div className="flex items-center bg-gray-800">
-            {linuxx64Release && (
-              <div className="relative group flex">
-                <a
-                  className="font-normal tracking-tight flex items-center p-4 hover:bg-gray-700/50 transition"
-                  href={linuxx64Release.browser_download_url}
-                  title={`Linux is community supported from contributors like you! (${linuxx64Release.name})`}
-                >
-                  <DownloadIcon className="flex-shrink-0 text-gray-500" />
-                  <span className="pl-1">x64</span>
-                </a>
-              </div>
-            )}
-            {linuxarm64Release && (
-              <div className="relative group flex">
-                <a
-                  className="font-normal tracking-tight flex items-center p-4 hover:bg-gray-700/50 transition"
-                  href={linuxarm64Release.browser_download_url}
-                  title={`Linux is community supported from contributors like you! (${linuxarm64Release.name})`}
-                >
-                  <DownloadIcon className="flex-shrink-0 text-gray-500" />
-                  <span className="pl-1">arm64</span>
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-gray-800 via-gray-900 to-gray-900 bg-gradient-to-r -z-10" />
+const WindowsReleases = ({
+  windowsx64Release,
+  windowsarm64Release,
+  className,
+}: {
+  windowsx64Release: ScriptKitRelease | null
+  windowsarm64Release: ScriptKitRelease | null
+  className?: string
+}) => {
+  return (
+    <div className={cn('flex sm:items-center sm:gap-2 gap-4 sm:flex-row flex-col', className)}>
+      <div className="flex justify-center sm:justify-start items-center gap-2 mr-3">
+        <WindowsIcon /> Windows
       </div>
-
-      {betaRelease && (
-        <div className="relative">
-          <div className="inline-flex items-center gap-5 rounded-xl overflow-hidden bg-violet-900 text-white pl-4">
-            <div className="font-medium flex items-center gap-1">
-              <BeakerIcon /> Beta
-            </div>
-            <div className="flex items-center bg-violet-800">
-              <div className="relative group flex">
-                <a
-                  className="font-normal tracking-tight flex items-center p-4 hover:bg-violet-700/50 transition"
-                  href={betaRelease.html_url}
-                  title={`Try the latest beta release: ${betaRelease.tag_name}`}
-                >
-                  <DownloadIcon className="flex-shrink-0 text-violet-400" />
-                  <span className="pl-1">{betaRelease.tag_name}</span>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full translate-y-1.5 h-full rounded-xl from-violet-800 via-violet-900 to-violet-900 bg-gradient-to-r -z-10" />
-        </div>
+      {windowsx64Release?.browser_download_url && (
+        <DownloadButton icon={<WindowsIcon />} href={windowsx64Release?.browser_download_url}>
+          x64
+        </DownloadButton>
+      )}
+      {windowsarm64Release?.browser_download_url && (
+        <DownloadButton icon={<WindowsIcon />} href={windowsarm64Release?.browser_download_url}>
+          arm64
+        </DownloadButton>
       )}
     </div>
   )
 }
 
+const LinuxReleases = ({
+  linuxx64Release,
+  linuxarm64Release,
+  className,
+}: {
+  linuxx64Release: ScriptKitRelease | null
+  linuxarm64Release: ScriptKitRelease | null
+  className?: string
+}) => {
+  return (
+    <div className={cn('flex sm:items-center sm:gap-2 gap-4 sm:flex-row flex-col', className)}>
+      <div className="flex justify-center sm:justify-start items-center gap-2 mr-3">
+        <LinuxIcon /> Linux
+      </div>
+      {linuxx64Release?.browser_download_url && (
+        <DownloadButton icon={<LinuxIcon />} href={linuxx64Release?.browser_download_url}>
+          x64
+        </DownloadButton>
+      )}
+
+      {linuxarm64Release?.browser_download_url && (
+        <DownloadButton icon={<LinuxIcon />} href={linuxarm64Release?.browser_download_url}>
+          arm64
+        </DownloadButton>
+      )}
+    </div>
+  )
+}
+
+const DownloadButton = ({
+  icon,
+  href,
+  children,
+  variant = 'default',
+}: {
+  icon: React.ReactNode
+  href: string
+  children: React.ReactNode
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | null
+}) => {
+  return (
+    <Button asChild variant={variant}>
+      <a href={href}>
+        {icon}
+        <span className="pl-1">{children}</span>
+      </a>
+    </Button>
+  )
+}
+
 const AppleIcon = () => (
-  <svg className="w-4 pb-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <svg className="w-5 pb-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
     <title>apple</title>
     <g fill="currentColor">
       <path
@@ -173,7 +249,7 @@ const AppleIcon = () => (
 )
 
 const WindowsIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 text-gray-200" viewBox="0 0 32 32">
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-3" viewBox="0 0 32 32">
     <title>microsoft</title>
     <g fill="currentColor">
       <rect x="1" y="1" fill="currentColor" width="14" height="14" />
@@ -237,29 +313,12 @@ const LinuxIcon = () => (
   </svg>
 )
 
-const DownloadIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    aria-hidden="true"
-    className={className}
-    width="16"
-  >
-    <path
-      className="-translate-y-0.5 group-hover:translate-y-0 transition"
-      d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"
-    />
-    <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
-  </svg>
-)
-
 const BeakerIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="currentColor"
-    className="w-5 h-5 text-violet-200"
+    className="w-5 h-5"
   >
     <path
       fillRule="evenodd"

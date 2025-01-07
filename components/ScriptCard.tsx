@@ -16,6 +16,7 @@ import InstallButtonClient from './InstallButtonClient'
 import DeleteButtonClient from './DeleteButtonClient'
 import EditButtonClient from './EditButtonClient'
 import ForkButtonClient from './ForkButtonClient'
+import { FaGithub } from 'react-icons/fa'
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
   include: {
@@ -47,7 +48,7 @@ interface ScriptCardProps {
   searchQuery?: string
 }
 
-const TRUNCATE_LINES = 12
+const TRUNCATE_LINES = 20
 const CONTEXT_LINES_BEFORE = 2
 
 interface TruncationInfo {
@@ -106,7 +107,7 @@ interface LineIndicatorProps {
 function LineIndicator({ count, position }: LineIndicatorProps) {
   return (
     <div
-      className={`-mx-4 ${position === 'above' ? '-mt-4 mb-3' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-sm border-${position === 'above' ? 'b' : 't'} border-amber-400/20 hover:bg-amber-400/20 transition-colors text-center`}
+      className={`-mx-4 ${position === 'above' ? '' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-xs border-${position === 'above' ? 'b' : 't'} border-amber-400/20 hover:bg-amber-400/20 transition-colors text-center`}
     >
       {count} {position === 'above' ? '' : ''}
       {count === 1 ? 'line' : 'lines'} {position} • View full script
@@ -126,7 +127,9 @@ function highlightText(text: string, searchQuery: string | undefined): React.Rea
   return (
     <>
       {text.slice(0, index)}
-      <span className="bg-amber-300/25">{text.slice(index, index + searchQuery.length)}</span>
+      <span className="bg-amber-300/10 border border-amber-300/40">
+        {text.slice(index, index + searchQuery.length)}
+      </span>
       {text.slice(index + searchQuery.length)}
     </>
   )
@@ -141,7 +144,6 @@ export default function ScriptCard({
   searchQuery,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
-  const isSponsor = !!script.owner?.sponsorship
   const {
     content: relevantContent,
     linesBefore,
@@ -149,8 +151,8 @@ export default function ScriptCard({
   } = getRelevantLines(script.content, searchQuery, truncate)
 
   return (
-    <div
-      className={`w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90 ${
+    <article
+      className={`w-full border rounded sm:p-5 group p-3 shadow-2xl flex flex-col break-inside transition-colors bg-card ${
         truncate ? 'h-auto sm:h-[500px]' : 'h-full'
       }`}
       data-script-id={script.id}
@@ -162,40 +164,39 @@ export default function ScriptCard({
       })}
     >
       <div className="mb-4 flex-shrink-0">
-        <Link
-          href={`/${script.owner?.username}/${script.id}`}
-          className="block hover:opacity-75 transition-opacity"
-        >
-          <h2 className="text-xl font-semibold mb-2 text-amber-300 flex items-center gap-2">
-            {highlightText(script.title, searchQuery)}
-          </h2>
-        </Link>
-
         <div className="flex justify-between">
-          <div className="text-slate-400 text-sm flex items-center gap-2">
-            {isSponsor && <StarIcon className="w-4 h-4 text-yellow-400" />}
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/${script.owner?.username}`}
-                className={`hover:text-amber-300 transition-colors ${isSponsor ? 'text-yellow-400' : ''}`}
-              >
-                {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
-              </Link>
-              <Link
-                href={`https://github.com/${script.owner?.username}`}
-                className="hover:opacity-75 transition-opacity"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src={`https://github.com/${script.owner?.username}.png?size=256`}
-                  alt={`${script.owner?.username}'s avatar`}
-                  width={24}
-                  height={24}
-                  className="rounded-full"
-                />
-              </Link>
-            </div>
+          <Link
+            href={`/${script.owner?.username}/${script.id}`}
+            className="block hover:opacity-75 transition-opacity flex justify-between items-center"
+          >
+            <h3 className="text-xl font-semibold mb-2">
+              {highlightText(script.title, searchQuery)}
+            </h3>
+          </Link>
+          <Link href={`/${script.owner?.username}`} className="hover:underline transition-colors">
+            <Image
+              src={`https://avatars.githubusercontent.com/${script.owner?.username}?size=32`}
+              alt={`${script.owner?.username}'s avatar`}
+              width={32}
+              height={32}
+              className="rounded-full ml-2 hover:opacity-75 transition-opacity min-w-8"
+            />
+          </Link>
+        </div>
+        <div className="flex">
+          <div className="text-muted-foreground text-sm flex items-center gap-2">
+            {script.owner?.sponsorship && <StarIcon className="w-4 h-4 mr-1 text-amber-300" />}
+            <Link href={`/${script.owner?.username}`} className="hover:underline transition-colors">
+              {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
+            </Link>
+            <Link
+              href={`https://github.com/${script.owner?.username}`}
+              className="transition-opacity"
+            >
+              <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
+                <FaGithub className="w-4 h-4" />
+              </span>
+            </Link>
           </div>
 
           {isOwner && script.locked && (
@@ -206,54 +207,59 @@ export default function ScriptCard({
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col saturate-75 group-hover:saturate-100 overflow-hidden opacity-75 group-hover:opacity-100 transition ease-in-out">
         <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
-          <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
-            <Highlight theme={themes.nightOwl} code={relevantContent} language="typescript">
+          <div className="bg-background rounded h-full border transition-colors">
+            <Highlight
+              theme={themes.gruvboxMaterialDark}
+              code={relevantContent}
+              language="typescript"
+            >
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
                 <div className="relative flex flex-col h-full">
                   <pre
-                    className={`${className} p-4 flex-1 ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                    className={`${className} px-4 text-xs h-full flex flex-col ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
                     style={{
                       ...style,
                       margin: 0,
                       background: 'transparent',
+                      minHeight: '100%',
                     }}
                   >
                     {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
-                    {tokens.map((line, i) => {
-                      const lineContent = line.map(token => token.content).join('')
-                      const shouldHighlight =
-                        searchQuery && lineContent.toLowerCase().includes(searchQuery.toLowerCase())
+                    <div className="flex-1 min-h-0 overflow-y-hidden">
+                      {tokens.map((line, i) => {
+                        const lineContent = line.map(token => token.content).join('')
+                        const shouldHighlight =
+                          searchQuery &&
+                          lineContent.toLowerCase().includes(searchQuery.toLowerCase())
 
-                      return (
-                        <div
-                          key={i}
-                          {...getLineProps({ line })}
-                          className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/25 w-fit' : ''}`}
-                        >
-                          {line.map((token, key) => (
-                            <span key={key} {...getTokenProps({ token })} />
-                          ))}
-                        </div>
-                      )
-                    })}
+                        return (
+                          <div
+                            key={i}
+                            {...getLineProps({ line })}
+                            className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
+                          >
+                            {line.map((token, key) => (
+                              <span key={key} {...getTokenProps({ token })} />
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {linesAfter > 0 && (
+                      <div className="flex-shrink-0">
+                        <LineIndicator count={linesAfter} position="below" />
+                      </div>
+                    )}
                   </pre>
-                  {linesAfter > 0 && (
-                    <pre
-                      className={`${className} px-4`}
-                      style={{ background: 'transparent', margin: 0 }}
-                    >
-                      <LineIndicator count={linesAfter} position="below" />
-                    </pre>
-                  )}
                 </div>
               )}
             </Highlight>
           </div>
         </Link>
       </div>
-      <div className="flex flex-wrap justify-between items-start gap-y-4 mt-6 pt-5 border-t border-neutral-700 flex-shrink-0">
+      <div className="flex flex-wrap justify-between items-start gap-y-4 pt-5 flex-shrink-0">
         <div className="flex gap-2 min-w-fit">
           <CopyButtonClient content={script.content} />
 
@@ -298,6 +304,6 @@ export default function ScriptCard({
           />
         </div>
       </div>
-    </div>
+    </article>
   )
 }

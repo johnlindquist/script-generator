@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import ScriptCard from './ScriptCard'
 import { StarIcon, ArrowDownTrayIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
+import { Skeleton } from './ui/skeleton'
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
   include: {
@@ -26,6 +27,49 @@ type ScriptWithRelations = Prisma.ScriptGetPayload<{
   isVerified?: boolean
   isFavorited?: boolean
 }
+
+export const LoadingListView = () => (
+  <div className="flex gap-6 h-[600px] max-w-full">
+    {/* Scrollable List Panel - Fixed width */}
+    <div className="w-[360px] flex-shrink-0 overflow-y-auto rounded-lg border border-zinc-800">
+      <div className="divide-y divide-zinc-800">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="p-4 space-y-3">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <div className="flex gap-4 mt-3">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Script Card Panel - Fill remaining width */}
+    <div className="flex-1 min-w-0 h-full">
+      <div className="h-full rounded-lg border border-zinc-800 bg-zinc-900/30 p-6">
+        <div className="h-full flex flex-col gap-4">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-6 w-1/3" />
+          <Skeleton className="flex-1" />
+          <div className="flex justify-between">
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)
 
 export default function ScriptListAll() {
   const { data: session } = useSession()
@@ -76,11 +120,7 @@ export default function ScriptListAll() {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-amber-400" />
-      </div>
-    )
+    return <LoadingListView />
   }
 
   if (error) {
@@ -100,7 +140,7 @@ export default function ScriptListAll() {
             >
               {/* Selection indicator - absolute positioned to avoid layout shifts */}
               {selectedScript?.id === script.id && (
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber-400" />
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
               )}
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-200 line-clamp-1">{script.title}</h3>

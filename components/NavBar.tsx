@@ -8,6 +8,7 @@ import { FaGithub } from 'react-icons/fa'
 import { STRINGS } from '@/lib/strings'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
+import { Button } from './ui/button'
 
 interface NavBarProps {
   isAuthenticated: boolean
@@ -17,7 +18,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
   const { data: session } = useSession()
 
   return (
-    <nav className="flex justify-between items-center mb-8">
+    <nav className="flex justify-between items-center">
       <Link href="/" className="flex items-center">
         <div className="flex items-center justify-center w-10 h-10 tracking-tighter">
           <Image src="/assets/logo-v2.png" alt="Script Kit Logo" width={40} height={40} />
@@ -29,7 +30,8 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
       </Link>
       <div className="flex gap-4 items-center">
         {process.env.NODE_ENV === 'development' && !isAuthenticated && (
-          <button
+          <Button
+            variant="outline"
             onClick={async () => {
               await signIn('credentials', {
                 callbackUrl: '/',
@@ -37,10 +39,9 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
                 isTest: true,
               })
             }}
-            className="bg-gray-700 text-amber-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
           >
             Test Account
-          </button>
+          </Button>
         )}
         {isAuthenticated ? (
           <>
@@ -135,13 +136,10 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
             </Menu>
           </>
         ) : (
-          <button
-            onClick={() => signIn('github', { callbackUrl: '/' })}
-            className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition flex items-center gap-2"
-          >
+          <Button variant="secondary" onClick={() => signIn('github', { callbackUrl: '/' })}>
             <FaGithub className="w-5 h-5" />
             {STRINGS.NAVBAR.signInToGenerate}
-          </button>
+          </Button>
         )}
       </div>
     </nav>

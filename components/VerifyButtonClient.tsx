@@ -152,7 +152,7 @@ export default function VerifyButtonClient({
       <button
         onClick={handleVerify}
         disabled={isLoading || !isAuthenticated || isOwner}
-        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors disabled:opacity-50 ${
+        className={`inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-primary/10 text-amber-300 hover:bg-primary/20 transition-colors disabled:opacity-50 ${
           error ? 'border-red-500 border' : ''
         } ${!isAuthenticated || isOwner ? 'opacity-50 cursor-not-allowed' : ''}${isVerified ? 'bg-green-400/25' : ''}`}
       >
