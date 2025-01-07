@@ -115,7 +115,7 @@ export const STRINGS = {
     promptPlaceholderLimitReached: 'Daily generation limit reached. Try again tomorrow!',
 
     // Character count
-    characterCount: '{count}/10,000 characters (minimum 15)',
+    characterCount: '{count}/10,000 characters',
     generationUsage: '{count} / {limit} generations used today',
 
     // Error messages

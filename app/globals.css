@@ -1,6 +1,6 @@
 /* Import fonts */
-@import "@fontsource/inter/index.css";
-@import "@fontsource/lexend/index.css";
+@import '@fontsource/inter/index.css';
+@import '@fontsource/lexend/index.css';
 
 @tailwind base;
 @tailwind components;
@@ -10,22 +10,15 @@
   color-scheme: dark;
 }
 
-html {
-  background: var(--background);
-}
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  min-height: 100vh;
-}
-
-/* Override any potential background colors */
-.dark {
-  background-color: var(--background);
-}
-
-.dark body {
-  background-color: var(--background);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
 }
 
 /* Star icon styles */
@@ -47,7 +40,9 @@ body {
 .star-icon:hover {
   transform: rotate(0deg) scale(1.5) !important;
   opacity: 1 !important;
-  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.2s ease-out;
 }
 
 /* Sponsor background styles */
@@ -67,11 +62,12 @@ body {
   mix-blend-mode: screen;
   z-index: 2;
   pointer-events: auto;
-  transition: z-index 0s;
+  transition: transform 0.2s ease-out;
 }
 
 .sponsor-circle:hover {
   transform: translate(-50%, -50%) scale(1.8) !important;
+  transition: transform 0.2s ease-out;
   z-index: 5 !important;
 }
 
@@ -92,24 +88,33 @@ body {
 }
 
 /* Text elements should be above background */
-h1, h2, h3, h4, h5, h6, p, span {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span {
   position: relative;
   z-index: 1;
 }
 
 /* Higher z-index for interactive elements */
-button, a, input, select, textarea, [role="button"] {
+button,
+a,
+input,
+select,
+textarea,
+[role='button'] {
   position: relative;
   z-index: 5;
 }
 
-/* Ensure textareas have solid background */
-textarea {
-  background-color: rgb(24, 24, 27); /* matches zinc-900 */
-}
-
 /* Highest z-index for modals/dropdowns */
-[role="dialog"], [role="menu"], [role="listbox"] {
+[role='dialog'],
+[role='menu'],
+[role='listbox'] {
   position: relative;
   z-index: 10;
 }
@@ -191,64 +196,76 @@ textarea {
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
+    --foreground: 32.73 78.57% 5.49%;
+
+    --primary: 32.63 93.13% 54.31%;
+    --primary-foreground: 32.73 78.57% 5.49%;
+
+    --card: 32.73 100% 97.84%;
+    --card-foreground: 32.73 78.57% 5.49%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 220.9 39.3% 11%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
+    --popover-foreground: 32.73 78.57% 5.49%;
+
+    --secondary: 32.73 94.29% 93.14%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 31.43 91.3% 95.49%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 31.43 91.3% 95.49%;
+    --accent-foreground: 31.88 76.19% 8.24%;
+
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 224 71.4% 4.1%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 33.49 91.49% 90.78%;
+    --input: 33.33 29.03% 81.76%;
+    --ring: 32.63 93.13% 54.31%;
+
+    --chart-1: 32.63 93.13% 54.31%;
+    --chart-2: 32.61 92.93% 61.18%;
+    --chart-3: 32.34 93.38% 70.39%;
+    --chart-4: 32.5 93.75% 74.9%;
+    --chart-5: 32.78 92.38% 79.41%;
+
+    --radius: 0.75rem;
   }
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 210 20% 98%;
-    --primary-foreground: 220.9 39.3% 11%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 216 12.2% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
+    --background: 0 0% 3.92%;
+    --foreground: 0 0% 95.69%;
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
+    --primary: 36.67 100% 61.18%;
+    --primary-foreground: 0 0% 5.1%;
+
+    --card: 0 0% 7.45%;
+    --card-foreground: 0 0% 92.94%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 36 100% 94.12%;
+
+    --secondary: 266.1 79.37% 43.73%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 8.63%;
+    --muted-foreground: 0 0% 43.53%;
+
+    --accent: 36.63 100% 59.22%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 12.94%;
+    --input: 0 0% 21.57%;
+    --ring: 36.67 100% 61.18%;
+
+    --chart-1: 36.67 100% 61.18%;
+    --chart-2: 36.57 68.98% 51.96%;
+    --chart-3: 36.74 63.55% 39.8%;
+    --chart-4: 36.88 63.74% 33.53%;
+    --chart-5: 36.4 63.12% 27.65%;
+
+    --radius: 0.75rem;
   }
 }

@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import ScriptCard from './ScriptCard'
 import { StarIcon, ArrowDownTrayIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
+import { Loader2 } from 'lucide-react'
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
   include: {
@@ -74,7 +75,7 @@ export default function ScriptListAll() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-amber-400" />
+        <Loader2 className="h-8 animate-spin w-8 text-muted-foreground" />
       </div>
     )
   }
@@ -96,7 +97,7 @@ export default function ScriptListAll() {
             >
               {/* Selection indicator - absolute positioned to avoid layout shifts */}
               {selectedScript?.id === script.id && (
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber-400" />
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
               )}
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-200 line-clamp-1">{script.title}</h3>

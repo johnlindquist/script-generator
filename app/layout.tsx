@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth'
 import { NextAuthProvider } from '@/components/NextAuthProvider'
 import NavBar from '@/components/NavBar'
 import { authOptions } from './api/auth/[...nextauth]/route'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,18 +21,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${inter.className} text-slate-300`}
-        style={{ background: 'var(--background)' }}
-      >
+      <body className={`${inter.className} text-text bg-background`}>
         <NextAuthProvider session={session}>
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <NavBar isAuthenticated={!!session} />
-          </div>
-          <div className="container mx-auto px-4 sm:px-4">{children}</div>
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
+          <NuqsAdapter>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <NavBar isAuthenticated={!!session} />
+            </div>
+            <main>{children}</main>
+            <Toaster />
+            <Analytics />
+            <SpeedInsights />
+          </NuqsAdapter>
         </NextAuthProvider>
       </body>
     </html>

@@ -20,7 +20,7 @@ export default function ScriptSuggestionsClient({
       <div
         className={`max-w-full flex flex-nowrap gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent ${className}`}
       >
-        {suggestions.map((suggestion, idx) => (
+        {suggestions.slice(0, 3).map((suggestion, idx) => (
           <button
             type="button"
             key={idx}
@@ -30,7 +30,7 @@ export default function ScriptSuggestionsClient({
                 `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures.join(', ')}`
               )
             }}
-            className="text-sm bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full transition-colors duration-200 shrink-0 h-7"
+            className="text-sm bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-colors duration-200 shrink-0 h-7"
           >
             {suggestion.title}
           </button>

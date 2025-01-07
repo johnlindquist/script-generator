@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 import typography from '@tailwindcss/typography'
 import animate from 'tailwindcss-animate'
+import colors from 'tailwindcss/colors'
 
 export default {
   content: [
@@ -8,7 +9,7 @@ export default {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: ['class', 'class'],
+  darkMode: ['class'],
   theme: {
     extend: {
       fontFamily: {
@@ -16,6 +17,7 @@ export default {
         articulat: ['Articulat', 'sans-serif'],
       },
       colors: {
+        gray: colors.neutral,
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         navy: '#070B16',
@@ -62,6 +64,7 @@ export default {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
       borderRadius: {
+        DEFAULT: 'var(--radius)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',

@@ -48,10 +48,13 @@ export default function ScriptCard({
   truncate = false,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
-
+  const descriptionFromFrontmatter = (metadata: string) => {
+    const match = metadata.match(/description: (.*)/)
+    return match ? match[1] : ''
+  }
   return (
-    <div
-      className={`w-full border border-neutral-700 rounded-lg px-4 sm:px-6 py-4 shadow-2xl flex flex-col break-inside hover:border-amber-400/20 transition-colors bg-zinc-900/90 ${
+    <article
+      className={`w-full border rounded sm:p-5 group p-3 shadow-2xl flex flex-col break-inside transition-colors bg-card ${
         truncate ? 'h-auto sm:h-[500px]' : 'h-full'
       }`}
       data-script-id={script.id}
@@ -63,25 +66,19 @@ export default function ScriptCard({
       })}
     >
       <div className="mb-4 flex-shrink-0">
-        <Link
-          href={`/${script.owner?.username}/${script.id}`}
-          className="block hover:opacity-75 transition-opacity"
-        >
-          <h2 className="text-xl font-semibold mb-2 text-amber-300">{script.title}</h2>
+        <Link href={`/${script.owner?.username}/${script.id}`} className="block transition-opacity">
+          <h3 className="text-xl font-semibold mb-2">{script.title}</h3>
         </Link>
 
         <div className="flex justify-between">
-          <div className="text-slate-400 text-sm flex items-center gap-2">
-            <Link
-              href={`/${script.owner?.username}`}
-              className="hover:text-amber-300 transition-colors"
-            >
+          <div className="text-muted-foreground text-sm flex items-center gap-2">
+            <Link href={`/${script.owner?.username}`} className="hover:underline transition-colors">
               {script.owner?.fullName || script.owner?.username}
             </Link>
-
+            <p>{descriptionFromFrontmatter(script.content)}</p>
             <Link
               href={`https://github.com/${script.owner?.username}`}
-              className="hover:opacity-75 transition-opacity"
+              className="transition-opacity"
             >
               <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
                 <FaGithub className="w-4 h-4" />
@@ -97,17 +94,18 @@ export default function ScriptCard({
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col saturate-75 group-hover:saturate-100 overflow-hidden opacity-75 group-hover:opacity-100 transition ease-in-out">
+        {script?.summary}
         <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
-          <div className="bg-neutral-800/50 rounded-lg h-full border border-amber-400/10 hover:border-amber-400/20 transition-colors">
+          <div className="bg-background rounded h-full border transition-colors">
             <Highlight
-              theme={themes.nightOwl}
-              code={truncate ? script.content.slice(0, 500) : script.content}
+              theme={themes.gruvboxMaterialDark}
+              code={truncate ? script.content.slice(0, 700) : script.content}
               language="typescript"
             >
               {({ className, style, tokens, getLineProps, getTokenProps }) => (
                 <pre
-                  className={`${className} p-4 h-full ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                  className={`${className} p-4 h-full text-xs ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
                   style={{
                     ...style,
                     margin: 0,
@@ -127,7 +125,7 @@ export default function ScriptCard({
           </div>
         </Link>
       </div>
-      <div className="flex flex-wrap justify-between items-start gap-y-4 mt-6 pt-5 border-t border-neutral-700 flex-shrink-0">
+      <div className="flex flex-wrap justify-between items-start gap-y-4 pt-5 flex-shrink-0">
         <div className="flex gap-2 min-w-fit">
           <CopyButtonClient content={script.content} />
 
@@ -172,6 +170,6 @@ export default function ScriptCard({
           />
         </div>
       </div>
-    </div>
+    </article>
   )
 }

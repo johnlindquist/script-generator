@@ -93,7 +93,7 @@ export default function ImportScriptsPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 text-black font-medium rounded-lg transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground disabled:opacity-50 font-medium rounded transition-colors"
           >
             {loading ? (
               <>

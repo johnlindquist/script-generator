@@ -21,6 +21,20 @@ import { Tooltip } from '@nextui-org/react'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
 import { generateFinalWithStream } from '@/lib/apiStreamingServices'
+import { Button } from './ui/button'
+import { Textarea } from './ui/textarea'
+import { cn } from '@/lib/utils'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { FaGithub } from 'react-icons/fa'
+import { ArrowUp } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 
 interface EditorRef {
   getModel: () => {
@@ -45,7 +59,7 @@ const AnimatedText = ({ text }: { text: string }) => {
         {[0, 1, 2].map(index => (
           <motion.span
             key={index}
-            className="w-1.5 h-1.5 rounded-full bg-amber-400"
+            className="w-1.5 h-1.5 rounded-full bg-primary"
             animate={{
               scale: [1, 1.3, 1],
               opacity: [0.5, 1, 0.5],
@@ -365,11 +379,24 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
   }, [state.context.editableScript])
 
+  const [isSignInModalShowing, setShowSignInModal] = useState(false)
+
+  const showSignInModal = () => {
+    setShowSignInModal(true)
+  }
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    // if less than 15 characters, throw error
+    if (!state.context.prompt.trim() || state.context.prompt.trim().length < 15) {
+      send({ type: 'SET_ERROR', error: 'Please provide a prompt with at least 15 characters' })
+      return
+    }
+
     if (!isAuthenticated) {
-      signIn()
+      showSignInModal()
+      // signIn()
       return
     }
 
@@ -383,7 +410,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       e.preventDefault()
       if (!state.context.prompt.trim() || state.context.prompt.trim().length < 9) return
       if (!isAuthenticated) {
-        signIn()
+        showSignInModal()
+        // signIn()
         return
       }
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
@@ -416,7 +444,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     console.log('=== handleFeelingLucky called ===')
     if (!isAuthenticated) {
       console.log('User not authenticated, redirecting to sign in')
-      signIn()
+      showSignInModal()
+      // signIn()
       return
     }
 
@@ -473,8 +502,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   }
 
   return (
-    <div className="pb-4">
-      <h2 className="text-2xl font-bold pt-6 mb-6 text-center min-h-[32px]">
+    <div className="px-5 w-full">
+      <h1 className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center text-balance max-w-4xl">
         {isGenerating || isThinking ? (
           <AnimatedText
             text={
@@ -490,31 +519,62 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         ) : (
           heading
         )}
-      </h2>
+      </h1>
+
       {!state.context.generatedScript && !isGenerating && !isThinking && (
         <form
           onSubmit={handleSubmit}
-          className={`max-w-2xl mx-auto ${isAuthenticated ? '' : 'pb-4'}`}
+          className={`mx-auto w-full mt-12 max-w-2xl ${isAuthenticated ? '' : 'pb-4'}`}
         >
-          <textarea
-            ref={textareaRef}
-            value={state.context.prompt}
-            onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              !isAuthenticated
-                ? STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
-                : state.context.usageCount === state.context.usageLimit
+          <div className="relative flex items-center justify-center">
+            <Textarea
+              ref={textareaRef}
+              value={state.context.prompt}
+              onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                state.context.usageCount === state.context.usageLimit
                   ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
                   : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
-            }
-            className="w-full h-32 p-4 bg-black/75 border border-amber-300/50 rounded-lg focus:border-amber-400/40 focus:outline-none resize-none shadow-amber-300/10 shadow-sm"
-            disabled={!isAuthenticated || state.context.usageCount === state.context.usageLimit}
-          />
-
-          <div className="flex justify-between items-center mb-8 px-2 opacity-90">
+                // STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
+              }
+              rows={3}
+              className="min-h-[127px] w-full shadow-2xl sm:p-6 p-5 sm:!text-lg placeholder:text-base sm:placeholder:text-lg placeholder:text-gray-400 bg-card rounded-xl"
+              disabled={state.context.usageCount === state.context.usageLimit}
+            />
+            <div
+              className="absolute z-10 top-0 w-[40%] blur-sm h-px bg-gradient-to-r from-transparent via-primary to-transparent"
+              aria-hidden="true"
+            />
+            <div
+              className="absolute z-10 top-0 w-[90%] opacity-40 h-px bg-gradient-to-r from-transparent via-primary to-transparent"
+              aria-hidden="true"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
+              className="absolute right-3 bottom-3"
+              // className="flex items-center gap-2 bg-primary text-primary-foregorund px-6 py-2 rounded font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
+              ) : (
+                <ArrowUp className="w-5 h-5" />
+              )}
+              {/* <span>Generate</span> */}
+            </Button>
+          </div>
+          <div
+            className={cn('flex items-center pt-2 tabular-nums text-xs px-2', {
+              'justify-between': isAuthenticated,
+              'justify-center': !isAuthenticated,
+            })}
+          >
             <span
-              className={`text-sm ${state.context.prompt.trim().length < 15 ? 'text-amber-400' : 'text-slate-400'}`}
+              className={cn('text-muted-foreground opacity-50', {
+                'opacity-100': state.context.prompt.trim().length < 15,
+              })}
             >
               {STRINGS.SCRIPT_GENERATION.characterCount.replace(
                 '{count}',
@@ -523,83 +583,55 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             </span>
             {isAuthenticated ? (
               <span
-                className={`text-sm ${state.context.usageCount >= state.context.usageLimit ? 'text-red-400' : 'text-slate-400'}`}
+                className={cn('text-xs text-muted-foreground', {
+                  'text-destructive': state.context.usageCount >= state.context.usageLimit,
+                })}
               >
-                {STRINGS.SCRIPT_GENERATION.generationUsage
-                  .replace('{count}', state.context.usageCount.toString())
-                  .replace('{limit}', state.context.usageLimit.toString())}
+                {`${state.context.usageLimit - state.context.usageCount} generations left today`}
               </span>
-            ) : (
-              <span className="text-sm text-slate-400">
-                {STRINGS.SCRIPT_GENERATION.generationUsage
-                  .replace('{count}', '0')
-                  .replace('{limit}', '0')}
-              </span>
-            )}
+            ) : null}
           </div>
-          <div className="flex justify-center mt-4">
-            <Tooltip
-              content={!isAuthenticated ? STRINGS.SCRIPT_GENERATION.tooltipSignInToGenerate : ''}
-            >
-              <button
-                type="submit"
-                disabled={
-                  !isAuthenticated ||
-                  state.matches('generatingDraft') ||
-                  state.matches('generatingFinal')
-                }
-                className="flex items-center gap-2 bg-amber-400 text-black px-6 py-2 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
-                  <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                ) : (
-                  <RocketLaunchIcon className="w-5 h-5" />
-                )}
-                Generate
-              </button>
-            </Tooltip>
-            <Tooltip
-              content={!isAuthenticated ? STRINGS.SCRIPT_GENERATION.tooltipSignInForLucky : ''}
-            >
-              <button
-                type="button"
-                onClick={handleFeelingLucky}
-                disabled={
-                  !isAuthenticated ||
-                  state.matches('generatingDraft') ||
-                  state.matches('generatingFinal')
-                }
-                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
-              >
-                <SparklesIcon className="w-5 h-5" />
-                I'm Feeling Lucky
-              </button>
-            </Tooltip>
-          </div>
+
+          {state.context.error && (
+            <>
+              <Alert variant="destructive" className="mt-4">
+                <AlertTitle>{STRINGS.SCRIPT_GENERATION.errorHeading}</AlertTitle>
+                <AlertDescription>{state.context.error}</AlertDescription>
+              </Alert>
+            </>
+          )}
         </form>
       )}
 
-      {isAuthenticated && !state.context.generatedScript && !isGenerating && !isThinking && (
-        <div className="pt-4">
-          <h3 className="text-lg my-4 text-center">
+      {!state.context.generatedScript && !isGenerating && !isThinking && (
+        <div className="justify-center mt-4 max-w-3xl mx-auto flex items-center gap-2">
+          {/* <h2 className="text-muted-foreground mb-4 mt-8 text-sm text-center">
             {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
-          </h3>
+          </h2> */}
+          <Button
+            variant="outline"
+            type="button"
+            size="sm"
+            className="rounded-full"
+            onClick={handleFeelingLucky}
+            disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
+            // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
+          >
+            <SparklesIcon className="w-5 h-5" />
+            I'm Feeling Lucky
+          </Button>
           <ScriptSuggestions
             setPrompt={prompt => {
+              if (!isAuthenticated) {
+                showSignInModal()
+                return
+              }
               send({ type: 'SET_PROMPT', prompt })
               send({ type: 'FROM_SUGGESTION', value: true })
             }}
             setIsFromSuggestion={() => {}}
-            className="mb-4"
             suggestions={suggestions}
           />
-        </div>
-      )}
-
-      {state.context.error && (
-        <div className="mt-4 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400">
-          <h3 className="font-semibold mb-2">{STRINGS.SCRIPT_GENERATION.errorHeading}</h3>
-          <p className="text-red-400">{state.context.error}</p>
         </div>
       )}
 
@@ -660,6 +692,28 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           </div>
         </div>
       )}
+      <Dialog modal={true} open={isSignInModalShowing} onOpenChange={setShowSignInModal}>
+        <DialogContent className="z-50">
+          <DialogHeader>
+            <DialogTitle>Sign in with GitHub to generate</DialogTitle>
+            <DialogDescription>
+              Sign in to generate scripts and save your work. We use GitHub to authenticate.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => {
+                signIn()
+                setShowSignInModal(false)
+              }}
+            >
+              <FaGithub className="w-4" /> Sign in with GitHub
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

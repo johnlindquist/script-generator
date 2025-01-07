@@ -104,10 +104,7 @@ export default function ScriptListClient({
         fallbackData={initialData}
       />
 
-      <div className="mt-8 flex flex-col items-center gap-2">
-        <div className="text-sm text-muted-foreground">
-          Showing page {page} of {totalPages} • {initialData.scripts.length} items per page
-        </div>
+      <div className="my-8 flex flex-col items-center gap-8">
         <Pagination>
           <PaginationContent>
             <PaginationItem>
@@ -129,6 +126,9 @@ export default function ScriptListClient({
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+        <div className="text-sm text-muted-foreground">
+          Showing page {page} of {totalPages} • {initialData.scripts.length} items per page
+        </div>
       </div>
     </div>
   )
