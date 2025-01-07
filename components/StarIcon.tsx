@@ -1,4 +1,6 @@
 import Image from 'next/image'
+import { useInView } from 'react-intersection-observer'
+import { motion } from 'framer-motion'
 import { Tooltip } from '@nextui-org/react'
 
 interface StarIconProps {
@@ -22,29 +24,41 @@ export default function StarIcon({
   isLoaded = false,
   delay = 0,
 }: StarIconProps) {
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  })
+
   const displayName = fullName || username || login
 
   return (
-    <Tooltip
-      content={<span className="text-xs">Thank you {displayName}!</span>}
-      delay={0}
-      closeDelay={0}
-      classNames={{
-        content: ['bg-black/90'],
+    <div
+      ref={ref}
+      className="group relative opacity-transition"
+      style={{
+        opacity: isLoaded && inView ? opacity : 0,
+        transitionDelay: `${delay}ms`,
       }}
     >
-      <div
-        className="opacity-transition"
-        style={{
-          transform: `rotate(${rotation}deg)`,
-          opacity: isLoaded ? opacity : 0,
-          transitionDelay: `${delay}ms`,
+      <Tooltip
+        content={<span className="text-xs">Thank you {displayName}!</span>}
+        delay={300}
+        closeDelay={0}
+        classNames={{
+          content: ['bg-black/90'],
         }}
       >
-        <div className="relative w-7 h-7">
-          {/* Star background with masked avatar */}
+        <motion.div
+          className="relative w-7 h-7"
+          initial={{ rotate: rotation }}
+          whileHover={{
+            rotate: 0,
+            scale: 1.25,
+            opacity: 1,
+          }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
           <div className="absolute inset-0 flex items-center justify-center">
-            {/* Masked avatar */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div>
                 <Image
@@ -59,8 +73,8 @@ export default function StarIcon({
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </Tooltip>
+        </motion.div>
+      </Tooltip>
+    </div>
   )
 }

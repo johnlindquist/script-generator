@@ -50,7 +50,7 @@ export default async function SponsorBackground() {
       {/* Background container with gradient */}
       <div
         className="absolute inset-0 border-y overflow-hidden hidden md:block"
-        // style={{ zIndex: 0 }}
+        style={{ zIndex: 0 }}
       >
         {/* Radial gradient overlay for center fade-out effect */}
         <div className="gradient-overlay" />
