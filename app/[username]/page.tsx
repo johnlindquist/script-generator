@@ -36,7 +36,11 @@ export default async function UserScriptsPage({ params, searchParams }: RouteCon
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      owner: true,
+      owner: {
+        include: {
+          sponsorship: true,
+        },
+      },
       _count: {
         select: {
           verifications: true,

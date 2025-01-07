@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
   const limit = Number(searchParams.get('limit') ?? PAGE_SIZE)
-  const sort = searchParams.get('sort') || 'alphabetical'
+  const sort = searchParams.get('sort') || 'createdAt'
 
   // Add search functionality
   const searchTerm = searchParams.get('query')?.trim() || ''
@@ -171,6 +171,7 @@ export async function GET(request: NextRequest) {
             username: true,
             id: true,
             fullName: true,
+            sponsorship: true,
           },
         },
         _count: {

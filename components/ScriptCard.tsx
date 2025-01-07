@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Highlight, themes } from 'prism-react-renderer'
 import { FaGithub } from 'react-icons/fa'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
+import { StarIcon } from '@heroicons/react/24/solid'
 import { Prisma } from '@prisma/client'
 import { ScriptsResponse } from '@/types/script'
 
@@ -18,7 +19,11 @@ import ForkButtonClient from './ForkButtonClient'
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
   include: {
-    owner: true
+    owner: {
+      include: {
+        sponsorship: true
+      }
+    }
     _count: {
       select: {
         verifications: true
@@ -136,6 +141,7 @@ export default function ScriptCard({
   searchQuery,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
+  const isSponsor = !!script.owner?.sponsorship
   const {
     content: relevantContent,
     linesBefore,
@@ -160,16 +166,17 @@ export default function ScriptCard({
           href={`/${script.owner?.username}/${script.id}`}
           className="block hover:opacity-75 transition-opacity"
         >
-          <h2 className="text-xl font-semibold mb-2 text-amber-300">
+          <h2 className="text-xl font-semibold mb-2 text-amber-300 flex items-center gap-2">
             {highlightText(script.title, searchQuery)}
           </h2>
         </Link>
 
         <div className="flex justify-between">
           <div className="text-slate-400 text-sm flex items-center gap-2">
+            {isSponsor && <StarIcon className="w-4 h-4 text-yellow-400" />}
             <Link
               href={`/${script.owner?.username}`}
-              className="hover:text-amber-300 transition-colors"
+              className={`hover:text-amber-300 transition-colors ${isSponsor ? 'text-yellow-400' : ''}`}
             >
               {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
             </Link>

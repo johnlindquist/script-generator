@@ -45,7 +45,7 @@ export default function EditScriptClient({ initialContent, username, scriptId }:
     <div className="flex flex-col gap-4">
       <div className="border border-amber-400/10 rounded bg-neutral-900/90">
         <Editor
-          height="60vh"
+          height="80vh"
           defaultLanguage="typescript"
           value={content}
           onChange={val => setContent(val || '')}

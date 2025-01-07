@@ -69,7 +69,13 @@ export default function ScriptGridWithSuspense({
       {visibleScripts.map((script: ScriptLite) => (
         <ScriptCard
           key={script.id}
-          script={script}
+          script={{
+            ...script,
+            owner: {
+              ...script.owner,
+              sponsorship: script.owner?.sponsorship,
+            },
+          }}
           isAuthenticated={isAuthenticated}
           currentUserId={currentUserId}
           onDeleted={() => handleScriptDeleted(script.id)}

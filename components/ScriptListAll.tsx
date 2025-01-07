@@ -9,7 +9,11 @@ import { StarIcon, ArrowDownTrayIcon, CheckBadgeIcon } from '@heroicons/react/24
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
   include: {
-    owner: true
+    owner: {
+      include: {
+        sponsorship: true
+      }
+    }
     _count: {
       select: {
         verifications: true

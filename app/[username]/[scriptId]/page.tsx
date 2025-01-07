@@ -13,6 +13,9 @@ export default async function ScriptPage({
   const session = await getServerSession(authOptions)
   const user = await prisma.user.findUnique({
     where: { username },
+    include: {
+      sponsorship: true,
+    },
   })
 
   if (!user) {
@@ -48,6 +51,10 @@ export default async function ScriptPage({
             ...script,
             isVerified: false,
             isFavorited: false,
+            owner: {
+              ...script.owner,
+              sponsorship: user.sponsorship,
+            },
           }}
           isAuthenticated={!!session}
           currentUserId={session?.user?.id}
