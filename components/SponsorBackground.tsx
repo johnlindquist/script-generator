@@ -4,17 +4,25 @@ import { SponsorCircles } from './SponsorCircles'
 import { Sponsor } from '@/types/sponsor'
 
 async function getSponsors(): Promise<Sponsor[]> {
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  const host = process.env.VERCEL_URL || 'localhost:3000'
-  const res = await fetch(`${protocol}://${host}/api/get-all-sponsors`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
-  if (!res.ok) {
+  try {
+    const url =
+      process.env.NODE_ENV === 'development'
+        ? `http://localhost:${process.env.PORT || 3000}/api/get-all-sponsors`
+        : `/api/get-all-sponsors`
+
+    const res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!res.ok) {
+      return []
+    }
+    return res.json()
+  } catch (error) {
+    console.error('Error fetching sponsors:', error)
     return []
   }
-  return res.json()
 }
 
 // Server component
