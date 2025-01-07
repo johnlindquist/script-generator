@@ -5,7 +5,7 @@
   "packageManager": "pnpm@8.15.1",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "pnpm check && pnpm fetch-sponsors && pnpm build",
+    "build": "pnpm check && pnpm fetch-sponsors && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
