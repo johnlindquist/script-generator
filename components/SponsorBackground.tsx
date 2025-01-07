@@ -38,9 +38,9 @@ export default async function SponsorBackground() {
   return (
     <>
       {/* Sponsor Ribbon */}
-      <div className="absolute left-0 top-0 h-32 w-64 overflow-hidden hidden xl:block">
+      <div className="absolute left-0 top-0 h-32 w-72 overflow-hidden hidden xl:block pointer-events-none">
         <div className="absolute -left-4 top-10 -translate-x-8 -rotate-[30deg]">
-          <div className="relative z-10 w-72 bg-amber-300/70 py-1 text-center shadow-lg">
+          <div className="relative z-[200] w-72 bg-primary/90 hover:bg-primary/100 py-1 text-center shadow-sm shadow-primary/80 hover:shadow-md hover:shadow-primary/80 pointer-events-auto">
             <Link
               href="https://github.com/sponsors/johnlindquist/sponsorships?sponsor=johnlindquist&tier_id=235205"
               className="inline-flex items-center justify-center gap-1 text-sm font-bold text-black/90"
@@ -56,7 +56,7 @@ export default async function SponsorBackground() {
       {/* Background container with gradient */}
       <div
         className="absolute inset-0 border-y overflow-hidden hidden md:block"
-        style={{ zIndex: 0 }}
+        style={{ zIndex: -1 }}
       >
         {/* Radial gradient overlay for center fade-out effect */}
         <div className="gradient-overlay" />
