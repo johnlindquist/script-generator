@@ -433,8 +433,19 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   const [isSignInModalShowing, setShowSignInModal] = useState(false)
 
   const showSignInModal = () => {
+    // Save the current prompt to localStorage before showing sign in modal
+    localStorage.setItem('pendingPrompt', state.context.prompt)
     setShowSignInModal(true)
   }
+
+  // Check for pending prompt on mount
+  useEffect(() => {
+    const pendingPrompt = localStorage.getItem('pendingPrompt')
+    if (pendingPrompt && isAuthenticated) {
+      send({ type: 'SET_PROMPT', prompt: pendingPrompt })
+      localStorage.removeItem('pendingPrompt')
+    }
+  }, [isAuthenticated, send])
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
