@@ -4,7 +4,7 @@ import { signOut, useSession, signIn } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
-import { FaGithub } from 'react-icons/fa'
+import { FaGithub, FaDiscord } from 'react-icons/fa'
 import { STRINGS } from '@/lib/strings'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
@@ -29,6 +29,16 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         </div>
       </Link>
       <div className="flex gap-4 items-center">
+        <Link href={STRINGS.SOCIAL.DISCORD_URL} target="_blank" rel="noopener noreferrer">
+          <FaDiscord className="w-5 h-5 hover:text-amber-400 transition-colors" />
+        </Link>
+        <Link
+          href={STRINGS.SOCIAL.GITHUB_DISCUSSIONS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <FaGithub className="w-5 h-5 hover:text-amber-400 transition-colors" />
+        </Link>
         {process.env.NODE_ENV === 'development' && !isAuthenticated && (
           <Button
             variant="outline"
