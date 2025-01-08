@@ -154,7 +154,8 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         ) : (
           <Button variant="secondary" onClick={() => signIn('github', { callbackUrl: '/' })}>
             <FaGithub className="w-5 h-5" />
-            {STRINGS.NAVBAR.signInToGenerate}
+            <span className="hidden sm:inline">{STRINGS.NAVBAR.signInToGenerate}</span>
+            <span className="sm:hidden">Sign in</span>
           </Button>
         )}
       </div>
