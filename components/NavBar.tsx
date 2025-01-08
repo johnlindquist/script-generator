@@ -25,7 +25,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         </div>
         <div className="pl-2">
           <div className="text-lg font-semibold leading-none">Script Kit</div>
-          <div className="text-sm opacity-80 leading-none">by John Lindquist</div>
+          <div className="text-sm opacity-80 leading-none hidden sm:block">by John Lindquist</div>
         </div>
       </Link>
       <div className="flex gap-4 items-center">
