@@ -20,8 +20,14 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
   return (
     <nav className="flex justify-between items-center">
       <Link href="/" className="flex items-center">
-        <div className="flex items-center justify-center w-10 h-10 tracking-tighter">
-          <Image src="/assets/logo-v2.png" alt="Script Kit Logo" width={40} height={40} />
+        <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 tracking-tighter">
+          <Image
+            src="/assets/logo-v2.png"
+            alt="Script Kit Logo"
+            width={32}
+            height={32}
+            className="sm:w-10 sm:h-10"
+          />
         </div>
         <div className="pl-2">
           <div className="text-lg font-semibold leading-none">Script Kit</div>
