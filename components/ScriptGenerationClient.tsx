@@ -563,6 +563,41 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
   }
 
+  useEffect(() => {
+    const scriptToRevise = localStorage.getItem('scriptToRevise')
+    const originalPrompt = localStorage.getItem('originalPrompt')
+
+    if (scriptToRevise && originalPrompt && !state.context.prompt) {
+      const enhancePrompt = `Revise this script with the following instructions:
+
+Original prompt that generated this script:
+${originalPrompt}
+
+The script to revise:
+\`\`\`typescript
+${scriptToRevise}
+\`\`\`
+
+Instructions:
+1. Make the code more efficient and performant
+2. Improve readability and maintainability
+3. Add better error handling where needed
+4. Ensure type safety and remove any potential type issues
+5. Keep the core functionality exactly the same
+6. Add helpful comments for complex logic`
+
+      send({ type: 'SET_PROMPT', prompt: enhancePrompt })
+
+      // Clean up localStorage
+      localStorage.removeItem('scriptToRevise')
+      localStorage.removeItem('originalPrompt')
+
+      // Trigger generation
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      send({ type: 'GENERATE_DRAFT', timestamp })
+    }
+  }, [state.context.prompt, send])
+
   return (
     <div className="px-5 w-full">
       <h1 className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center text-balance max-w-4xl">
@@ -762,6 +797,62 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
                       >
                         <ArrowPathIcon className="w-5 h-5" />
                         {STRINGS.SCRIPT_GENERATION.startOver}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const scriptToRevise =
+                            state.context.editableScript || state.context.generatedScript
+                          if (!scriptToRevise) {
+                            toast.error('No script to enhance')
+                            return
+                          }
+
+                          // Store what we need before reset
+                          const currentScript = scriptToRevise
+                          const currentPrompt = state.context.prompt
+
+                          // First reset the state
+                          send({ type: 'RESET' })
+
+                          // After a small delay to ensure reset is complete
+                          setTimeout(() => {
+                            const enhancePrompt = `Revise this script with the following instructions:
+
+Original prompt that generated this script:
+${currentPrompt}
+
+The script to revise:
+\`\`\`typescript
+${currentScript}
+\`\`\`
+
+Instructions:
+1. Make the code more efficient and performant
+2. Improve readability and maintainability
+3. Add better error handling where needed
+4. Ensure type safety and remove any potential type issues
+5. Keep the core functionality exactly the same
+6. Add helpful comments for complex logic
+
+Your revision instructions: `
+
+                            send({ type: 'SET_PROMPT', prompt: enhancePrompt })
+
+                            // Scroll textarea to bottom after setting prompt
+                            if (textareaRef.current) {
+                              requestAnimationFrame(() => {
+                                if (textareaRef.current) {
+                                  textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+                                  textareaRef.current.focus()
+                                }
+                              })
+                            }
+                          }, 0)
+                        }}
+                        className="bg-gradient-to-tr from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                      >
+                        <SparklesIcon className="w-5 h-5" />
+                        Enhance with AI
                       </button>
                     </>
                   )}
