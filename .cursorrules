@@ -1,12 +1,240 @@
-## TypeScript
-
-- Avoid "any" type or my build will fail
-- Always remove unused imports, parameters, variables, etc, or my build will fail
-
-## Icons
-
-- never generate svg, always use a library like heroicons or other popular icon libraries
-
-## build
-
-- Assume the project is already running with "pnpm dev"
+{
+  "rules": {
+    "typescript_best_practices": {
+      "description": "Guidelines for writing clean and maintainable TypeScript code in React and Next.js projects.",
+      "enabled": true,
+      "rules": [
+        {
+          "description": "Favor functional components over class components.",
+          "rationale": "Functional components with hooks are more concise, easier to test, and promote composition."
+        },
+        {
+          "description": "Prefer interfaces over types for defining object shapes.",
+          "rationale": "Interfaces are more flexible and allow for declaration merging, which is useful in larger applications."
+        },
+        {
+          "description": "Avoid using enums, prefer map-like objects or string literals.",
+          "rationale": "Maps are more flexible and allow for dynamic keys. String literals provide stronger typesafety and are tree-shakable."
+        },
+         {
+          "description": "Utilize TypeScript’s type system for strong type checking.",
+          "rationale": "Explicit typing catches type-related errors at compile time."
+         },
+         {
+           "description": "Use descriptive variable names using auxiliary verbs (e.g., isLoading, hasError).",
+            "rationale": "Clarity of intent improves maintainability."
+        },
+        {
+            "description": "Keep functions well-named and testable",
+            "rationale": "Functions should be focused, small, and with testable logic. Using verbs helps with intention"
+         },
+         {
+           "description": "Use explicit typing for all function parameters and return types.",
+            "rationale": "Ensures type safety and reduces run-time errors."
+         }
+      ]
+    },
+    "react_best_practices": {
+      "description": "Guidelines for building efficient and performant React applications with Next.js.",
+      "enabled": true,
+      "rules": [
+        {
+          "description": "Use server components by default and only use client components when necessary.",
+          "rationale": "RSCs are more performant and allows for less code on the client which reduces javascript download size"
+        },
+         {
+            "description": "Use layout.js for shared layouts",
+            "rationale": "This allows reuseable and persistent layouts."
+        },
+        {
+            "description": "Implement loading.js for loading states",
+           "rationale": "loading.tsx provides a loading state for the page and its children"
+        },
+        {
+            "description": "Implement error.js for error handling",
+           "rationale": "error.tsx allows for error handling and gracefully rendering a fallback to avoid breaking your app"
+        },
+        {
+          "description": "Minimize the use of 'use client' in Next.js applications, where possible use server components.",
+          "rationale": "RSCs are more performant and allows for less code on the client which reduces javascript download size"
+        },
+        {
+          "description": "Use Suspense to wrap client components and handle loading states.",
+          "rationale": "Suspense allows better UX using fallbacks, and it gives the user immediate feedback"
+        },
+        {
+          "description": "Use dynamic loading for non-critical components to optimize load times.",
+           "rationale": "By loading components only when needed, we can reduce initial bundle sizes for better performanc."
+         },
+        {
+          "description": "Optimize images with next/image, including WebP format, size data, and lazy loading.",
+          "rationale": "Next/image improves page load performance for end users. Using webp reduces image sizes"
+        },
+        {
+          "description": "Utilize server-side rendering (SSR) to render pages on the server for SEO benefits and better initial load times, while still using React Server Components.",
+          "rationale": "By using SSR we give users a quick loading page with the html already built on the server."
+        },
+         {
+          "description": "Reduce 'useEffect' complexity by extracting side effects to small, testable functions.",
+           "rationale": "Clear `useEffect`s improve the maintainability and testability of components."
+        },
+         {
+             "description": "Favor component composition and reusability over deep inheritance chains, in order to better follow the Single Responsibility Principle",
+            "rationale": "Composing components is easier and makes more sense than relying on deep inheritance chains for component building blocks."
+        },
+          {
+            "description": "Use the App Router for routing and layouts",
+              "rationale": "The app router in Nextjs 13 and later is the modern approach to routing"
+         }
+      ]
+    },
+        "naming_conventions": {
+      "description": "Guidelines for maintaining consistent naming conventions across the codebase.",
+      "enabled": true,
+      "rules": [
+        {
+          "description": "Use lowercase with dashes for directories and files (e.g., auth-wizard).",
+           "rationale": "Lowercase with dashes is generally accepted and easy to read."
+        },
+           {
+          "description": "Use camelCase for function and variable names.",
+            "rationale": "CamelCase is a familiar convention for many developers and is very readable."
+         },
+          {
+          "description": "Use PascalCase for class names (if classes are used) and component names.",
+           "rationale": "PascalCase is a familiar convention for many developers and is very readable."
+         },
+           {
+          "description": "Favor named exports for components, functions, and utilities.",
+           "rationale": "Named exports improve code organization and make code more explicit."
+        }
+      ]
+     },
+    "styling_and_ui": {
+      "description": "Guidelines for UI and styling using Tailwind CSS and UI libraries.",
+      "enabled": true,
+      "rules": [
+         {
+           "description": "Use Shadcn UI and Radix UI for components and styling.",
+            "rationale": "Shadcn UI is optimized for accessibility, performance and ease of use."
+        },
+        {
+            "description": "Use Tailwind CSS utility classes for all styling, following a mobile-first approach.",
+            "rationale": "A utility first methodology is fast, flexible, and scalable."
+        },
+          {
+              "description": "Use CSS variables and custom properties to set colors and spacing.",
+              "rationale": "Custom properties allow customization based on the needs of the project."
+          },
+          {
+             "description": "Implement responsive design using Tailwind CSS's responsive modifiers.",
+             "rationale": "Responsive design provides the best UX for mobile and desktop users."
+        }
+      ]
+    },
+        "error_handling_and_validation": {
+            "description": "Guidelines for implementing proper error handling and input validation.",
+           "enabled": true,
+            "rules": [
+                {
+                    "description":"Utilize early returns and guard clauses at the start of functions to handle errors before operations.",
+                    "rationale": "Early returns greatly reduce nesting and improve readability, while guard clauses ensure the right values are being passed."
+                },
+                {
+                    "description": "Model expected errors as return values rather than using try/catch.",
+                    "rationale": "Modelling errors is a functional paradigm that improves the composability of your functions, and also makes it easier to reason about your code by making the return paths explicit."
+                },
+                {
+                  "description":"For unexpected errors, use error boundaries for robust error handling and fallback UIs",
+                  "rationale":"Error boundaries helps provide a better user experience if a error happens and allows a graceful fallback to other sections of the application."
+                },
+               {
+                   "description": "Implement proper error logging with descriptive user-friendly messages.",
+                    "rationale": "Descriptive error logs allow easy identification of errors while making the app easier to use for end users."
+               },
+               {
+                "description":"Use Zod for schema validation to ensure that runtime validation of inputs is up to date with our types and interfaces.",
+                "rationale":"Zod provides a robust type system and allows to reuse these schemas through out the application"
+              }
+           ]
+        },
+    "performance_optimization": {
+      "description": "Guidelines for optimizing application performance.",
+      "enabled": true,
+      "rules": [
+        {
+          "description": "Minimize client-side state management by leveraging server components where possible.",
+          "rationale": "Server components reduce Javascript bundle size, and therefore improve performace."
+        },
+        {
+          "description":"Minimize use of 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC) for performance",
+          "rationale": "use client, useEffect and setState are all primarily client-side and hinder application performance."
+        },
+        {
+          "description": "Optimize images with WebP format, include size data, implement lazy loading and use `next/image` for image loading optimization",
+            "rationale": "Image optimization reduces the size and loading time of an app."
+         },
+         {
+          "description": "Use dynamic loading for non-critical components to reduce initial load times.",
+           "rationale":"Dynamic loading allows for the reduction of the first paint of the page and the code used for it."
+         },
+          {
+           "description": "Implement lazy loading for components and modules for better performance.",
+            "rationale":"Loading modules on demand reduces the load time of a web page or app."
+        }
+      ]
+    },
+    "xstate_best_practices": {
+      "description": "Guidelines and best practices for working with XState v5.",
+      "enabled": true,
+      "rules":[
+           {
+                    "description": "Use `createMachine` for defining state machines.",
+                    "rationale": "createMachine allows for type-safe implementation of xstate machines"
+                },
+        {
+         "description": "Use Parameterized Actions and Guards.",
+          "rationale": "Parameterized Actions and Guards improve reusability and type-safety."
+        },
+        {
+          "description":"Utilize `setup` for defining types, actions, guards, and services for modular setup of state machines.",
+          "rationale":"setup allows for better type inference and separation of state-machine definition."
+        },
+         {
+          "description": "Prefer `spawn` or `spawnChild` over activities for complex, long-running side effects.",
+            "rationale": "Invoked actors enhance readability and improve performance."
+        },
+         {
+          "description": "Use explicit typing for all events, context, and actor output.",
+            "rationale":"Explicit typing makes the flow of your program explicit and easy to understand"
+        },
+         {
+          "description":"Use the `fromPromise` to handle asynchronous operations.",
+          "rationale":"fromPromise provides a native way to integrate with asynchronous data."
+         }
+       ]
+    },
+  "code_output": {
+      "description": "Guidelines for outputting code.",
+      "enabled": true,
+      "rules":[
+        {
+            "description":"When providing code, always output the entire file content, not just new or modified parts.",
+              "rationale":"This ensures all necessary code needed for the file is present and makes it easier to keep context"
+           },
+           {
+                "description":"Include all necessary imports, declarations, and surrounding code to ensure the file is complete and functional.",
+               "rationale":"This will ensure that the file is correct and ready for use"
+            },
+            {
+                "description":"Provide comments or explanations for significant changes or additions within the file.",
+               "rationale":"Comments will provide better understanding and help improve the readability of the code. "
+            },
+             {
+                "description":"If the file is too large to reasonably include in full, provide the most relevant complete section and clearly indicate where it fits in the larger file structure.",
+                "rationale":"Large files become difficult to reason about. Providing context to a section will help understand the role of that section in the project."
+            }
+      ]
+    }
+  }
+}
