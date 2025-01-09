@@ -98,9 +98,13 @@ declare module 'next-auth' {
 const TEST_USER = {
   id: 'test-user-id',
   username: 'test',
-  name: 'Test User',
-  email: 'test@example.com',
-  image: 'https://avatars.githubusercontent.com/u/99999999?v=4',
+  fullName: 'Test User',
+}
+
+const TEST_SPONSOR_USER = {
+  id: '9167667c-e44a-4681-8514-c6588f791ecf',
+  username: 'testSponsor',
+  fullName: 'Test Sponsor',
 }
 
 export const authOptions: AuthOptions = {
@@ -119,8 +123,8 @@ export const authOptions: AuthOptions = {
           githubId: profile.id.toString(),
           username: profile.login,
           fullName: profile.name || null,
-          email: profile.email,
-          image: profile.avatar_url,
+          // Derive image URL from username
+          image: `https://avatars.githubusercontent.com/${profile.login}?size=56`,
         }
       },
     }),
@@ -130,56 +134,122 @@ export const authOptions: AuthOptions = {
       credentials: {
         username: { type: 'text' },
         isTest: { type: 'boolean' },
+        isSponsor: { type: 'boolean' },
       },
       async authorize(credentials) {
+        console.log('authorize: starting with credentials:', credentials)
         if (process.env.NODE_ENV !== 'development' || !credentials?.isTest) {
           return null
         }
 
+        // Use username to determine which test user to create/update
+        const testUser = credentials.username === 'testSponsor' ? TEST_SPONSOR_USER : TEST_USER
+        console.log('authorize: using test user:', testUser)
+
         // Create or update test user in DB
-        const existingUser = await prisma.user.findUnique({
-          where: { username: TEST_USER.username },
-        })
-
-        if (existingUser) {
-          const user = await prisma.user.update({
-            where: { username: TEST_USER.username },
-            data: {
-              id: TEST_USER.id,
-              fullName: TEST_USER.name,
-            },
-          })
-          return {
-            id: user.id,
-            username: user.username,
-            fullName: user.fullName,
-            email: TEST_USER.email,
-            image: TEST_USER.image,
-            githubId: TEST_USER.id,
-          }
-        }
-
-        const user = await prisma.user.create({
-          data: {
-            id: TEST_USER.id,
-            username: TEST_USER.username,
-            fullName: TEST_USER.name,
+        console.log('authorize: attempting upsert with:', {
+          where: { username: testUser.username },
+          update: {},
+          create: {
+            id: testUser.id,
+            username: testUser.username,
+            fullName: testUser.fullName,
           },
         })
+        const user = await prisma.user.upsert({
+          where: { username: testUser.username },
+          update: {},
+          create: {
+            id: testUser.id,
+            username: testUser.username,
+            fullName: testUser.fullName,
+          },
+        })
+        console.log('authorize: created/updated user:', user)
 
-        return {
+        // Return the user object with derived image URL
+        const result = {
           id: user.id,
           username: user.username,
           fullName: user.fullName,
-          email: TEST_USER.email,
-          image: TEST_USER.image,
-          githubId: TEST_USER.id,
+          image: `https://avatars.githubusercontent.com/${user.username}?size=56`,
         }
+        console.log('authorize: returning:', result)
+        return result
       },
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile, credentials }) {
+      console.log('signIn: starting with:', { user, credentials })
+      // Handle test users in development
+      if (process.env.NODE_ENV === 'development' && credentials?.isTest) {
+        const isTestSponsor = credentials?.isSponsor?.toString() === 'true'
+        // Use the user object from authorize callback since it's already correct
+        const testUser = {
+          id: user.id,
+          username: user.username,
+          fullName: user.fullName,
+        }
+        const sponsorLogin = `test_sponsor_${testUser.username}`
+        console.log('signIn: test user setup:', { isTestSponsor, testUser, sponsorLogin })
+
+        if (isTestSponsor) {
+          // Check existing state
+          const existingUser = await prisma.user.findUnique({
+            where: { username: testUser.username },
+            include: { sponsorship: true },
+          })
+          console.log('signIn: existing user before sponsor upsert:', existingUser)
+
+          try {
+            // Use a transaction for sponsor operations
+            await prisma.$transaction(async tx => {
+              // Delete any existing sponsor relationship
+              if (existingUser?.sponsorship) {
+                console.log('signIn: deleting existing sponsor:', existingUser.sponsorship)
+                await tx.githubSponsor.delete({
+                  where: { id: existingUser.sponsorship.id },
+                })
+              }
+
+              // Create new sponsor relationship
+              console.log('signIn: creating new sponsor relationship:', {
+                login: sponsorLogin,
+                nodeId: `TEST_SPONSOR_NODE_${testUser.id}`,
+                databaseId: Math.floor(Math.random() * 999999),
+                user: { connect: { username: testUser.username } },
+              })
+              const sponsor = await tx.githubSponsor.create({
+                data: {
+                  login: sponsorLogin,
+                  nodeId: `TEST_SPONSOR_NODE_${testUser.id}`,
+                  databaseId: Math.floor(Math.random() * 999999),
+                  user: {
+                    connect: { username: testUser.username },
+                  },
+                },
+              })
+              console.log('signIn: created sponsor:', sponsor)
+              return sponsor
+            })
+
+            // Verify the sponsor was created
+            const verifiedSponsor = await prisma.githubSponsor.findUnique({
+              where: { login: sponsorLogin },
+              include: { user: true },
+            })
+            console.log('signIn: verified sponsor creation:', verifiedSponsor)
+          } catch (error) {
+            console.error('Failed to create/update sponsor:', error)
+            throw error // Let NextAuth handle the error
+          }
+        }
+
+        return true
+      }
+
+      // Handle normal GitHub sign in
       if (account?.provider === 'github' && profile) {
         try {
           // Check if the current user is a sponsor
@@ -217,25 +287,36 @@ export const authOptions: AuthOptions = {
       return true
     },
     async jwt({ token, user }) {
+      console.log('jwt: starting with:', { token, user })
       if (user) {
         token.id = user.id
         token.username = user.username
       }
+      console.log('jwt: returning token:', token)
       return token
     },
     async session({ session, token }) {
+      console.log('session: starting with:', { session, token })
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.username = token.username as string
 
-        // Add sponsor check using login (username) as the unique identifier
+        // Check for sponsor status in the database
+        const sponsorLogin =
+          process.env.NODE_ENV === 'development' && session.user.username === 'testSponsor'
+            ? `test_sponsor_${session.user.username}`
+            : session.user.username
+        console.log('session: checking sponsor with login:', sponsorLogin)
+
         const sponsor = await prisma.githubSponsor.findUnique({
           where: {
-            login: session.user.username,
+            login: sponsorLogin,
           },
         })
+        console.log('session: found sponsor:', sponsor)
         session.user.isSponsor = !!sponsor
       }
+      console.log('session: returning session:', session)
       return session
     },
   },

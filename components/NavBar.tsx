@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
 import { FaGithub, FaDiscord } from 'react-icons/fa'
+import { StarIcon } from '@heroicons/react/24/solid'
 import { STRINGS } from '@/lib/strings'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
@@ -46,31 +47,52 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           <FaGithub className="w-5 h-5 hover:text-amber-400 transition-colors" />
         </Link>
         {process.env.NODE_ENV === 'development' && !isAuthenticated && (
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await signIn('credentials', {
-                callbackUrl: '/',
-                username: 'test',
-                isTest: true,
-              })
-            }}
-          >
-            Test Account
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await signIn('credentials', {
+                  callbackUrl: '/',
+                  username: 'test',
+                  isTest: true,
+                  isSponsor: false,
+                })
+              }}
+            >
+              Test Normal
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await signIn('credentials', {
+                  callbackUrl: '/',
+                  username: 'testSponsor',
+                  isTest: true,
+                  isSponsor: true,
+                })
+              }}
+            >
+              Test Sponsor
+            </Button>
+          </>
         )}
         {isAuthenticated ? (
           <>
             <Menu as="div" className="relative inline-block text-left">
-              <Menu.Button className="focus:outline-none">
+              <Menu.Button className="focus:outline-none relative">
                 {session?.user?.image && (
-                  <Image
-                    src={session.user.image}
-                    alt={STRINGS.NAVBAR.userAvatarAlt}
-                    width={32}
-                    height={32}
-                    className="rounded-full cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all"
-                  />
+                  <>
+                    <Image
+                      src={session.user.image}
+                      alt={STRINGS.NAVBAR.userAvatarAlt}
+                      width={32}
+                      height={32}
+                      className="rounded-full cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all"
+                    />
+                    {session.user.isSponsor && (
+                      <StarIcon className="w-3 h-3 text-amber-300 absolute -top-0.5 -right-0.5" />
+                    )}
+                  </>
                 )}
               </Menu.Button>
               <Transition
