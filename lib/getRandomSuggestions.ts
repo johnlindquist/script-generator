@@ -82,11 +82,29 @@ const suggestions: Suggestion[] = [
   },
 ]
 
+export const devSuggestions: Suggestion[] = [
+  {
+    title: 'Hello World',
+    description: 'Write a hello world script with "await arg()" and a random name',
+    keyFeatures: ['One-liner', 'Random name', 'ScriptKit Dev'],
+  },
+]
+
 export function getRandomSuggestions(count: number = 7): Suggestion[] {
+  // Get random suggestions from the main list
   const shuffled = [...suggestions]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  return shuffled.slice(0, count)
+
+  // Check if we're in development environment
+  const isDev = process.env.NODE_ENV === 'development'
+
+  // Calculate how many random suggestions we need
+  const randomCount = isDev ? Math.max(0, count - devSuggestions.length) : count
+  const randomSuggestions = shuffled.slice(0, randomCount)
+
+  // Only include dev suggestions in development environment
+  return isDev ? [...devSuggestions, ...randomSuggestions] : randomSuggestions
 }
