@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
+import { logInteraction } from '@/lib/interaction-logger'
 import {
   DocumentCheckIcon,
   ArrowPathIcon,
@@ -122,8 +123,40 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       isFromLucky: false,
       luckyRequestId: null,
       lastRefinementRequestId: null,
+      isTransitioningToFinal: false,
     },
   })
+
+  // Add refs to track generation state
+  const finalGenerationStartedRef = useRef(false)
+  const isStreamingRef = useRef(false)
+
+  // Reset the ref when leaving generatingFinal state
+  useEffect(() => {
+    if (state.context.interactionTimestamp) {
+      logInteraction(state.context.interactionTimestamp, 'client', 'State matches changed', {
+        isGeneratingFinal: state.matches('generatingFinal'),
+        wasGeneratingStarted: finalGenerationStartedRef.current,
+        timestamp: new Date().toISOString(),
+      }).catch(console.error)
+    }
+
+    if (!state.matches('generatingFinal')) {
+      if (state.context.interactionTimestamp) {
+        logInteraction(
+          state.context.interactionTimestamp,
+          'client',
+          'Resetting final generation ref',
+          {
+            previousValue: finalGenerationStartedRef.current,
+            newState: state.value,
+            timestamp: new Date().toISOString(),
+          }
+        ).catch(console.error)
+      }
+      finalGenerationStartedRef.current = false
+    }
+  }, [state.matches, state.context.interactionTimestamp])
 
   // Add state transition observer
   useEffect(() => {
@@ -305,39 +338,118 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Effect for final generation streaming
   useEffect(() => {
     let isMounted = true
-    let isStreaming = false
+
+    // Log what triggered this effect
+    if (state.context.interactionTimestamp) {
+      logInteraction(
+        state.context.interactionTimestamp,
+        'client',
+        'Final generation useEffect triggered',
+        {
+          stateValue: state.value,
+          scriptId: state.context.scriptId,
+          isStreaming: isStreamingRef.current,
+          hasStarted: finalGenerationStartedRef.current,
+          matches: {
+            generatingFinal: state.matches('generatingFinal'),
+            complete: state.matches('complete'),
+            idle: state.matches('idle'),
+          },
+          timestamp: new Date().toISOString(),
+        }
+      ).catch(console.error)
+    }
 
     const startStreaming = async () => {
-      if (!state.matches('generatingFinal') || !state.context.scriptId) {
+      // Log the guard check
+      if (state.context.interactionTimestamp) {
+        logInteraction(
+          state.context.interactionTimestamp,
+          'client',
+          'Checking final generation guards',
+          {
+            isGeneratingFinal: state.matches('generatingFinal'),
+            hasScriptId: Boolean(state.context.scriptId),
+            hasStarted: finalGenerationStartedRef.current,
+            isStreaming: isStreamingRef.current,
+            timestamp: new Date().toISOString(),
+          }
+        ).catch(console.error)
+      }
+
+      // Only proceed if we're in the generatingFinal state and have a scriptId
+      if (
+        !state.matches('generatingFinal') ||
+        !state.context.scriptId ||
+        finalGenerationStartedRef.current
+      ) {
+        if (state.context.interactionTimestamp) {
+          logInteraction(
+            state.context.interactionTimestamp,
+            'client',
+            'Guards prevented final generation',
+            {
+              reason: !state.matches('generatingFinal')
+                ? 'not in generatingFinal'
+                : !state.context.scriptId
+                  ? 'no scriptId'
+                  : 'already started',
+              isStreaming: isStreamingRef.current,
+              timestamp: new Date().toISOString(),
+            }
+          ).catch(console.error)
+        }
         return
       }
 
-      if (isStreaming) {
-        console.log('Already streaming final, skipping...')
+      if (isStreamingRef.current) {
+        if (state.context.interactionTimestamp) {
+          logInteraction(
+            state.context.interactionTimestamp,
+            'client',
+            'Skipped streaming because already in progress',
+            {
+              scriptId: state.context.scriptId,
+              timestamp: new Date().toISOString(),
+            }
+          ).catch(console.error)
+        }
         return
       }
 
-      console.log('Final useEffect TRIGGERED!')
-      console.log('Current state:', {
-        isThinkingDraft: state.matches('thinkingDraft'),
-        isGeneratingFinal: state.matches('generatingFinal'),
-        prompt: state.context.prompt,
-        requestId: state.context.requestId,
-        scriptId: state.context.scriptId,
-        editableScript: state.context.editableScript,
-      })
+      if (state.context.interactionTimestamp) {
+        logInteraction(state.context.interactionTimestamp, 'client', 'Starting final generation', {
+          scriptId: state.context.scriptId,
+          hasStarted: finalGenerationStartedRef.current,
+          isStreaming: isStreamingRef.current,
+          timestamp: new Date().toISOString(),
+        }).catch(console.error)
+      }
 
-      console.log('===========================')
+      finalGenerationStartedRef.current = true
+      isStreamingRef.current = true
 
       try {
-        isStreaming = true
-
         // Clear the editor before starting final generation
         const editor = editorRef.current
         const model = editor?.getModel()
         if (model) {
           model.setValue('')
           setStreamedText('')
+        }
+
+        if (state.context.interactionTimestamp) {
+          logInteraction(
+            state.context.interactionTimestamp,
+            'client',
+            'Calling generateFinalWithStream',
+            {
+              scriptId: state.context.scriptId,
+              requestId: state.context.requestId,
+              isStreaming: isStreamingRef.current,
+              timestamp: new Date().toISOString(),
+            }
+          ).catch(console.error)
         }
 
         await generateFinalWithStream(
@@ -352,40 +464,89 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           {
             onStartStreaming: () => {
               if (!isMounted) return
-              console.log('Started streaming final')
+              if (state.context.interactionTimestamp) {
+                logInteraction(
+                  state.context.interactionTimestamp,
+                  'client',
+                  'Final stream started',
+                  {
+                    scriptId: state.context.scriptId,
+                    isStreaming: isStreamingRef.current,
+                    timestamp: new Date().toISOString(),
+                  }
+                ).catch(console.error)
+              }
             },
             onChunk: (text: string) => {
               if (!isMounted) return
-              console.log('onChunk callback invoked for final with length:', text.length)
               handleStreamedText(text)
             },
             onError: (error: { message: string }) => {
               if (!isMounted) return
-              console.log('onError callback invoked for final:', error)
+              if (state.context.interactionTimestamp) {
+                logInteraction(state.context.interactionTimestamp, 'client', 'Final stream error', {
+                  error: error.message,
+                  scriptId: state.context.scriptId,
+                  isStreaming: isStreamingRef.current,
+                  timestamp: new Date().toISOString(),
+                }).catch(console.error)
+              }
               send({ type: 'SET_ERROR', error: error.message })
             },
           }
         )
 
         if (isMounted) {
-          console.log('>> Completed generateFinalWithStream call successfully <<')
+          if (state.context.interactionTimestamp) {
+            logInteraction(state.context.interactionTimestamp, 'client', 'Final stream completed', {
+              scriptId: state.context.scriptId,
+              isStreaming: isStreamingRef.current,
+              timestamp: new Date().toISOString(),
+            }).catch(console.error)
+          }
+          // Transition to complete state
+          send({ type: 'START_STREAMING_FINAL' })
         }
       } catch (error) {
         if (!isMounted) return
-        console.log('generateFinalWithStream threw an exception:', error)
+        if (state.context.interactionTimestamp) {
+          logInteraction(
+            state.context.interactionTimestamp,
+            'client',
+            'Final generation threw error',
+            {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              scriptId: state.context.scriptId,
+              isStreaming: isStreamingRef.current,
+              timestamp: new Date().toISOString(),
+            }
+          ).catch(console.error)
+        }
       } finally {
-        isStreaming = false
+        isStreamingRef.current = false
       }
     }
 
     startStreaming()
 
     return () => {
-      console.log('Cleaning up final streaming effect')
+      if (state.context.interactionTimestamp) {
+        logInteraction(
+          state.context.interactionTimestamp,
+          'client',
+          'Final generation useEffect cleanup',
+          {
+            scriptId: state.context.scriptId,
+            isStreaming: isStreamingRef.current,
+            hasStarted: finalGenerationStartedRef.current,
+            timestamp: new Date().toISOString(),
+          }
+        ).catch(console.error)
+      }
       isMounted = false
-      isStreaming = false
+      // Don't reset isStreamingRef here, let it persist across cleanups
     }
-  }, [state.matches, state.context.scriptId, handleStreamedText, send])
+  }, [state.value, state.context.scriptId])
 
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {

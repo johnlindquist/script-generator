@@ -16,6 +16,7 @@ type Context = {
   isFromLucky: boolean
   luckyRequestId: string | null
   lastRefinementRequestId: string | null
+  isTransitioningToFinal: boolean
 }
 
 // Mock fetch globally
@@ -99,6 +100,7 @@ describe('ScriptGenerationMachine', () => {
         isFromLucky: false,
         luckyRequestId: null,
         lastRefinementRequestId: null,
+        isTransitioningToFinal: false,
       },
     }).start()
 
@@ -200,6 +202,7 @@ describe('ScriptGenerationMachine', () => {
         isFromLucky: false,
         luckyRequestId: null,
         lastRefinementRequestId: null,
+        isTransitioningToFinal: false,
       })
     })
   })

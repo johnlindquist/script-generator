@@ -20,6 +20,7 @@ import { ScriptGenerationEvent } from '@/types/scriptGeneration'
  * @property {boolean} isFromLucky - Whether this is triggered from the "lucky" feature
  * @property {string|null} luckyRequestId - Unique ID for a lucky request, if relevant
  * @property {string|null} lastRefinementRequestId - Request ID used in the refine step
+ * @property {boolean} isTransitioningToFinal - Indicates whether the generation is transitioning to final
  */
 interface ScriptGenerationContext {
   prompt: string
@@ -35,6 +36,7 @@ interface ScriptGenerationContext {
   isFromLucky: boolean
   luckyRequestId: string | null
   lastRefinementRequestId: string | null
+  isTransitioningToFinal: boolean
 }
 
 /**
@@ -193,6 +195,7 @@ export const scriptGenerationMachine = setup({
     isFromLucky: false,
     luckyRequestId: null,
     lastRefinementRequestId: null,
+    isTransitioningToFinal: false,
   },
   states: {
     /**
@@ -210,6 +213,7 @@ export const scriptGenerationMachine = setup({
           isFromLucky: false,
           luckyRequestId: null,
           lastRefinementRequestId: null,
+          isTransitioningToFinal: false,
         }),
         ({ context }) => {
           if (context.interactionTimestamp) {
@@ -341,12 +345,15 @@ export const scriptGenerationMachine = setup({
               error: null,
               scriptId: (event as { output: GenerateInitialResponse }).output.scriptId,
               lastRefinementRequestId: crypto.randomUUID(),
+              isTransitioningToFinal: true,
             })),
             createLogAction('Draft generation complete', context => ({
               scriptId: context.scriptId,
               requestId: context.requestId,
             })),
           ],
+          guard: ({ context }: { context: ScriptGenerationContext }) =>
+            !context.isTransitioningToFinal,
         },
         onError: {
           target: 'idle',
@@ -399,12 +406,10 @@ export const scriptGenerationMachine = setup({
           if (context.interactionTimestamp) {
             logStateTransition('generatingFinal', context.interactionTimestamp, {
               scriptId: context.scriptId,
+              message: 'Starting final script generation',
             }).catch(console.error)
           }
         },
-        createLogAction('Starting final script generation', context => ({
-          scriptId: context.scriptId,
-        })),
       ],
       invoke: {
         id: 'generateFinalScript',
@@ -447,6 +452,10 @@ export const scriptGenerationMachine = setup({
         },
       },
       on: {
+        START_STREAMING_FINAL: {
+          guard: ({ context }: { context: ScriptGenerationContext }) =>
+            !context.isTransitioningToFinal,
+        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
@@ -481,13 +490,18 @@ export const scriptGenerationMachine = setup({
      * Handles saving and installation options.
      */
     complete: {
-      entry: ({ context }) => {
-        if (context.interactionTimestamp) {
-          logStateTransition('complete', context.interactionTimestamp, {
-            scriptId: context.scriptId,
-          }).catch(console.error)
-        }
-      },
+      entry: [
+        assign({
+          isTransitioningToFinal: false,
+        }),
+        ({ context }) => {
+          if (context.interactionTimestamp) {
+            logStateTransition('complete', context.interactionTimestamp, {
+              scriptId: context.scriptId,
+            }).catch(console.error)
+          }
+        },
+      ],
       on: {
         RESET: {
           target: 'idle',
