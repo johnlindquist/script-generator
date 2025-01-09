@@ -40,9 +40,7 @@ const generateDraftScript = async (req: NextRequest) => {
     })
 
     if (!interactionTimestamp) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      console.error('[API Route] Missing interaction timestamp:', { requestId, timestamp })
-      logInteraction(timestamp, 'serverRoute', 'Missing interaction timestamp')
+      console.error('[API Route] Missing interaction timestamp:', { requestId })
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
 

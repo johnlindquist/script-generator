@@ -243,7 +243,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       })
 
       try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+        // Use the timestamp from context instead of generating a new one
+        const timestamp =
+          state.context.interactionTimestamp ||
+          new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
 
         await generateDraftWithStream(
           state.context.prompt,
@@ -342,7 +345,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             prompt: state.context.prompt,
             requestId: state.context.requestId,
             luckyRequestId: state.context.luckyRequestId,
-            interactionTimestamp: new Date().toISOString(),
+            interactionTimestamp: state.context.interactionTimestamp || new Date().toISOString(),
             scriptId: state.context.scriptId,
             editableScript: state.context.editableScript || '',
           },
@@ -462,8 +465,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       return
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-    send({ type: 'GENERATE_DRAFT', timestamp })
+    // Generate a single timestamp for the entire interaction chain
+    const interactionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+    send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
   }
 
   // Handle keyboard submission
@@ -476,8 +480,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         // signIn()
         return
       }
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp })
+      // Use the same timestamp from handleSubmit if it exists
+      const interactionTimestamp =
+        state.context.interactionTimestamp ||
+        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     }
   }
 
@@ -497,8 +504,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       state.context.prompt.trim().length >= 15 &&
       isAuthenticated
     ) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp })
+      // Use the existing timestamp if available
+      const interactionTimestamp =
+        state.context.interactionTimestamp ||
+        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     }
   }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
 
@@ -512,8 +522,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
 
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      console.log('Starting lucky generation with timestamp:', timestamp)
+      // Generate a single timestamp for the entire lucky interaction chain
+      const interactionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      console.log('Starting lucky generation with timestamp:', interactionTimestamp)
 
       // Clear any existing state
       console.log('Clearing existing state...')
@@ -524,11 +535,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       })
 
       console.log('Fetching lucky prompt...')
-      const data = await generateLucky(timestamp)
+      const data = await generateLucky(interactionTimestamp)
       console.log('Lucky data received:', {
         combinedPrompt: data.combinedPrompt,
         requestId: data.requestId,
-        timestamp,
+        timestamp: interactionTimestamp,
       })
 
       // Set the lucky context before generating
@@ -548,8 +559,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       })
 
       // Now do the standard "GENERATE_DRAFT" call with the same timestamp
-      console.log('Dispatching GENERATE_DRAFT with timestamp:', timestamp)
-      send({ type: 'GENERATE_DRAFT', timestamp })
+      console.log('Dispatching GENERATE_DRAFT with timestamp:', interactionTimestamp)
+      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)
       if (err instanceof Error && err.message === 'UNAUTHORIZED') {
@@ -592,9 +603,11 @@ Instructions:
       localStorage.removeItem('scriptToRevise')
       localStorage.removeItem('originalPrompt')
 
-      // Trigger generation
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp })
+      // Use existing timestamp if available
+      const interactionTimestamp =
+        state.context.interactionTimestamp ||
+        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     }
   }, [state.context.prompt, send])
 

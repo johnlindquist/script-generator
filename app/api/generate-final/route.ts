@@ -16,7 +16,12 @@ const DAILY_LIMIT = 24
 const generateFinalScript = async (req: NextRequest) => {
   const requestId = Math.random().toString(36).substring(7)
   try {
-    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp')
+    if (!interactionTimestamp) {
+      console.error('[API Route] Missing interaction timestamp:', { requestId })
+      return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
+    }
+
     logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-final route', {
       requestId,
     })
@@ -254,7 +259,12 @@ const generateFinalScript = async (req: NextRequest) => {
 
     return new NextResponse(stream)
   } catch (error) {
-    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp')
+    if (!interactionTimestamp) {
+      console.error('[API Route] Missing interaction timestamp:', { requestId })
+      return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
+    }
+
     const body = await req.json().catch(() => ({}))
     const { luckyRequestId } = body
     logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate-final route', {
