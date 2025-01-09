@@ -2,8 +2,14 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "crons": [{
-    "path": "/api/cron/reset-usage",
-    "schedule": "0 0 * * *"
-  }]
-} 
+  "crons": [
+    {
+      "path": "/api/cron/reset-usage",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-sponsors",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
