@@ -9,21 +9,46 @@ import { LUCKY_INSTRUCTION } from './prompt'
 export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
+const CLI_API_KEY = process.env.CLI_API_KEY
 
 export async function GET(req: Request) {
-  const requestId = Math.random().toString(36).substring(7)
+  const requestId = Math.random().toString(36).slice(2, 7)
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
     logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/lucky route', { requestId })
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized request', { requestId })
-      return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
+    // Check for CLI API key first
+    const apiKey = req.headers.get('X-CLI-API-Key')?.toLowerCase()
+    const expectedApiKey = CLI_API_KEY?.toLowerCase()
+    let userId: string | undefined
+
+    console.log('[API Route] Auth details:', {
+      requestId,
+      apiKey,
+      expectedApiKey,
+      headers: Object.fromEntries(req.headers.entries()),
+    })
+
+    if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
+      // Skip auth for CLI tools with valid API key
+      logInteraction(interactionTimestamp, 'serverRoute', 'CLI API key auth successful', { requestId })
+      userId = 'cli-user' // Use a special ID for CLI requests
+    } else {
+      console.log('[API Route] API key mismatch:', {
+        requestId,
+        receivedKey: apiKey,
+        expectedKey: CLI_API_KEY,
+      })
+      // Fall back to session auth for web requests
+      const session = await getServerSession(authOptions)
+      if (!session?.user?.id) {
+        return new NextResponse('Unauthorized', { status: 401 })
+      }
+      userId = session.user.id
     }
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Checking user usage', {
-      userId: session.user.id,
+      userId,
       requestId,
       source: 'lucky',
     })
@@ -33,20 +58,36 @@ export async function GET(req: Request) {
     now.setHours(0, 0, 0, 0)
 
     const dbUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
+      include: {
+        usage: {
+          where: {
+            date: now,
+          },
+        },
+      },
     })
 
     if (!dbUser) {
-      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database', {
-        requestId,
+      // Create a new user if it doesn't exist (for CLI usage)
+      await prisma.user.create({
+        data: {
+          id: userId,
+          username: userId === 'cli-user' ? 'CLI Tool' : 'Unknown',
+          usage: {
+            create: {
+              date: now,
+              count: 0,
+            },
+          },
+        },
       })
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     let usage = await prisma.usage.findUnique({
       where: {
         userId_date: {
-          userId: session.user.id,
+          userId: userId,
           date: now,
         },
       },
@@ -54,13 +95,13 @@ export async function GET(req: Request) {
 
     if (!usage) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Creating new usage record', {
-        userId: session.user.id,
+        userId,
         requestId,
         source: 'lucky',
       })
       usage = await prisma.usage.create({
         data: {
-          userId: session.user.id,
+          userId: userId,
           date: now,
           count: 0,
         },
@@ -68,7 +109,7 @@ export async function GET(req: Request) {
     }
 
     logInteraction(interactionTimestamp, 'serverRoute', 'Current usage status', {
-      userId: session.user.id,
+      userId,
       currentCount: usage.count,
       limit: DAILY_LIMIT,
       requestId,
@@ -77,7 +118,7 @@ export async function GET(req: Request) {
 
     if (usage.count >= DAILY_LIMIT) {
       logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit reached', {
-        userId: session.user.id,
+        userId,
         count: usage.count,
         requestId,
         source: 'lucky',
@@ -119,13 +160,13 @@ export async function GET(req: Request) {
       const combinedPrompt = `Here are some example scripts for inspiration:
 
 ${limitedScripts
-  .map(
-    (script, index) => `Example ${index + 1}: ${script.title}
+          .map(
+            (script, index) => `Example ${index + 1}: ${script.title}
 ${script.content}
 
 `
-  )
-  .join('\n')}
+          )
+          .join('\n')}
 
 ${LUCKY_INSTRUCTION}`
 

@@ -17,6 +17,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  debugLog('middleware', 'Request details', {
+    path: request.nextUrl.pathname,
+    headers: Object.fromEntries(request.headers.entries()),
+    source: request.headers.get('origin') ? 'web' : 'cli',
+  })
+
+  // Check for CLI API key first - only for non-web requests
+  if (!request.headers.get('origin')) {
+    const apiKey = request.headers.get('X-CLI-API-Key')?.toLowerCase()
+    const expectedApiKey = process.env.CLI_API_KEY?.toLowerCase()
+
+    if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
+      debugLog('middleware', 'CLI API key auth successful')
+      return NextResponse.next()
+    }
+  }
+
   debugLog('middleware', 'Rate limit check started', {
     path: request.nextUrl.pathname,
   })

@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
-import { cleanCodeFences, extractUserInfo } from '@/lib/generation'
-import { wrapApiHandler } from '@/lib/timing'
+import { cleanCodeFences } from '@/lib/generation'
 import { logInteraction } from '@/lib/interaction-logger'
 import crypto from 'crypto'
 import { DRAFT_PASS_PROMPT } from './prompt'
@@ -13,20 +12,68 @@ import { DRAFT_PASS_PROMPT } from './prompt'
 export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
+const CLI_API_KEY = process.env.CLI_API_KEY
 
-const generateDraftScript = async (req: NextRequest) => {
-  const requestId = Math.random().toString(36).substring(7)
-  console.log('[API Route] Starting generateDraftScript:', { requestId })
+export async function POST(req: Request) {
+  const requestId = Math.random().toString(36).slice(2, 7)
+  const session = await getServerSession(authOptions)
+
+  // Get user info from request
+  let userId = req.headers.get('X-CLI-API-Key') ? 'cli-user' : undefined
+
+  // Check for web user if not CLI
+  if (!userId) {
+    if (!session?.user?.id) {
+      console.error('[API Route] No user ID found:', { requestId })
+      return new Response('Unauthorized', { status: 401 })
+    }
+    userId = session.user.id
+  }
+
+  // Get user info without relying on session
+  const userInfo = userId === 'cli-user'
+    ? { type: 'cli', id: userId, username: 'CLI Tool' }
+    : { type: 'web', id: userId, username: session?.user?.username || 'Unknown' }
+
+  console.log('[API Route] User info for prompt:', {
+    requestId,
+    userId,
+    isCLI: userId === 'cli-user',
+    userInfo,
+  })
 
   try {
-    // Early session validation
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      console.log('[API Route] No valid session:', { requestId })
-      return NextResponse.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })
+    const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', { requestId })
+
+    // Check for CLI API key first
+    const apiKey = req.headers.get('X-CLI-API-Key')?.toLowerCase()
+    const expectedApiKey = CLI_API_KEY?.toLowerCase()
+
+    console.log('[API Route] Auth details:', {
+      requestId,
+      apiKey,
+      expectedApiKey,
+      headers: Object.fromEntries(req.headers.entries()),
+    })
+
+    if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
+      // Skip auth for CLI tools with valid API key
+      logInteraction(interactionTimestamp, 'serverRoute', 'CLI API key auth successful', { requestId })
+      userId = 'cli-user' // Use a special ID for CLI requests
+    } else {
+      console.log('[API Route] API key mismatch:', {
+        requestId,
+        receivedKey: apiKey,
+        expectedKey: CLI_API_KEY,
+      })
+      // Fall back to session auth for web requests
+      if (!session?.user) {
+        return new NextResponse('Unauthorized', { status: 401 })
+      }
+      userId = session.user.id
     }
 
-    const interactionTimestamp = req.headers.get('Interaction-Timestamp')
     const body = await req.json().catch(() => ({}))
     const { prompt, luckyRequestId } = body
 
@@ -35,7 +82,7 @@ const generateDraftScript = async (req: NextRequest) => {
       luckyRequestId,
       hasPrompt: !!prompt,
       hasTimestamp: !!interactionTimestamp,
-      userId: session.user.id,
+      userId: userId,
       source: luckyRequestId ? 'lucky' : 'direct',
     })
 
@@ -58,8 +105,22 @@ const generateDraftScript = async (req: NextRequest) => {
 
     console.log('[API Route] Checking user usage:', {
       requestId,
-      userId: session.user.id,
+      userId: userId,
       source: luckyRequestId ? 'lucky' : 'direct',
+    })
+
+    // Create a new script record and store the ID for later use
+    const { id: scriptId } = await prisma.script.create({
+      data: {
+        title: 'Draft Script',
+        content: '',
+        summary: '',
+        ownerId: userId,
+        prompt,
+      },
+      select: {
+        id: true
+      }
     })
 
     // Get or create usage record for today
@@ -67,67 +128,73 @@ const generateDraftScript = async (req: NextRequest) => {
     now.setHours(0, 0, 0, 0)
 
     const dbUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
+      include: {
+        usage: {
+          where: {
+            date: now,
+          },
+        },
+      },
     })
 
     if (!dbUser) {
-      console.error('[API Route] User not found:', { requestId, userId: session.user.id })
-      logInteraction(interactionTimestamp, 'serverRoute', 'User not found in database', {
-        requestId,
+      // Create a new user if it doesn't exist (for CLI usage)
+      await prisma.user.create({
+        data: {
+          id: userId,
+          username: userId === 'cli-user' ? 'CLI Tool' : 'Unknown',
+          usage: {
+            create: {
+              date: now,
+              count: 0,
+            },
+          },
+        },
       })
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     let usage = await prisma.usage.findUnique({
       where: {
         userId_date: {
-          userId: session.user.id,
+          userId: userId,
           date: now,
         },
       },
     })
 
     if (!usage) {
-      console.log('[API Route] Creating new usage record:', {
-        requestId,
-        userId: session.user.id,
-      })
       usage = await prisma.usage.create({
         data: {
-          userId: session.user.id,
+          userId: userId,
           date: now,
           count: 0,
         },
       })
     }
 
-    console.log('[API Route] Current usage status:', {
-      requestId,
-      userId: session.user.id,
-      currentCount: usage.count,
-      limit: DAILY_LIMIT,
-      source: luckyRequestId ? 'lucky' : 'direct',
-    })
-
+    // Check if user has exceeded daily limit
     if (usage.count >= DAILY_LIMIT) {
-      console.log('[API Route] Daily limit reached:', {
-        requestId,
-        userId: session.user.id,
-        count: usage.count,
-      })
-      return NextResponse.json(
-        {
-          error: 'Daily generation limit reached',
-          details: `You have used all ${DAILY_LIMIT} generations for today. Try again tomorrow!`,
-        },
-        { status: 429 }
-      )
+      return new NextResponse('Daily limit exceeded', { status: 429 })
     }
+
+    // Increment usage count
+    await prisma.usage.update({
+      where: {
+        userId_date: {
+          userId: userId,
+          date: now,
+        },
+      },
+      data: {
+        count: usage.count + 1,
+      },
+    })
 
     // Generate draft script using Gemini
     const draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
       '{userInfo}',
-      JSON.stringify(extractUserInfo(session, dbUser))
+      JSON.stringify(userInfo)
     )
 
     console.log('[API Route] Starting draft generation:', {
@@ -222,5 +289,3 @@ const generateDraftScript = async (req: NextRequest) => {
     )
   }
 }
-
-export const POST = wrapApiHandler('generate_draft_script', generateDraftScript)
