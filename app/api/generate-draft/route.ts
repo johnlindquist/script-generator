@@ -5,7 +5,6 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { model } from '@/lib/gemini'
 import { cleanCodeFences } from '@/lib/generation'
 import { logInteraction } from '@/lib/interaction-logger'
-import crypto from 'crypto'
 import { DRAFT_PASS_PROMPT } from './prompt'
 
 // Explicitly declare this route uses Node.js runtime
@@ -31,9 +30,14 @@ export async function POST(req: Request) {
   }
 
   // Get user info without relying on session
-  const userInfo = userId === 'cli-user'
-    ? { type: 'cli', id: userId, username: 'CLI Tool' }
-    : { type: 'web', id: userId, username: session?.user?.username || 'Unknown' }
+  const userInfo =
+    userId === 'cli-user'
+      ? { type: 'cli', id: userId, username: 'CLI Tool' }
+      : {
+          type: 'web',
+          id: userId,
+          username: session?.user?.username || 'Unknown',
+        }
 
   console.log('[API Route] User info for prompt:', {
     requestId,
@@ -44,7 +48,9 @@ export async function POST(req: Request) {
 
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', { requestId })
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', {
+      requestId,
+    })
 
     // Check for CLI API key first
     const apiKey = req.headers.get('X-CLI-API-Key')?.toLowerCase()
@@ -59,7 +65,9 @@ export async function POST(req: Request) {
 
     if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
       // Skip auth for CLI tools with valid API key
-      logInteraction(interactionTimestamp, 'serverRoute', 'CLI API key auth successful', { requestId })
+      logInteraction(interactionTimestamp, 'serverRoute', 'CLI API key auth successful', {
+        requestId,
+      })
       userId = 'cli-user' // Use a special ID for CLI requests
     } else {
       console.log('[API Route] API key mismatch:', {
@@ -87,7 +95,9 @@ export async function POST(req: Request) {
     })
 
     if (!interactionTimestamp) {
-      console.error('[API Route] Missing interaction timestamp:', { requestId })
+      console.error('[API Route] Missing interaction timestamp:', {
+        requestId,
+      })
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
 
@@ -99,7 +109,9 @@ export async function POST(req: Request) {
 
     if (!prompt) {
       console.error('[API Route] Missing prompt:', { requestId })
-      logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt', { requestId })
+      logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt', {
+        requestId,
+      })
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
 
@@ -119,8 +131,8 @@ export async function POST(req: Request) {
         prompt,
       },
       select: {
-        id: true
-      }
+        id: true,
+      },
     })
 
     // Get or create usage record for today
@@ -206,10 +218,8 @@ export async function POST(req: Request) {
     const result = await model.generateContentStream(draftPrompt)
 
     let aborted = false
-    // Generate a script ID for client compatibility
-    const scriptId = crypto.randomUUID()
-
-    console.log('[API Route] Created script ID:', { requestId, scriptId })
+    // Using the scriptId from the DB record for client compatibility
+    console.log('[API Route] Using script ID:', { requestId, scriptId })
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -220,7 +230,10 @@ export async function POST(req: Request) {
           try {
             for await (const chunk of result.stream) {
               if (aborted) {
-                console.log('[API Route] Generation aborted:', { requestId, scriptId })
+                console.log('[API Route] Generation aborted:', {
+                  requestId,
+                  scriptId,
+                })
                 break
               }
               const text = cleanCodeFences(chunk.text())
@@ -233,7 +246,10 @@ export async function POST(req: Request) {
             }
           } catch (streamError) {
             if (streamError instanceof Error && streamError.name === 'AbortError') {
-              console.log('[API Route] Stream aborted:', { requestId, scriptId })
+              console.log('[API Route] Stream aborted:', {
+                requestId,
+                scriptId,
+              })
               aborted = true
               return
             }
@@ -241,7 +257,10 @@ export async function POST(req: Request) {
           }
 
           if (!aborted) {
-            console.log('[API Route] Draft generation completed:', { requestId, scriptId })
+            console.log('[API Route] Draft generation completed:', {
+              requestId,
+              scriptId,
+            })
             controller.enqueue(new TextEncoder().encode(''))
           }
           controller.close()
@@ -260,7 +279,10 @@ export async function POST(req: Request) {
       },
     })
 
-    console.log('[API Route] Returning stream response:', { requestId, scriptId })
+    console.log('[API Route] Returning stream response:', {
+      requestId,
+      scriptId,
+    })
     return new NextResponse(stream)
   } catch (error) {
     console.error('[API Route] Error in generateDraftScript:', {
