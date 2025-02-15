@@ -18,6 +18,7 @@ import {
   getBetaRelease,
 } from '@/lib/get-scriptkit-releases'
 import React from 'react'
+import ScrollToContent from '@/components/ScrollToContent'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,11 +65,13 @@ export default async function Home() {
       <div className="mb-12 hidden">
         <Testimonials testimonials={testimonials} />
       </div>
-      <section id="scripts" className="border-t sm:py-16 py-8">
-        <div className="w-full container mx-auto px-5">
-          <ViewToggle />
-        </div>
-      </section>
+      <ScrollToContent>
+        <section id="scripts" className="border-t sm:py-16 py-8">
+          <div className="w-full container mx-auto px-5">
+            <ViewToggle />
+          </div>
+        </section>
+      </ScrollToContent>
     </div>
   )
 }
