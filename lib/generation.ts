@@ -133,6 +133,7 @@ export function getExampleScripts() {
 
 // Function to read docs-mini.md
 export function getDocsContent() {
+  const apiPath = path.join(process.cwd(), 'prompts', 'API.md')
   const docsPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
   const promptPath = path.join(process.cwd(), 'prompts', 'prompt.md')
   try {
@@ -141,12 +142,15 @@ export function getDocsContent() {
       return ''
     }
 
-    let content = fs.readFileSync(docsPath, 'utf-8')
+    const apiContent = fs.readFileSync(apiPath, 'utf-8')
+    const docsContent = fs.readFileSync(docsPath, 'utf-8')
+
+    let content = `${apiContent}\n\n${docsContent}`
 
     // Append prompt.md content if it exists
     if (fs.existsSync(promptPath)) {
       const promptContent = fs.readFileSync(promptPath, 'utf-8')
-      content += '\n\n' + promptContent
+      content += `\n\n${promptContent}`
     }
 
     return content
