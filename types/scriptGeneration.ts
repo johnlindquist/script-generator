@@ -17,3 +17,4 @@ export type ScriptGenerationEvent =
   | { type: 'SET_SCRIPT_ID'; scriptId: string }
   | { type: 'COMPLETE_GENERATION'; script: string }
   | { type: 'SET_LUCKY_REQUEST'; requestId: string }
+  | { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }

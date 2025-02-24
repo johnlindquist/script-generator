@@ -205,6 +205,7 @@ export const scriptGenerationMachine = setup({
     idle: {
       entry: [
         assign({
+          prompt: '',
           error: null,
           editableScript: '',
           generatedScript: null,
@@ -295,6 +296,17 @@ export const scriptGenerationMachine = setup({
             }),
           ],
         },
+        SET_TRANSITIONING_TO_FINAL: {
+          actions: [
+            assign({
+              isTransitioningToFinal: ({ event }) =>
+                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
+            }),
+            createLogAction('Transitioning to final flag set', context => ({
+              isTransitioningToFinal: context.isTransitioningToFinal,
+            })),
+          ],
+        },
       },
     },
 
@@ -319,7 +331,17 @@ export const scriptGenerationMachine = setup({
       ],
       on: {
         START_STREAMING_DRAFT: 'generatingDraft',
-        CANCEL_GENERATION: 'idle',
+        CANCEL_GENERATION: {
+          target: 'idle',
+          actions: [
+            assign({
+              prompt: '',
+            }),
+            createLogAction('Generation cancelled in thinking state', context => ({
+              requestId: context.requestId,
+            })),
+          ],
+        },
       },
     },
 
@@ -352,8 +374,6 @@ export const scriptGenerationMachine = setup({
               requestId: context.requestId,
             })),
           ],
-          guard: ({ context }: { context: ScriptGenerationContext }) =>
-            !context.isTransitioningToFinal,
         },
         onError: {
           target: 'idle',
@@ -390,11 +410,23 @@ export const scriptGenerationMachine = setup({
           target: 'idle',
           actions: [
             assign({
+              prompt: '',
               error: null,
               editableScript: '',
               lastRefinementRequestId: null,
             }),
             createLogAction('Generation cancelled', context => ({ requestId: context.requestId })),
+          ],
+        },
+        SET_TRANSITIONING_TO_FINAL: {
+          actions: [
+            assign({
+              isTransitioningToFinal: ({ event }) =>
+                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
+            }),
+            createLogAction('Transitioning to final flag set', context => ({
+              isTransitioningToFinal: context.isTransitioningToFinal,
+            })),
           ],
         },
       },
@@ -453,8 +485,15 @@ export const scriptGenerationMachine = setup({
       },
       on: {
         START_STREAMING_FINAL: {
-          guard: ({ context }: { context: ScriptGenerationContext }) =>
-            !context.isTransitioningToFinal,
+          target: 'complete',
+          actions: [
+            assign({
+              generatedScript: ({ context }) => context.editableScript,
+            }),
+            createLogAction('Final streaming complete, transitioning to complete', context => ({
+              scriptId: context.scriptId,
+            })),
+          ],
         },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
@@ -482,6 +521,17 @@ export const scriptGenerationMachine = setup({
             })),
           ],
         },
+        SET_TRANSITIONING_TO_FINAL: {
+          actions: [
+            assign({
+              isTransitioningToFinal: ({ event }) =>
+                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
+            }),
+            createLogAction('Transitioning to final flag set', context => ({
+              isTransitioningToFinal: context.isTransitioningToFinal,
+            })),
+          ],
+        },
       },
     },
 
@@ -505,7 +555,12 @@ export const scriptGenerationMachine = setup({
       on: {
         RESET: {
           target: 'idle',
-          actions: createLogAction('Reset to idle', context => ({ scriptId: context.scriptId })),
+          actions: [
+            assign({
+              prompt: '',
+            }),
+            createLogAction('Reset to idle', context => ({ scriptId: context.scriptId })),
+          ],
         },
         SAVE_SCRIPT: {
           target: 'saving',
@@ -539,9 +594,14 @@ export const scriptGenerationMachine = setup({
         input: ({ context }) => context,
         onDone: {
           target: 'idle',
-          actions: createLogAction('Script saved successfully', context => ({
-            scriptId: context.scriptId,
-          })),
+          actions: [
+            assign({
+              prompt: '',
+            }),
+            createLogAction('Script saved successfully', context => ({
+              scriptId: context.scriptId,
+            })),
+          ],
         },
         onError: {
           target: 'complete',
@@ -578,9 +638,14 @@ export const scriptGenerationMachine = setup({
         input: ({ context }) => context,
         onDone: {
           target: 'idle',
-          actions: createLogAction('Script installed successfully', context => ({
-            scriptId: context.scriptId,
-          })),
+          actions: [
+            assign({
+              prompt: '',
+            }),
+            createLogAction('Script installed successfully', context => ({
+              scriptId: context.scriptId,
+            })),
+          ],
         },
         onError: {
           target: 'complete',

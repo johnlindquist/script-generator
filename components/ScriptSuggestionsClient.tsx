@@ -3,18 +3,12 @@
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 
 interface Props {
-  setPrompt: (prompt: string) => void
-  setIsFromSuggestion: (value: boolean) => void
-  className?: string
   suggestions: Suggestion[]
+  onSelect: (suggestion: Suggestion) => void
+  className?: string
 }
 
-export default function ScriptSuggestionsClient({
-  setPrompt,
-  setIsFromSuggestion,
-  className = '',
-  suggestions,
-}: Props) {
+export default function ScriptSuggestionsClient({ suggestions, onSelect, className = '' }: Props) {
   return (
     <div className="flex justify-center">
       <div
@@ -24,12 +18,7 @@ export default function ScriptSuggestionsClient({
           <button
             type="button"
             key={idx}
-            onClick={() => {
-              setIsFromSuggestion(true)
-              setPrompt(
-                `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures.join(', ')}`
-              )
-            }}
+            onClick={() => onSelect(suggestion)}
             className="text-sm bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-colors duration-200 shrink-0 h-7"
           >
             {suggestion.title}

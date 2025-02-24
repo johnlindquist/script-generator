@@ -32,7 +32,6 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { FaGithub } from 'react-icons/fa'
-import { ArrowUp } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Loader2 } from 'lucide-react'
 
@@ -107,7 +106,7 @@ const handleUnauthorized = () => {
   }, 2500)
 }
 
-export default function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
+function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
   const [state, send, service] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -339,6 +338,17 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Effect for final generation streaming
   useEffect(() => {
     let isMounted = true
+    const controller = new AbortController()
+
+    // Enhanced logging for debugging
+    console.log('[FINAL_GEN] Effect triggered:', {
+      state: state.value,
+      scriptId: state.context.scriptId,
+      isStreaming: isStreamingRef.current,
+      hasStarted: finalGenerationStartedRef.current,
+      isTransitioning: state.context.isTransitioningToFinal,
+      timestamp: new Date().toISOString(),
+    })
 
     // Log what triggered this effect
     if (state.context.interactionTimestamp) {
@@ -351,6 +361,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           scriptId: state.context.scriptId,
           isStreaming: isStreamingRef.current,
           hasStarted: finalGenerationStartedRef.current,
+          isTransitioning: state.context.isTransitioningToFinal,
           matches: {
             generatingFinal: state.matches('generatingFinal'),
             complete: state.matches('complete'),
@@ -362,6 +373,16 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
 
     const startStreaming = async () => {
+      // Enhanced guard check logging
+      console.log('[FINAL_GEN] Guard check:', {
+        isGeneratingFinal: state.matches('generatingFinal'),
+        hasScriptId: Boolean(state.context.scriptId),
+        hasStarted: finalGenerationStartedRef.current,
+        isStreaming: isStreamingRef.current,
+        isTransitioning: state.context.isTransitioningToFinal,
+        timestamp: new Date().toISOString(),
+      })
+
       // Log the guard check
       if (state.context.interactionTimestamp) {
         logInteraction(
@@ -373,6 +394,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             hasScriptId: Boolean(state.context.scriptId),
             hasStarted: finalGenerationStartedRef.current,
             isStreaming: isStreamingRef.current,
+            isTransitioning: state.context.isTransitioningToFinal,
             timestamp: new Date().toISOString(),
           }
         ).catch(console.error)
@@ -384,17 +406,25 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         !state.context.scriptId ||
         finalGenerationStartedRef.current
       ) {
+        const reason = !state.matches('generatingFinal')
+          ? 'not in generatingFinal'
+          : !state.context.scriptId
+            ? 'no scriptId'
+            : 'already started'
+
+        console.log('[FINAL_GEN] Guards prevented generation:', {
+          reason,
+          isStreaming: isStreamingRef.current,
+          timestamp: new Date().toISOString(),
+        })
+
         if (state.context.interactionTimestamp) {
           logInteraction(
             state.context.interactionTimestamp,
             'client',
             'Guards prevented final generation',
             {
-              reason: !state.matches('generatingFinal')
-                ? 'not in generatingFinal'
-                : !state.context.scriptId
-                  ? 'no scriptId'
-                  : 'already started',
+              reason,
               isStreaming: isStreamingRef.current,
               timestamp: new Date().toISOString(),
             }
@@ -404,6 +434,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       }
 
       if (isStreamingRef.current) {
+        console.log('[FINAL_GEN] Already streaming, skipping:', {
+          scriptId: state.context.scriptId,
+          timestamp: new Date().toISOString(),
+        })
+
         if (state.context.interactionTimestamp) {
           logInteraction(
             state.context.interactionTimestamp,
@@ -418,6 +453,13 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         return
       }
 
+      console.log('[FINAL_GEN] Starting generation:', {
+        scriptId: state.context.scriptId,
+        hasStarted: finalGenerationStartedRef.current,
+        isStreaming: isStreamingRef.current,
+        timestamp: new Date().toISOString(),
+      })
+
       if (state.context.interactionTimestamp) {
         logInteraction(state.context.interactionTimestamp, 'client', 'Starting final generation', {
           scriptId: state.context.scriptId,
@@ -431,12 +473,27 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       isStreamingRef.current = true
 
       try {
-        // Clear the editor before starting final generation
-        const editor = editorRef.current
-        const model = editor?.getModel()
-        if (model) {
-          model.setValue('')
-          setStreamedText('')
+        // Only clear the editor if we're actually starting a new stream
+        // and we haven't already started streaming
+        if (!controller.signal.aborted) {
+          const editor = editorRef.current
+          const model = editor?.getModel()
+          if (model) {
+            // Store the current content before clearing
+            const currentContent = model.getValue()
+            console.log('[FINAL_GEN] Current editor content length:', currentContent.length)
+
+            // Only clear if we're actually starting fresh
+            if (!state.context.isTransitioningToFinal) {
+              console.log('[FINAL_GEN] Clearing editor and setting transitioning flag')
+              model.setValue('')
+              setStreamedText('')
+              // Mark that we're transitioning to final
+              send({ type: 'SET_TRANSITIONING_TO_FINAL', value: true })
+            } else {
+              console.log('[FINAL_GEN] Already transitioning, not clearing editor')
+            }
+          }
         }
 
         if (state.context.interactionTimestamp) {
@@ -453,6 +510,21 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           ).catch(console.error)
         }
 
+        // Create a dedicated controller for the API call
+        const apiController = new AbortController()
+
+        // Link the component controller to the API controller
+        controller.signal.addEventListener('abort', () => {
+          console.log('[FINAL_GEN] Component controller aborted, aborting API controller')
+          apiController.abort()
+        })
+
+        console.log('[FINAL_GEN] Calling API with params:', {
+          scriptId: state.context.scriptId,
+          requestId: state.context.requestId,
+          timestamp: new Date().toISOString(),
+        })
+
         await generateFinalWithStream(
           {
             prompt: state.context.prompt,
@@ -464,7 +536,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           },
           {
             onStartStreaming: () => {
-              if (!isMounted) return
+              if (!isMounted || controller.signal.aborted) return
+              console.log('[FINAL_GEN] Stream started')
               if (state.context.interactionTimestamp) {
                 logInteraction(
                   state.context.interactionTimestamp,
@@ -479,11 +552,20 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               }
             },
             onChunk: (text: string) => {
-              if (!isMounted) return
+              if (!isMounted || controller.signal.aborted) return
+              console.log('[FINAL_GEN] Received chunk, length:', text.length)
               handleStreamedText(text)
+              // Also update the state context to keep everything in sync
+              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
             },
             onError: (error: { message: string }) => {
-              if (!isMounted) return
+              if (!isMounted || controller.signal.aborted) return
+              console.error('[FINAL_GEN] Stream error:', {
+                error: error.message,
+                scriptId: state.context.scriptId,
+                isStreaming: isStreamingRef.current,
+                timestamp: new Date().toISOString(),
+              })
               if (state.context.interactionTimestamp) {
                 logInteraction(state.context.interactionTimestamp, 'client', 'Final stream error', {
                   error: error.message,
@@ -494,10 +576,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               }
               send({ type: 'SET_ERROR', error: error.message })
             },
+            signal: apiController.signal, // Pass the dedicated controller's signal
           }
         )
 
-        if (isMounted) {
+        if (isMounted && !controller.signal.aborted) {
+          console.log('[FINAL_GEN] Stream completed successfully')
           if (state.context.interactionTimestamp) {
             logInteraction(state.context.interactionTimestamp, 'client', 'Final stream completed', {
               scriptId: state.context.scriptId,
@@ -509,7 +593,13 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           send({ type: 'START_STREAMING_FINAL' })
         }
       } catch (error) {
-        if (!isMounted) return
+        if (!isMounted || controller.signal.aborted) return
+        console.error('[FINAL_GEN] Generation error:', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          scriptId: state.context.scriptId,
+          isStreaming: isStreamingRef.current,
+          timestamp: new Date().toISOString(),
+        })
         if (state.context.interactionTimestamp) {
           logInteraction(
             state.context.interactionTimestamp,
@@ -524,13 +614,23 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           ).catch(console.error)
         }
       } finally {
-        isStreamingRef.current = false
+        if (isMounted && !controller.signal.aborted) {
+          console.log('[FINAL_GEN] Cleaning up streaming state')
+          isStreamingRef.current = false
+        }
       }
     }
 
     startStreaming()
 
     return () => {
+      console.log('[FINAL_GEN] Effect cleanup:', {
+        scriptId: state.context.scriptId,
+        isStreaming: isStreamingRef.current,
+        hasStarted: finalGenerationStartedRef.current,
+        timestamp: new Date().toISOString(),
+      })
+
       if (state.context.interactionTimestamp) {
         logInteraction(
           state.context.interactionTimestamp,
@@ -545,9 +645,24 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         ).catch(console.error)
       }
       isMounted = false
-      // Don't reset isStreamingRef here, let it persist across cleanups
+      controller.abort()
+      // Reset streaming state on cleanup
+      isStreamingRef.current = false
+      finalGenerationStartedRef.current = false
     }
-  }, [state.value, state.context.scriptId])
+  }, [
+    state.value,
+    state.context.scriptId,
+    state.matches,
+    state.context.prompt,
+    state.context.requestId,
+    state.context.luckyRequestId,
+    state.context.editableScript,
+    state.context.interactionTimestamp,
+    state.context.isTransitioningToFinal,
+    handleStreamedText,
+    send,
+  ])
 
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {
@@ -741,340 +856,225 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     const originalPrompt = localStorage.getItem('originalPrompt')
 
     if (scriptToRevise && originalPrompt && !state.context.prompt) {
-      const enhancePrompt = `Revise this script with the following instructions:
-
-Original prompt that generated this script:
-${originalPrompt}
-
-The script to revise:
-\`\`\`typescript
-${scriptToRevise}
-\`\`\`
-
-Instructions:
-1. Make the code more efficient and performant
-2. Improve readability and maintainability
-3. Add better error handling where needed
-4. Ensure type safety and remove any potential type issues
-5. Keep the core functionality exactly the same
-6. Add helpful comments for complex logic`
-
-      send({ type: 'SET_PROMPT', prompt: enhancePrompt })
-
-      // Clean up localStorage
+      const enhancedPrompt = `${originalPrompt}\n\nPlease revise this script:\n\n${scriptToRevise}`
+      send({ type: 'SET_PROMPT', prompt: enhancedPrompt })
       localStorage.removeItem('scriptToRevise')
       localStorage.removeItem('originalPrompt')
-
-      // Use existing timestamp if available
-      const interactionTimestamp =
-        state.context.interactionTimestamp ||
-        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     }
   }, [state.context.prompt, send])
 
-  useEffect(() => {
-    if (headingRef.current) {
-      console.log('Heading height:', {
-        height: headingRef.current.offsetHeight,
-        text: headingRef.current.textContent,
-        timestamp: new Date().toISOString(),
-      })
-    }
-  }, [state.context.generatedScript, isGenerating, isThinking, generationPhase])
-
   return (
-    <div className="px-5 w-full">
-      <div className="min-h-[120px] flex items-center justify-center">
-        <h1
-          ref={headingRef}
-          className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center max-w-4xl"
-        >
-          {isGenerating || isThinking ? (
-            <AnimatedText
-              text={
-                generationPhase === 'thinkingDraft'
-                  ? STRINGS.SCRIPT_GENERATION.headingThinkingDraft
-                  : generationPhase === 'generatingDraft'
-                    ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
-                    : STRINGS.SCRIPT_GENERATION.headingWhileRefining
-              }
-            />
-          ) : state.context.generatedScript ? (
-            <div className="flex flex-col gap-4">
-              <span className="block">{STRINGS.SCRIPT_GENERATION.headingDone.split('.')[0]}</span>
-              <span className="block text-[0.85em] text-muted-foreground font-normal">
-                {STRINGS.SCRIPT_GENERATION.headingDone.split('.')[1]}
-              </span>
-            </div>
-          ) : (
-            heading
-          )}
-        </h1>
-      </div>
+    <div className="flex flex-col w-full max-w-4xl mx-auto">
+      <h1 ref={headingRef} className="text-3xl font-bold mb-4 text-center">
+        {heading}
+      </h1>
 
-      {!state.context.generatedScript && !isGenerating && !isThinking && (
-        <form
-          onSubmit={handleSubmit}
-          className={`mx-auto w-full mt-12 max-w-2xl ${isAuthenticated ? '' : 'pb-4'}`}
-        >
-          <div className="relative flex items-center justify-center">
-            <Textarea
-              ref={textareaRef}
-              value={state.context.prompt}
-              onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                state.context.usageCount === state.context.usageLimit
-                  ? STRINGS.SCRIPT_GENERATION.promptPlaceholderLimitReached
-                  : STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault
-                // STRINGS.SCRIPT_GENERATION.promptPlaceholderSignIn
-              }
-              rows={3}
-              className="min-h-[127px] w-full shadow-2xl sm:p-6 p-5 sm:!text-lg placeholder:text-base sm:placeholder:text-lg placeholder:text-gray-400 bg-card rounded-xl"
-              disabled={state.context.usageCount === state.context.usageLimit}
-            />
-            <div
-              className="absolute z-10 top-0 w-[40%] blur-sm h-px bg-gradient-to-r from-transparent via-primary to-transparent"
-              aria-hidden="true"
-            />
-            <div
-              className="absolute z-10 top-0 w-[90%] opacity-40 h-px bg-gradient-to-r from-transparent via-primary to-transparent"
-              aria-hidden="true"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
-              className="absolute right-3 bottom-3"
-              // className="flex items-center gap-2 bg-primary text-primary-foregorund px-6 py-2 rounded font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
-                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-              ) : (
-                <ArrowUp className="w-5 h-5" />
-              )}
-              {/* <span>Generate</span> */}
-            </Button>
-          </div>
-          <div
-            className={cn('flex items-center pt-2 tabular-nums text-xs px-2', {
-              'justify-between': isAuthenticated,
-              'justify-center': !isAuthenticated,
-            })}
-          >
-            <span
-              className={cn('text-muted-foreground opacity-50', {
-                'opacity-100': state.context.prompt.trim().length < 15,
-              })}
-            >
-              {STRINGS.SCRIPT_GENERATION.characterCount.replace(
-                '{count}',
-                state.context.prompt.trim().length.toString()
-              )}
-            </span>
-            {isAuthenticated ? (
-              <span
-                className={cn('text-xs text-muted-foreground', {
-                  'text-destructive': state.context.usageCount >= state.context.usageLimit,
-                })}
-              >
-                {`${state.context.usageLimit - state.context.usageCount} generations left today`}
-              </span>
-            ) : null}
-          </div>
-
-          {state.context.error && (
-            <>
-              <Alert variant="destructive" className="mt-4">
-                <AlertTitle>{STRINGS.SCRIPT_GENERATION.errorHeading}</AlertTitle>
-                <AlertDescription>{state.context.error}</AlertDescription>
-              </Alert>
-            </>
-          )}
-        </form>
+      {state.context.error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{state.context.error}</AlertDescription>
+        </Alert>
       )}
 
-      {!state.context.generatedScript && !isGenerating && !isThinking && (
-        <div className="justify-center mt-4 max-w-3xl mx-auto flex items-center gap-2">
-          {/* <h2 className="text-muted-foreground mb-4 mt-8 text-sm text-center">
-            {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
-          </h2> */}
-          <Button
-            variant="outline"
-            type="button"
-            size="sm"
-            className="rounded-full"
-            onClick={handleFeelingLucky}
-            disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
-            // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
-          >
-            <SparklesIcon className="w-5 h-5" />
-            I'm Feeling Lucky
-          </Button>
-          <ScriptSuggestions
-            setPrompt={prompt => {
-              if (!isAuthenticated) {
-                showSignInModal()
-                return
-              }
-              send({ type: 'SET_PROMPT', prompt })
-              send({ type: 'FROM_SUGGESTION', value: true })
-            }}
-            setIsFromSuggestion={() => {}}
-            suggestions={suggestions}
+      <form onSubmit={handleSubmit} className="mb-4">
+        <div className="flex flex-col space-y-2">
+          <Textarea
+            ref={textareaRef}
+            value={state.context.prompt}
+            onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
+            onKeyDown={handleKeyDown}
+            placeholder={STRINGS.SCRIPT_GENERATION.promptPlaceholderDefault}
+            className={cn(
+              'min-h-[100px] resize-none p-4 text-base',
+              state.matches('idle') ? 'rounded-b-none' : ''
+            )}
+            disabled={isGenerating || isThinking}
           />
+
+          {state.matches('idle') && (
+            <div className="flex flex-col sm:flex-row gap-2 p-2 bg-muted rounded-b-md">
+              <Button
+                type="submit"
+                className="flex-1 gap-2"
+                disabled={
+                  !state.context.prompt.trim() ||
+                  state.context.prompt.trim().length < 15 ||
+                  isGenerating ||
+                  isThinking
+                }
+              >
+                {isGenerating || isThinking ? (
+                  <AnimatedText text="Generating" />
+                ) : (
+                  <>
+                    <DocumentCheckIcon className="h-5 w-5" />
+                    Generate Script
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={handleFeelingLucky}
+                disabled={isGenerating || isThinking}
+              >
+                <SparklesIcon className="h-5 w-5" />
+                I'm Feeling Lucky
+              </Button>
+            </div>
+          )}
+        </div>
+      </form>
+
+      {state.matches('idle') && !state.context.prompt && (
+        <ScriptSuggestions
+          suggestions={suggestions}
+          onSelect={(suggestion: Suggestion) => {
+            send({ type: 'FROM_SUGGESTION', value: true })
+            send({
+              type: 'SET_PROMPT',
+              prompt: `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures.join(', ')}`,
+            })
+          }}
+        />
+      )}
+
+      {(state.matches('generatingDraft') ||
+        state.matches('generatingFinal') ||
+        state.matches('complete') ||
+        state.matches('thinkingDraft')) && (
+        <div className="relative border rounded-md overflow-hidden">
+          <div className="absolute top-0 right-0 z-10 flex gap-1 p-1">
+            {state.matches('complete') && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  const editor = editorRef.current
+                  const model = editor?.getModel()
+                  if (model) {
+                    const content = model.getValue()
+                    navigator.clipboard.writeText(content)
+                    toast.success('Copied to clipboard!')
+                  }
+                }}
+              >
+                <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                Copy
+              </Button>
+            )}
+
+            {(state.matches('generatingDraft') ||
+              state.matches('generatingFinal') ||
+              state.matches('thinkingDraft')) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  send({ type: 'CANCEL_GENERATION' })
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+
+            {state.matches('complete') && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  send({
+                    type: 'GENERATE_DRAFT',
+                    timestamp: new Date().toISOString().replace(/[:.]/g, '-').replace('Z', ''),
+                  })
+                }}
+              >
+                <ArrowPathIcon className="h-4 w-4 mr-1" />
+                Regenerate
+              </Button>
+            )}
+
+            {state.matches('complete') && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  send({ type: 'GENERATE_FINAL' })
+                }}
+              >
+                <SparklesIcon className="h-4 w-4 mr-1" />
+                Enhance
+              </Button>
+            )}
+          </div>
+
+          <div className="h-[500px] w-full">
+            <Editor
+              height="100%"
+              defaultLanguage="javascript"
+              options={monacoOptions}
+              theme="vs-dark"
+              value={state.context.editableScript}
+              onChange={value => {
+                if (state.matches('complete')) {
+                  send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
+                }
+              }}
+              beforeMount={initializeTheme}
+              onMount={handleEditorDidMount}
+              className="monaco-editor"
+            />
+          </div>
+
+          {generationPhase && (
+            <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-2 flex justify-between items-center">
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {generationPhase === 'thinkingDraft' && <span>Thinking...</span>}
+                {generationPhase === 'generatingDraft' && <span>Generating draft...</span>}
+                {generationPhase === 'generatingFinal' && <span>Enhancing script...</span>}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  send({ type: 'CANCEL_GENERATION' })
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {(isGenerating || isThinking || state.context.generatedScript) &&
-        !state.context.editableScript && (
-          <div className="mt-8">
-            <div className="relative mb-2 max-w-4xl mx-auto">
-              <div className="bg-zinc-900/10 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
-                <div className="w-full h-[600px] relative flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-12 w-12 animate-spin text-amber-400" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {isAuthenticated && (
+        <div className="mt-2 text-xs text-muted-foreground text-right">
+          {state.context.usageCount} / {state.context.usageLimit} generations used
+        </div>
+      )}
 
-      {(isGenerating || isThinking || state.context.generatedScript) &&
-        state.context.editableScript && (
-          <div className="mt-8">
-            <div className="relative mb-2 max-w-4xl mx-auto">
-              <div className="bg-zinc-900/90 rounded-lg overflow-hidden border border-amber-400/10 ring-1 ring-amber-400/20 shadow-amber-900/20">
-                <div className="w-full h-[600px] relative">
-                  <Editor
-                    height="100%"
-                    defaultLanguage="typescript"
-                    value={state.context.editableScript}
-                    onChange={value =>
-                      isAuthenticated &&
-                      state.matches('complete') &&
-                      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: value || '' })
-                    }
-                    options={{
-                      ...monacoOptions,
-                      readOnly: !isAuthenticated || !state.matches('complete'),
-                      domReadOnly: !isAuthenticated || !state.matches('complete'),
-                    }}
-                    onMount={handleEditorDidMount}
-                    beforeMount={initializeTheme}
-                    theme="gruvboxTheme"
-                  />
-                </div>
-              </div>
-              {state.matches('complete') && (
-                <div className="absolute bottom-4 right-4 flex gap-2">
-                  {isAuthenticated && (
-                    <>
-                      <button
-                        onClick={() => send({ type: 'SAVE_SCRIPT' })}
-                        className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                      >
-                        <DocumentCheckIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.saveScript}
-                      </button>
-                      <button
-                        onClick={() => send({ type: 'SAVE_AND_INSTALL' })}
-                        className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                      >
-                        <ArrowDownTrayIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.saveAndInstall}
-                      </button>
-                      <button
-                        onClick={() => send({ type: 'RESET' })}
-                        className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                      >
-                        <ArrowPathIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.startOver}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const scriptToRevise =
-                            state.context.editableScript || state.context.generatedScript
-                          if (!scriptToRevise) {
-                            toast.error('No script to enhance')
-                            return
-                          }
-
-                          // Store what we need before reset
-                          const currentScript = scriptToRevise
-                          const currentPrompt = state.context.prompt
-
-                          // First reset the state
-                          send({ type: 'RESET' })
-
-                          // After a small delay to ensure reset is complete
-                          setTimeout(() => {
-                            const enhancePrompt = `Revise this script with the following instructions:
-
-Original prompt that generated this script:
-${currentPrompt}
-
-The script to revise:
-\`\`\`typescript
-${currentScript}
-\`\`\`
-
-Instructions:
-1. Make the code more efficient and performant
-2. Improve readability and maintainability
-3. Add better error handling where needed
-4. Ensure type safety and remove any potential type issues
-5. Keep the core functionality exactly the same
-6. Add helpful comments for complex logic
-
-Your revision instructions: `
-
-                            send({ type: 'SET_PROMPT', prompt: enhancePrompt })
-
-                            // Scroll textarea to bottom after setting prompt
-                            if (textareaRef.current) {
-                              requestAnimationFrame(() => {
-                                if (textareaRef.current) {
-                                  textareaRef.current.scrollTop = textareaRef.current.scrollHeight
-                                  textareaRef.current.focus()
-                                }
-                              })
-                            }
-                          }, 0)
-                        }}
-                        className="bg-gradient-to-tr from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
-                      >
-                        <SparklesIcon className="w-5 h-5" />
-                        Enhance with AI
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      <Dialog modal={true} open={isSignInModalShowing} onOpenChange={setShowSignInModal}>
-        <DialogContent className="z-50">
+      <Dialog open={isSignInModalShowing} onOpenChange={setShowSignInModal}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sign in with GitHub to generate</DialogTitle>
+            <DialogTitle>Sign in to continue</DialogTitle>
             <DialogDescription>
-              Sign in to generate scripts and save your work. We use GitHub to authenticate.
+              You need to sign in with GitHub to generate scripts. Your prompt will be saved.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="">
+          <DialogFooter>
             <Button
-              className="w-full"
-              size="lg"
-              onClick={() => {
-                signIn()
-                setShowSignInModal(false)
-              }}
+              onClick={() => signIn('github')}
+              className="w-full flex items-center justify-center gap-2"
             >
-              <FaGithub className="w-4" /> Sign in with GitHub
+              <FaGithub className="h-5 w-5" />
+              Sign in with GitHub
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1082,3 +1082,5 @@ Your revision instructions: `
     </div>
   )
 }
+
+export default ScriptGenerationClient

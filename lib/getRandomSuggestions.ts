@@ -85,8 +85,9 @@ const suggestions: Suggestion[] = [
 export const devSuggestions: Suggestion[] = [
   {
     title: 'Hello World',
-    description: 'Write a hello world script with "await arg()" and a random name',
-    keyFeatures: ['One-liner', 'Random name', 'ScriptKit Dev'],
+    description:
+      'Write a hello world script with "await arg()" and displays the result in the editor',
+    keyFeatures: ['One-liner'],
   },
 ]
 

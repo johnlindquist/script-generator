@@ -74,12 +74,13 @@ export const generateFinalWithStream = async (
     onStartStreaming: () => void
     onChunk: (text: string) => void
     onError: (error: { message: string }) => void
+    signal?: AbortSignal
   }
 ): Promise<{ script: string }> => {
   console.log('[API] Starting generateFinalWithStream:', {
-    prompt: params.prompt,
     scriptId: params.scriptId,
-    timestamp: params.interactionTimestamp,
+    requestId: params.requestId,
+    timestamp: new Date().toISOString(),
   })
 
   try {
@@ -97,13 +98,21 @@ export const generateFinalWithStream = async (
         luckyRequestId: params.luckyRequestId,
         requestId: params.requestId,
       }),
+      signal: callbacks.signal,
     })
 
     if (!response.ok) {
+      console.error('[API] HTTP error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        scriptId: params.scriptId,
+        requestId: params.requestId,
+      })
+
       if (response.status === 429) {
         callbacks.onError({ message: 'Daily generation limit reached. Try again tomorrow!' })
       } else if (response.status === 401) {
-        callbacks.onError({ message: 'Session expired. Please sign in again.' })
+        callbacks.onError({ message: 'UNAUTHORIZED' })
       } else {
         const errorData = await response
           .json()
@@ -115,48 +124,94 @@ export const generateFinalWithStream = async (
 
     const reader = response.body?.getReader()
     if (!reader) {
+      console.error('[API] No reader available for response body')
       throw new Error('No reader available')
     }
 
     let finalScript = ''
     let lastChunkEndsWithNewline = false
+    let chunkCount = 0
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    try {
+      while (true) {
+        // Check if we've been aborted before reading
+        if (callbacks.signal?.aborted) {
+          console.log('[API] Aborting stream read due to signal')
+          break
+        }
 
-      const chunk = new TextDecoder().decode(value)
+        const { done, value } = await reader.read()
+        if (done) {
+          console.log('[API] Stream read complete after', chunkCount, 'chunks')
+          break
+        }
 
-      // Handle line breaks at chunk boundaries
-      if (lastChunkEndsWithNewline && chunk.startsWith('\n')) {
-        finalScript = finalScript.slice(0, -1)
+        chunkCount++
+        const chunk = new TextDecoder().decode(value)
+        console.log(`[API] Received chunk #${chunkCount}, size:`, chunk.length)
+
+        // Handle line breaks at chunk boundaries
+        if (lastChunkEndsWithNewline && chunk.startsWith('\n')) {
+          finalScript = finalScript.slice(0, -1)
+        }
+
+        finalScript += chunk
+        lastChunkEndsWithNewline = chunk.endsWith('\n')
+
+        // Ensure proper line breaks around metadata comments
+        finalScript = finalScript.replace(
+          /^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm,
+          '$1\n$4'
+        )
+        finalScript = finalScript.replace(
+          /^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm,
+          '$1\n$4'
+        )
+
+        callbacks.onChunk(finalScript)
       }
+    } catch (readError) {
+      console.error('[API] Error during stream reading:', {
+        error: readError instanceof Error ? readError.message : 'Unknown read error',
+        scriptId: params.scriptId,
+        requestId: params.requestId,
+        isAborted: callbacks.signal?.aborted,
+      })
 
-      finalScript += chunk
-      lastChunkEndsWithNewline = chunk.endsWith('\n')
-
-      // Ensure proper line breaks around metadata comments
-      finalScript = finalScript.replace(/^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm, '$1\n$4')
-      finalScript = finalScript.replace(
-        /^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm,
-        '$1\n$4'
-      )
-
-      callbacks.onChunk(finalScript)
+      // Only throw if we weren't aborted
+      if (!callbacks.signal?.aborted) {
+        throw readError
+      }
     }
+
+    console.log('[API] Final script generation complete:', {
+      scriptId: params.scriptId,
+      requestId: params.requestId,
+      finalScriptLength: finalScript.length,
+    })
 
     return { script: finalScript }
   } catch (error) {
-    console.error('[API] Stream reading error:', error)
-    if (error instanceof Response && error.status === 429) {
-      callbacks.onError({
-        message: 'Daily generation limit reached. Try again tomorrow!',
-      })
-    } else {
-      callbacks.onError({
-        message: error instanceof Error ? error.message : 'Failed to generate final script',
-      })
+    console.error('[API] Stream error:', {
+      requestId: params.requestId,
+      scriptId: params.scriptId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      isAborted: callbacks.signal?.aborted,
+    })
+
+    // Don't report errors if we were aborted
+    if (!callbacks.signal?.aborted) {
+      if (error instanceof Response && error.status === 429) {
+        callbacks.onError({
+          message: 'Daily generation limit reached. Try again tomorrow!',
+        })
+      } else {
+        callbacks.onError({
+          message: error instanceof Error ? error.message : 'Failed to generate final script',
+        })
+      }
     }
+
     throw error
   }
 }

@@ -23,7 +23,7 @@ interface ErrorHandlerParams {
   error: Error | unknown
   requestId: string
   interactionTimestamp: string
-  routeName: string
+  routeName: 'client' | 'stateMachine' | 'serverRoute'
   scriptId?: string
   luckyRequestId?: string | null
   source?: 'lucky' | 'direct'
@@ -144,7 +144,6 @@ export async function handleGenerationError({
         where: { id: scriptId },
         data: {
           status: 'ERROR',
-          error: error instanceof Error ? error.message : String(error),
         },
       })
     } catch (dbError) {
