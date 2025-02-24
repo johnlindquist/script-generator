@@ -7,6 +7,7 @@ interface Props {
   setIsFromSuggestion: (value: boolean) => void
   className?: string
   suggestions: Suggestion[]
+  onSelect?: () => void
 }
 
 export default function ScriptSuggestionsClient({
@@ -14,6 +15,7 @@ export default function ScriptSuggestionsClient({
   setIsFromSuggestion,
   className = '',
   suggestions,
+  onSelect,
 }: Props) {
   return (
     <div className="flex justify-center">
@@ -27,8 +29,11 @@ export default function ScriptSuggestionsClient({
             onClick={() => {
               setIsFromSuggestion(true)
               setPrompt(
-                `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures.join(', ')}`
+                `${suggestion.title}\n${suggestion.description}\n${suggestion.keyFeatures?.length ? 'Key Features: ' : ''}${suggestion.keyFeatures.join(', ')}`
               )
+              if (onSelect) {
+                onSelect()
+              }
             }}
             className="text-sm bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-colors duration-200 shrink-0 h-7"
           >

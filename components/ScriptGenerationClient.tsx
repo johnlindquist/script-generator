@@ -830,6 +830,16 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     send,
   ])
 
+  // Add a cancel generation handler
+  const handleCancelGeneration = useCallback(() => {
+    console.log('[CANCEL] Cancelling generation')
+
+    // Send the cancel event to the state machine
+    send({ type: 'CANCEL_GENERATION' })
+
+    // The streaming service will be aborted by the state machine
+  }, [send])
+
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {
     if (!isAuthenticated) return
@@ -1280,6 +1290,25 @@ Instructions:
             }}
             setIsFromSuggestion={value => {
               send({ type: 'FROM_SUGGESTION', value })
+            }}
+            onSelect={() => {
+              // Only proceed if user is authenticated
+              if (!isAuthenticated) {
+                showSignInModal()
+                return
+              }
+
+              // Generate a timestamp for the interaction
+              const interactionTimestamp = new Date()
+                .toISOString()
+                .replace(/[:.]/g, '-')
+                .replace('Z', '')
+
+              // Trigger generation immediately
+              send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+
+              // Reset isFromSuggestion to prevent duplicate generation from the useEffect
+              send({ type: 'FROM_SUGGESTION', value: false })
             }}
           />
         </div>

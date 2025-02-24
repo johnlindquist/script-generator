@@ -86,8 +86,8 @@ export const devSuggestions: Suggestion[] = [
   {
     title: 'Hello World',
     description:
-      'Write a hello world script with "await arg()" and displays the result in the editor',
-    keyFeatures: ['One-liner'],
+      'Write a hello world script with "const result = await arg()", get their name, then await notify() with a Hello message',
+    keyFeatures: [''],
   },
 ]
 

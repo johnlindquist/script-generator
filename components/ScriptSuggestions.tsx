@@ -6,6 +6,7 @@ interface Props {
   setIsFromSuggestion: (value: boolean) => void
   className?: string
   suggestions: Suggestion[]
+  onSelect?: () => void
 }
 
 export default function ScriptSuggestions({
@@ -13,6 +14,7 @@ export default function ScriptSuggestions({
   setIsFromSuggestion,
   className,
   suggestions,
+  onSelect,
 }: Props) {
   return (
     <div className="min-h-[28px]">
@@ -21,6 +23,7 @@ export default function ScriptSuggestions({
         setIsFromSuggestion={setIsFromSuggestion}
         className={className}
         suggestions={suggestions}
+        onSelect={onSelect}
       />
     </div>
   )
