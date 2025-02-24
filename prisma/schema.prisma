@@ -140,4 +140,5 @@ enum ScriptStatus {
   IN_PROGRESS
   COMPLETED
   ARCHIVED
+  ERROR
 }
