@@ -130,6 +130,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Add refs to track generation state
   const finalGenerationStartedRef = useRef(false)
   const isStreamingRef = useRef(false)
+  const finalGenerationControllerRef = useRef<AbortController | null>(null)
+  const draftGenerationControllerRef = useRef<AbortController | null>(null)
 
   // Reset the ref when leaving generatingFinal state
   useEffect(() => {
@@ -220,10 +222,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     const model = editor?.getModel()
 
     if (model) {
+      // Get the current content in the editor
       const currentContent = model.getValue()
+
+      // Only update if we have new content to add
       if (text.length > currentContent.length) {
         // Get the new content to append
         const newContent = text.slice(currentContent.length)
+        console.log('Appending new content, length:', newContent.length)
 
         // Create an edit operation to append the new content
         const range = model.getFullModelRange()
@@ -238,9 +244,20 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             text: newContent,
           },
         ])
+
+        // Ensure we scroll to the bottom
+        const lineCount = model.getLineCount()
+        if (editor) {
+          editor.revealLine(lineCount)
+        }
+      } else if (text.length < currentContent.length) {
+        // If the new text is shorter (rare case), replace the entire content
+        console.log('Replacing entire content - new text is shorter than current')
+        model.setValue(text)
       }
     } else {
       // Fallback to setting the entire content if model isn't available
+      console.log('Model not available, using fallback setStreamedText')
       setStreamedText(text)
     }
   }, [])
@@ -266,7 +283,18 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       return
     }
 
+    // Clean up any existing controller
+    if (draftGenerationControllerRef.current) {
+      try {
+        console.log('Cleaning up existing draft controller before creating new one')
+        draftGenerationControllerRef.current.abort()
+      } catch (error) {
+        console.warn('Error cleaning up existing draft controller:', error)
+      }
+    }
+
     const controller = new AbortController()
+    draftGenerationControllerRef.current = controller
     const signal = controller.signal
 
     const startStreaming = async () => {
@@ -316,15 +344,33 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         )
         console.log('>> Completed generateDraftWithStream call successfully <<')
       } catch (err) {
-        console.error('generateDraftWithStream threw an exception:', err)
+        // Check if it's an abort error, which is expected during normal cleanup
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          console.log('Draft generation was aborted normally')
+        } else {
+          console.error('generateDraftWithStream threw an exception:', err)
+        }
       }
     }
 
     startStreaming()
 
     return () => {
-      console.log('Cleaning up draft streaming effect - aborting controller')
-      controller.abort()
+      console.log('Cleaning up draft streaming effect')
+      try {
+        // Only abort if this is still the current controller and it hasn't been aborted yet
+        if (draftGenerationControllerRef.current === controller && !controller.signal.aborted) {
+          console.log('Aborting draft controller')
+          controller.abort()
+        }
+      } catch (error) {
+        console.warn('Error during draft controller abort:', error)
+      }
+
+      // Clear the controller reference if it's still the current one
+      if (draftGenerationControllerRef.current === controller) {
+        draftGenerationControllerRef.current = null
+      }
     }
   }, [
     state.context.prompt,
@@ -339,7 +385,21 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Effect for final generation streaming
   useEffect(() => {
     let isMounted = true
+
+    // Safely clean up previous controller if it exists
+    if (finalGenerationControllerRef.current) {
+      try {
+        console.log('Cleaning up previous final generation controller')
+        finalGenerationControllerRef.current.abort()
+      } catch (error) {
+        console.warn('Error aborting previous controller:', error)
+      }
+    }
+
+    // Create a new controller
     const controller = new AbortController()
+    finalGenerationControllerRef.current = controller
+    const signal = controller.signal
 
     // Log what triggered this effect
     if (state.context.interactionTimestamp) {
@@ -434,7 +494,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       try {
         // Only clear the editor if we're actually starting a new stream
         // and we haven't already started streaming
-        if (!controller.signal.aborted) {
+        if (!signal.aborted) {
           const editor = editorRef.current
           const model = editor?.getModel()
           if (model) {
@@ -457,6 +517,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               scriptId: state.context.scriptId,
               requestId: state.context.requestId,
               isStreaming: isStreamingRef.current,
+              hasSignal: !signal.aborted,
               timestamp: new Date().toISOString(),
             }
           ).catch(console.error)
@@ -472,8 +533,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             editableScript: state.context.editableScript || '',
           },
           {
+            signal,
             onStartStreaming: () => {
-              if (!isMounted || controller.signal.aborted) return
+              if (!isMounted || signal.aborted) return
               if (state.context.interactionTimestamp) {
                 logInteraction(
                   state.context.interactionTimestamp,
@@ -488,13 +550,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               }
             },
             onChunk: (text: string) => {
-              if (!isMounted || controller.signal.aborted) return
+              if (!isMounted || signal.aborted) return
+              console.log('Final generation onChunk received, length:', text.length)
               handleStreamedText(text)
               // Also update the state context to keep everything in sync
               send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
             },
             onError: (error: { message: string }) => {
-              if (!isMounted || controller.signal.aborted) return
+              if (!isMounted || signal.aborted) return
               if (state.context.interactionTimestamp) {
                 logInteraction(state.context.interactionTimestamp, 'client', 'Final stream error', {
                   error: error.message,
@@ -508,7 +571,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           }
         )
 
-        if (isMounted && !controller.signal.aborted) {
+        if (isMounted && !signal.aborted) {
           if (state.context.interactionTimestamp) {
             logInteraction(state.context.interactionTimestamp, 'client', 'Final stream completed', {
               scriptId: state.context.scriptId,
@@ -520,22 +583,28 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           send({ type: 'START_STREAMING_FINAL' })
         }
       } catch (error) {
-        if (!isMounted || controller.signal.aborted) return
-        if (state.context.interactionTimestamp) {
-          logInteraction(
-            state.context.interactionTimestamp,
-            'client',
-            'Final generation threw error',
-            {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              scriptId: state.context.scriptId,
-              isStreaming: isStreamingRef.current,
-              timestamp: new Date().toISOString(),
-            }
-          ).catch(console.error)
+        if (!isMounted || signal.aborted) return
+
+        // Check if it's an AbortError, which is expected during normal cleanup
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          console.log('Final generation was aborted normally', error)
+        } else {
+          if (state.context.interactionTimestamp) {
+            logInteraction(
+              state.context.interactionTimestamp,
+              'client',
+              'Final generation threw error',
+              {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                scriptId: state.context.scriptId,
+                isStreaming: isStreamingRef.current,
+                timestamp: new Date().toISOString(),
+              }
+            ).catch(console.error)
+          }
         }
       } finally {
-        if (isMounted && !controller.signal.aborted) {
+        if (isMounted && !signal.aborted) {
           isStreamingRef.current = false
         }
       }
@@ -557,8 +626,26 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           }
         ).catch(console.error)
       }
+
       isMounted = false
-      controller.abort()
+
+      // Safety check before aborting
+      try {
+        if (finalGenerationControllerRef.current === controller && !controller.signal.aborted) {
+          console.log('Safely aborting final generation controller')
+          controller.abort()
+        }
+      } catch (error) {
+        console.warn('Error during controller abort in cleanup:', error)
+      }
+
+      // Reset streaming state on cleanup
+      isStreamingRef.current = false
+
+      // Clear the controller reference if it's still the current one
+      if (finalGenerationControllerRef.current === controller) {
+        finalGenerationControllerRef.current = null
+      }
     }
   }, [
     state.value,
@@ -685,19 +772,31 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         ? 'generatingFinal'
         : null
 
+  // Watch for suggestion selection and trigger generation
   useEffect(() => {
+    console.log('Suggestion effect triggered:', {
+      isFromSuggestion: state.context.isFromSuggestion,
+      promptLength: state.context.prompt.trim().length,
+      isAuthenticated,
+      timestamp: new Date().toISOString(),
+    })
+
     if (
       state.context.isFromSuggestion &&
       state.context.prompt.trim().length >= 15 &&
-      isAuthenticated
+      isAuthenticated &&
+      !state.matches('thinkingDraft') &&
+      !state.matches('generatingDraft') &&
+      !state.matches('generatingFinal')
     ) {
+      console.log('Auto-triggering generation from suggestion')
       // Use the existing timestamp if available
       const interactionTimestamp =
         state.context.interactionTimestamp ||
         new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
       send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     }
-  }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated])
+  }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated, state.matches, send])
 
   const handleFeelingLucky = async () => {
     console.log('=== handleFeelingLucky called ===')
