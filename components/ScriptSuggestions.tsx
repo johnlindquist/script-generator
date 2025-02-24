@@ -2,18 +2,25 @@ import ScriptSuggestionsClient from '@/components/ScriptSuggestionsClient'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 
 interface Props {
-  suggestions: Suggestion[]
-  onSelect: (suggestion: Suggestion) => void
+  setPrompt: (prompt: string) => void
+  setIsFromSuggestion: (value: boolean) => void
   className?: string
+  suggestions: Suggestion[]
 }
 
-export default function ScriptSuggestions({ suggestions, onSelect, className }: Props) {
+export default function ScriptSuggestions({
+  setPrompt,
+  setIsFromSuggestion,
+  className,
+  suggestions,
+}: Props) {
   return (
     <div className="min-h-[28px]">
       <ScriptSuggestionsClient
-        suggestions={suggestions}
-        onSelect={onSelect}
+        setPrompt={setPrompt}
+        setIsFromSuggestion={setIsFromSuggestion}
         className={className}
+        suggestions={suggestions}
       />
     </div>
   )
