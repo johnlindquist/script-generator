@@ -29,7 +29,9 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json({ scripts })
+    const response = NextResponse.json({ scripts })
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
+    return response
   } catch (error) {
     console.error('Error fetching all scripts:', error)
     return NextResponse.json({ error: 'Failed to fetch scripts' }, { status: 500 })

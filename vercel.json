@@ -11,5 +11,13 @@
       "path": "/api/cron/sync-sponsors",
       "schedule": "0 * * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/generate-draft": {
+      "maxDuration": 30
+    },
+    "api/generate-final": {
+      "maxDuration": 30
+    }
+  }
 }

@@ -18,6 +18,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         id: true,
         content: true,
         dashedName: true,
+        createdAt: true,
       },
     })
 
@@ -33,10 +34,14 @@ export async function GET(request: NextRequest, { params }: Context) {
       return new NextResponse('Invalid filename', { status: 404 })
     }
 
+    const version = new Date(script.createdAt).getTime().toString()
+
     return new NextResponse(script.content, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Content-Disposition': `inline; filename="${script.dashedName || 'script'}.ts"`,
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+        ETag: version,
       },
     })
   } catch (error) {
