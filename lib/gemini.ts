@@ -8,3 +8,10 @@ export const model = genAI.getGenerativeModel({
     maxOutputTokens: 8192,
   },
 })
+
+export const reasoningModel = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash-thinking-exp-01-21',
+  generationConfig: {
+    maxOutputTokens: 8192,
+  },
+})

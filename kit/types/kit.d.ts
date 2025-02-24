@@ -14,8 +14,8 @@ import type {
   Script,
   Shortcut,
   Flags,
-} from './core'
-import { ChannelHandler } from './core'
+} from './core.js'
+import { ChannelHandler } from './core.js'
 import type { ConfigOptions, Options } from 'quick-score'
 
 export interface Arg {
@@ -99,8 +99,6 @@ export interface Trace {
   flush: () => void
 }
 
-export type OnExit = (fn: () => void) => void
-
 export type KitModuleLoader = (packageName: string, ...moduleArgs: string[]) => Promise<any>
 export type Edit = (
   file: string,
@@ -109,7 +107,7 @@ export type Edit = (
   col?: string | number
 ) => Promise<void>
 
-export type Browse = (url: string) => ReturnType<typeof import('@johnlindquist/open')>
+export type Browse = (url: string) => Promise<void>
 
 export type Wait = (time: number, submitValue?: any) => Promise<void>
 
@@ -176,55 +174,26 @@ export interface KitApi {
 
   checkProcess: (processId: number) => string
 
-  /**
-   * @example
-   * ```
-   * let pathToProject =  await home("projects", "my-code-project")
-   * // /Users/johnlindquist/projects/my-code-project
-   * ```
-   */
   home: PathFn
   isFile: IsCheck
   isDir: IsCheck
   isBin: IsCheck
   createPathResolver: PathResolver
-  /**
-   * @example
-   * ```
-   * let value =  await arg()
-   * ```
-   */
   arg: Arg
   select: Select
   mini: Arg
   micro: Arg
-  /**
-   * @example
-   * ```
-   * // Reads from .env or prompts if not set
-   * let SOME_ENV_VAR = await env("SOME_ENV_VAR")
-   * ```
-   */
   env: Env
   argOpts: string[]
 
   kitPath: PathFn
   kenvPath: PathFn
-  /**
-   * Generate a path `~/.kenv/tmp/{command}/...parts`
-   *
-   * @example
-   * ```
-   * tmpPath("taco.txt") // ~/.kenv/tmp/command/taco.txt
-   * ```
-   */
   tmpPath: PathFn
   kenvTmpPath: PathFn
 
   inspect: Inspect
 
   onTab: OnTab
-  onExit: OnExit
 
   attemptImport: KitModuleLoader
   silentAttemptImport: KitModuleLoader
@@ -285,68 +254,617 @@ export type Run = (command?: string, ...args: string[]) => Promise<any>
 type Utils = typeof import('../core/utils')
 
 declare global {
+  /**
+   * The `path` prompt allows you to select a file or folder from the file system. You navigate with tab/shift+tab (or right/left arrows) and enter to select.
+   * 1. Optional: The first argument is the initial directory to open with. Defaults to the home directory.
+   * #### path example
+   * ```ts
+   * let selectedFile = await path()
+   * ```
+   * #### path example startpath
+   * ```ts
+   * const projectPath = await path({
+   *   startPath: home("dev"),
+   *   hint: "Select a project from your dev folder",
+   * });
+   * await editor(projectPath);
+   * ```
+   [Examples](https://scriptkit.com?query=path) | [Docs](https://johnlindquist.github.io/kit-docs/#path) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=path)
+   */
   var path: PathSelector
+  /**
+   * Open a file using the KIT_EDITOR env variable
+   * (For example, set KIT_EDITOR=/usr/local/bin/cursor)
+   * #### edit example
+   * ```ts
+   * const zshrcPath = home(".zshrc");
+   * await edit(zshrcPath);
+   * ```
+   [Examples](https://scriptkit.com?query=edit) | [Docs](https://johnlindquist.github.io/kit-docs/#edit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=edit)
+   */
   var edit: Edit
+  /**
+   * Open a URL in the default browser.
+   * #### browse example
+   * ```ts
+   * // When executing a command without UI, "hide" allows you to instantly hide the UI rather than waiting for the command to finish
+   * await hide();
+   * await browse("https://scriptkit.com");
+   * ```
+   [Examples](https://scriptkit.com?query=browse) | [Docs](https://johnlindquist.github.io/kit-docs/#browse) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=browse)
+   */
   var browse: Browse
 
+  /**
+   * Create a path relative to the kit directory.
+   * #### kitPath example
+   * ```ts
+   * const kitLogs = kitPath("logs"); //~/.kit/logs
+   * ```
+   [Examples](https://scriptkit.com?query=kitPath) | [Docs](https://johnlindquist.github.io/kit-docs/#kitPath) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=kitPath)
+   */
   var kitPath: PathFn
+  /**
+   * Create a path relative to the "kenv" (kit environment) directory
+   * #### kenvPath example
+   * ```ts
+   * const scriptsPath = kenvPath("scripts");
+   * const scripts = await readdir(scriptsPath);
+   * await editor(JSON.stringify(scripts, null, 2));
+   * ```
+   [Examples](https://scriptkit.com?query=kenvPath) | [Docs](https://johnlindquist.github.io/kit-docs/#kenvPath) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=kenvPath)
+   */
   var kenvPath: PathFn
+  /**
+   * Create a path relative to a "kit" directory in the system temp directory
+   * > Note: The tmp directory is symlinked to the ~/.kenv/tmp directory for easy access
+   * #### tmpPath example
+   * ```ts
+   * const tmpTestTxtPath = tmpPath("test.txt");
+   * const content = await ensureReadFile(tmpTestTxtPath, "Hello World");
+   * await editor(
+   *   JSON.stringify(
+   *     {
+   *       tmpTestTxtPath,
+   *       content,
+   *     },
+   *     null,
+   *     2
+   *   )
+   * );
+   * ```
+   [Examples](https://scriptkit.com?query=tmpPath) | [Docs](https://johnlindquist.github.io/kit-docs/#tmpPath) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=tmpPath)
+   */
   var tmpPath: PathFn
   var kenvTmpPath: PathFn
 
+  /**
+   * Attempts to import a module.
+   * #### attemptImport example
+   * ```ts
+   * let module = await attemptImport("lodash")
+   * ```
+   [Examples](https://scriptkit.com?query=attemptImport) | [Docs](https://johnlindquist.github.io/kit-docs/#attemptImport) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=attemptImport)
+   */
   var attemptImport: KitModuleLoader
+  /**
+   * Attempts to import a module silently.
+   * - Only tested on macOS
+   * - May require additional permissions or configurations
+   * #### silentAttemptImport example
+   * ```ts
+   * let module = await silentAttemptImport("lodash")
+   * ```
+   [Examples](https://scriptkit.com?query=silentAttemptImport) | [Docs](https://johnlindquist.github.io/kit-docs/#silentAttemptImport) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=silentAttemptImport)
+   */
   var silentAttemptImport: KitModuleLoader
-  /** @deprecated Use standard or dynamic imports instead. */
+  /**
+   * > Deprecated: Use standard `import` instead.
+   * Installs an npm package.
+   * - Only tested on macOS
+   * - May require additional permissions or configurations
+   * #### npm example
+   * ```ts
+   * await npm("lodash")
+   * ```
+   [Examples](https://scriptkit.com?query=npm) | [Docs](https://johnlindquist.github.io/kit-docs/#npm) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=npm)
+   */
   var npm: KitModuleLoader
   var npmInstall: (packageName: string) => Promise<void>
   var installMissingPackage: (packageName: string) => Promise<void>
+  /**
+   * Run another script from the same kenv
+   * #### run example
+   * ```ts
+   * // Assuming you have a "hello-world.ts" script next to this file
+   * await run("hello-world");
+   * ```
+   * #### run example arg
+   * ```ts
+   * // Assuming the hello-world script has an: await arg("Enter your name")
+   * await run("hello-world", "John");
+   * ```
+   [Examples](https://scriptkit.com?query=run) | [Docs](https://johnlindquist.github.io/kit-docs/#run) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=run)
+   */
   var run: Run
   var setup: KitModuleLoader
 
+  /**
+   * Load an env var if it exists, prompt to set the env var if not:
+   * You can also prompt the user to set the env var using a prompt by nesting it in an async function:
+   * #### env example
+   * ```ts
+   * // Write write "MY_ENV_VAR" to ~/.kenv/.env
+   * let MY_ENV_VAR = await env("MY_ENV_VAR")
+   * ```
+   * #### env example with prompt
+   * ```ts
+   * // Prompt the user to select from a path
+   * let OUTPUT_DIR = await env("OUTPUT_DIR", async () => {
+   *   return await path({
+   *     hint: `Select the output directory`,
+   *   })
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=env) | [Docs](https://johnlindquist.github.io/kit-docs/#env) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=env)
+   */
   var env: Env
+  /**
+   * - Accept text input from the user.
+   * - Optionally provide a list of choices filtered by the text input.
+   * - Optionally provide a list of actions to trigger when the user presses a shortcut.
+   * 1. The first argument is a string or a prompt configuration object.
+   * 2. The second argument is a list of choices, a string to render, or a function that returns choices or a string to render.
+   * #### arg example
+   * ```ts
+   * let value = await arg()
+   * ```
+   * #### arg basic string input
+   * ```ts
+   * let name = await arg("Enter your name")
+   * ```
+   * #### arg with async choices object
+   * ```ts
+   * let person = await arg("Select a person", async () => {
+   *     let response = await get("https://swapi.dev/api/people/");
+   *     // return an array of objects with "name", "value", and "description" properties
+   *     return response?.data?.results.map((person) => { 
+   *         return {
+   *             name: person.name,
+   *             description: person.url,
+   *             value: person
+   *         }
+   *     });
+   * })
+   * ```
+   * #### arg with async choices
+   * ```ts
+   * let name = await arg("Select a name", async () => {
+   *     let response = await get("https://swapi.dev/api/people/");
+   *     return response?.data?.results.map((p) => p.name);
+   * })
+   * ```
+   * #### arg with choices array
+   * ```ts
+   * let name = await arg("Select a name", [
+   *   "John",
+   *   "Mindy",
+   *   "Joy",
+   * ])
+   * ```
+   * #### arg with generated choices
+   * ```ts
+   * let char = await arg("Type then pick a char", (input) => { 
+   *     // return an array of strings
+   *     return input.split("")
+   * })
+   * ```
+   * #### arg with shortcuts
+   * ```ts
+   * let url = "https://swapi.dev/api/people"
+   * let name = await arg({
+   *     placeholder: "Select a name",
+   *     shortcuts: [
+   *         {
+   *             name: "Explore API",
+   *             key: "cmd+e",
+   *             onPress: async () => { 
+   *                 open(url)
+   *             },
+   *             bar: "right"
+   *         }
+   *     ]
+   * }, async () => { 
+   *     let response = await get(url);
+   *     return response?.data?.results.map((p) => p.name);
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=arg) | [Docs](https://johnlindquist.github.io/kit-docs/#arg) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=arg)
+   */
   var arg: Arg
+  /**
+   * Prompts the user to select one or more options.
+   * #### select example
+   * ```ts
+   * let multipleChoice = await select(
+   *   "Select one or more developer",
+   *   ["John", "Nghia", "Mindy", "Joy"]
+   * )
+   * ```
+   * #### select a choice with a single keystroke
+   * ```ts
+   * let choice = await arg({
+   *   placeholder: "Choose a color",
+   *   choices: [
+   *     { name: "[R]ed", value: "red" },
+   *     { name: "[G]reen", value: "green" },
+   *     { name: "[B]lue", value: "blue" },
+   *   ],
+   * })
+   * await div(md(`You chose ${choice}`))
+   * ```
+   * #### select array object
+   * ```ts
+   * const people = [
+   *   {
+   *     name: "John",
+   *     description: "Full-stack Dev",
+   *     value: "John",
+   *   },
+   *   {
+   *     name: "Nghia",
+   *     description: "Full-stackoverflow dev",
+   *     value: "Nghia",
+   *   },
+   *   {
+   *     name: "Mindy",
+   *     description: "Business Analyst",
+   *     value: "Mindy",
+   *   },
+   *   {
+   *     name: "Joy",
+   *     description: "Leader",
+   *     value: "Joy",
+   *   },
+   * ]
+   * let multipleChoice = await select(
+   *   "Select one or more developer",
+   *   people
+   * )
+   * ```
+   * #### select async choices array object
+   * ```ts
+   * let name = await select(
+   *   "GET: NAME (please wait)",
+   *   async () => {
+   *     let response = await get(
+   *       "https://swapi.dev/api/people/"
+   *     )
+   *     return response?.data?.results.map(person => {
+   *       return {
+   *         name: person.name,
+   *         description: `height: ${person.height}, mass: ${person.mass}`,
+   *         value: person,
+   *         preview: () => JSON.stringify(person),
+   *       }
+   *     })
+   *   }
+   * )
+   * ```
+   * #### select basic array input
+   * ```ts
+   * let multipleChoice = await select(
+   *   "Select one or more developer",
+   *   ["John", "Nghia", "Mindy", "Joy"]
+   * )
+   * ```
+   * #### select generated input choices
+   * ```ts
+   * let word = await select("Type then pick a words", input => {
+   *   return input.trim().split(new RegExp("[.,;/-_\n]", "g"))
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=select) | [Docs](https://johnlindquist.github.io/kit-docs/#select) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=select)
+   */
   var select: Select
+  /**
+   * Prompts the user to select one or more options in a grid layout.
+   * #### grid example
+   * ```ts
+   * let multipleChoice = await grid(
+   *   "Select one or more developer",
+   *   ["John", "Nghia", "Mindy", "Joy"]
+   * )
+   * ```
+   [Examples](https://scriptkit.com?query=grid) | [Docs](https://johnlindquist.github.io/kit-docs/#grid) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=grid)
+   */
   var grid: Grid
   var basePrompt: Arg
+  /**
+   * Same API as `arg`, but with a compact format.
+   * #### mini example
+   * ```ts
+   * let name = await mini("Enter your name")
+   * ```
+   [Examples](https://scriptkit.com?query=mini) | [Docs](https://johnlindquist.github.io/kit-docs/#mini) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=mini)
+   */
   var mini: Arg
+  /**
+   * Same API as `arg`, but with a tiny, adorable UI.
+   * #### micro example
+   * ```ts
+   * let name = await micro("Enter your name")
+   * ```
+   [Examples](https://scriptkit.com?query=micro) | [Docs](https://johnlindquist.github.io/kit-docs/#micro) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=micro)
+   */
   var micro: Arg
+  /**
+   * onTab allows you to build a menu where prompts are organized under a tab. Press Tab/Shift+Tab to navigate between prompts.
+   * #### onTab example
+   * ```ts
+   * onTab("People", async (event) => {
+   *   await arg("Select a person", ["John", "Mindy", "Ben"]);
+   * });
+   * onTab("Animals", async (event) => {
+   *   await arg("Select an animal", ["Dog", "Cat", "Bird"]);
+   * });
+   * ```
+   [Examples](https://scriptkit.com?query=onTab) | [Docs](https://johnlindquist.github.io/kit-docs/#onTab) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=onTab)
+   */
   var onTab: OnTab
-  var onExit: OnExit
   var args: Args
 
   var updateArgs: UpdateArgs
   var argOpts: string[]
 
+  /**
+   * Wait for a number of milliseconds
+   * #### wait example
+   * ```ts
+   * div(md(`Enjoying your wait?`));
+   * await wait(1000);
+   * div(md(`I waited 1 second. Let's wait some more!`));
+   * await wait(1000);
+   * await div(md(`All done!`));
+   * ```
+   [Examples](https://scriptkit.com?query=wait) | [Docs](https://johnlindquist.github.io/kit-docs/#wait) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=wait)
+   */
   var wait: Wait
 
+  /**
+   * Create a path relative to the user's home directory
+   * #### home example
+   * ```ts
+   * const downloadsPath = home("Downloads");
+   * const downloadedFileNames = await readdir(downloadsPath);
+   * await editor(JSON.stringify(downloadedFileNames, null, 2));
+   * ```
+   [Examples](https://scriptkit.com?query=home) | [Docs](https://johnlindquist.github.io/kit-docs/#home) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=home)
+   */
   var home: PathFn
+  /**
+   * Check if a path is a file
+   * #### isFile example
+   * ```ts
+   * const testingIsFileTxtPath = home("testing-isFile.txt");
+   * const isTestingFile = await isFile(testingIsFileTxtPath);
+   * if (!isTestingFile) {
+   *   await writeFile(testingIsFileTxtPath, "Hello World");
+   * }
+   * const content = await readFile(testingIsFileTxtPath, "utf8");
+   * await editor(content);
+   * ```
+   [Examples](https://scriptkit.com?query=isFile) | [Docs](https://johnlindquist.github.io/kit-docs/#isFile) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=isFile)
+   */
   var isFile: IsCheck
+  /**
+   * Check if a path is a directory
+   [Examples](https://scriptkit.com?query=isDir) | [Docs](https://johnlindquist.github.io/kit-docs/#isDir) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=isDir)
+   */
   var isDir: IsCheck
+  /**
+   * Check if a path can be executed
+   [Examples](https://scriptkit.com?query=isBin) | [Docs](https://johnlindquist.github.io/kit-docs/#isBin) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=isBin)
+   */
   var isBin: IsCheck
   var createPathResolver: PathResolver
 
+  /**
+   * `inspect` takes an object and writes out a text file you can use to read/copy/paste the values from:
+   * > Note: It will automatically convert objects to JSON to display them in the file
+   * #### inspect example
+   * ```ts
+   * let response = await get("https://swapi.dev/api/people/1/")
+   * await inspect(response.data)
+   * ```
+   [Examples](https://scriptkit.com?query=inspect) | [Docs](https://johnlindquist.github.io/kit-docs/#inspect) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=inspect)
+   */
   var inspect: Inspect
 
+  /**
+   * An extremely simple database that persists to a file.
+   * #### db hello world
+   * ```ts
+   * // Pre-populate the database with some items
+   * const peopleDb = await db({
+   *   people: [
+   *     {
+   *       name: "John",
+   *       age: 30,
+   *       city: "San Francisco",
+   *     },
+   *     {
+   *       name: "Jane",
+   *       age: 25,
+   *       city: "New York",
+   *     },
+   *   ] as Person[],
+   * });
+   * const person = await arg<Person>("Select a person", peopleDb.people);
+   * // Do something with the person...
+   * const [name, age, city] = await fields({
+   *   fields: ["name", "age", "city"],
+   *   enter: "Add",
+   *   description: "Add a new person to the database",
+   * });
+   * peopleDb.people.push({ name, age: parseInt(age), city });
+   * await peopleDb.write();
+   * await editor(JSON.stringify(peopleDb.people, null, 2));
+   * type Person = {
+   *   name: string;
+   *   age: number;
+   *   city: string;
+   * };
+   * ```
+   * #### db populate
+   * ```ts
+   * // Pass in a function to generate data for the db
+   * // Because this script is named "db-basic.js"
+   * // The database is found at "~/.kenv/db/_db-basic.json"
+   * let reposDb = await db(async () => {
+   *   let response = await get("https://api.github.com/users/johnlindquist/repos");
+   * return response.data.map(({ name, description, html_url }) => {
+   *     return {
+   *       name,
+   *       description,
+   *       value: html_url,
+   *     };
+   *   });
+   * });
+   * let repoUrl = await arg("Select repo to open:", reposDb.items);
+   * exec(`open "${repoUrl}"`);
+   * ```
+   * #### db store
+   * ```ts
+   * let fruitDb = await db(["apple", "banana", "orange"])
+   * while (true) {
+   *   let fruitToAdd = await arg("Add a fruit", md(fruitDb.items.map(fruit => `* ${fruit}`).join("\n")))
+   * fruitDb.items.push(fruitToAdd)
+   *   await fruitDb.write()
+   * let fruitToDelete = await arg("Delete a fruit", fruitDb.items)
+   * fruitDb.items = fruitDb.items.filter(fruit => fruit !== fruitToDelete)
+   * await fruitDb.write()
+   * }
+   * ```
+   [Examples](https://scriptkit.com?query=db) | [Docs](https://johnlindquist.github.io/kit-docs/#db) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=db)
+   */
   var db: DB
+  /**
+   * Stores data in a persistent key-value store.
+   * - Only tested on macOS
+   * - May require additional permissions or configurations
+   * #### store example
+   * ```ts
+   * await store.set("myKey", "myValue")
+   * let value = await store.get("myKey")
+   * ```
+   [Examples](https://scriptkit.com?query=store) | [Docs](https://johnlindquist.github.io/kit-docs/#store) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=store)
+   */
   var store: Store
 
+  /**
+   * Manages a memory map of objects.
+   * #### memoryMap example
+   * ```ts
+   * memoryMap.set("myKey", { myObject: true })
+   * let value = memoryMap.get("myKey")
+   * ```
+   [Examples](https://scriptkit.com?query=memoryMap) | [Docs](https://johnlindquist.github.io/kit-docs/#memoryMap) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=memoryMap)
+   */
   var memoryMap: Map<string, any>
 
   var onTabIndex: number
 
   var selectKitEditor: SelectKitEditor
 
+  /**
+   * Get all scripts
+   * #### getScripts example
+   * ```ts
+   * // Get all scripts from ~/.kit/db/scripts.json
+   * const scripts = await getScripts();
+   * const script = await arg("Select a script", scripts);
+   * await editor(JSON.stringify(script, null, 2));
+   * ```
+   [Examples](https://scriptkit.com?query=getScripts) | [Docs](https://johnlindquist.github.io/kit-docs/#getScripts) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getScripts)
+   */
   var getScripts: GetScripts
+  /**
+   * Returns focus to the previous app.
+   * #### blur example
+   * ```ts
+   * import { URL, fileURLToPath } from "node:url";
+   * await editor({
+   *   onInit: async () => {
+   *     const { workArea } = await getActiveScreen();
+   *     const topLeft = { x: workArea.x, y: workArea.y };
+   *     const size = { height: 900, width: 200 };
+   *     await setBounds({
+   *       ...topLeft,
+   *       ...size,
+   *     });
+   *     await blur();
+   * // get path to current file
+   *     const currentScript = fileURLToPath(new URL(import.meta.url));
+   *     const content = await readFile(currentScript, "utf8");
+   *     const lines = content.split("\n");
+   *     for await (const line of lines) {
+   *       editor.append(`${line}\n`);
+   *       await wait(100);
+   *     }
+   *   },
+   * });
+   * ```
+   [Examples](https://scriptkit.com?query=blur) | [Docs](https://johnlindquist.github.io/kit-docs/#blur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=blur)
+   */
   var blur: () => Promise<void>
   var flag: Flags
   var actionFlag: string
   var setFlags: FlagFn
   var setActions: ActionsFn
+  /**
+   * Manually open the actions menu
+   * #### openActions example
+   * ```ts
+   * await arg(
+   *   {
+   *     onInit: async () => {
+   *       // Automatically open the actions menu
+   *       openActions();
+   *     },
+   *   },
+   *   ["John", "Mindy"],
+   *   [
+   *     {
+   *       name: "Submit Ben Instead",
+   *       onAction: async (name) => {
+   *         submit("Ben");
+   *       },
+   *     },
+   *   ]
+   * );
+   * ```
+   [Examples](https://scriptkit.com?query=openActions) | [Docs](https://johnlindquist.github.io/kit-docs/#openActions) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=openActions)
+   */
   var openActions: () => Promise<void>
   var closeActions: () => Promise<void>
   var setFlagValue: (value: any) => Promise<void>
   var prepFlags: PrepFlags
 
+  /**
+   * Allows you to build a custom script selection menu
+   * #### selectScript example
+   * ```ts
+   * import type { Script } from "@johnlindquist/kit";
+   * const script = await selectScript(
+   *   "Select a Shortcut Script to Edit",
+   *   true, // "true" will load from ~/.kit/db/scripts.json cache
+   *   (scripts: Script[]) => scripts.filter((script) => script.shortcut)
+   * );
+   * await edit(script.filePath);
+   * ```
+   [Examples](https://scriptkit.com?query=selectScript) | [Docs](https://johnlindquist.github.io/kit-docs/#selectScript) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=selectScript)
+   */
   var selectScript: SelectScript
   var selectKenv: SelectKenv
   var highlight: Highlight
@@ -357,12 +875,34 @@ declare global {
   var projectPath: PathFn
   var clearAllTimeouts: () => void
   var clearAllIntervals: () => void
+  /**
+   * Creates a GitHub gist.
+   * - Only tested on macOS
+   * - May require additional permissions or configurations
+   * #### createGist example
+   * ```ts
+   * let gistUrl = await createGist({
+   *   description: "My awesome gist",
+   *   public: true,
+   *   files: {
+   *     "hello.txt": {
+   *       content: "Hello, world!"
+   *     }
+   *   }
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=createGist) | [Docs](https://johnlindquist.github.io/kit-docs/#createGist) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=createGist)
+   */
   var createGist: CreateGist
   var setShortcuts: SetShortcuts
   var isWin: boolean
   var isMac: boolean
   var isLinux: boolean
   var cmd: 'cmd' | 'ctrl'
+  /**
+   * Formats a date
+   [Examples](https://scriptkit.com?query=formatDate) | [Docs](https://johnlindquist.github.io/kit-docs/#formatDate) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=formatDate)
+   */
   var formatDate: typeof format
   var formatDateToNow: typeof formatDistanceToNow
 
@@ -376,8 +916,31 @@ declare global {
     config: Partial<Options & ConfigOptions>
   ) => Promise<(query: string) => ScoredChoice[]>
 
+  /**
+   * Sets scored choices for a prompt.
+   * #### setScoredChoices example
+   * ```ts
+   * await setScoredChoices([
+   *   { name: "John", score: 0.9 },
+   *   { name: "Mindy", score: 0.8 },
+   *   { name: "Joy", score: 0.7 }
+   * ])
+   * ```
+   [Examples](https://scriptkit.com?query=setScoredChoices) | [Docs](https://johnlindquist.github.io/kit-docs/#setScoredChoices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setScoredChoices)
+   */
   var setScoredChoices: (scoredChoices: ScoredChoice[]) => Promise<void>
 
+  /**
+   * Groups choices for a prompt.
+   * #### groupChoices example
+   * ```ts
+   * await groupChoices([
+   *   { name: "Group 1", choices: ["John", "Mindy"] },
+   *   { name: "Group 2", choices: ["Joy"] }
+   * ])
+   * ```
+   [Examples](https://scriptkit.com?query=groupChoices) | [Docs](https://johnlindquist.github.io/kit-docs/#groupChoices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=groupChoices)
+   */
   var groupChoices: (
     choices: Choice[],
     options?: {
@@ -391,14 +954,97 @@ declare global {
     }
   ) => Choice[]
 
+  /**
+   * Formats an array of choices.
+   * - If a choice is not an object, it is converted to a basic choice object.
+   * - If a choice has a nested `choices` array (i.e. represents a group), then:
+   *    1. The group header is formatted (its `group` property is preserved if already set, or defaulted to its name).
+   *    2. Its sub-choices are formatted in their original order.
+   *    3. After processing the sub‑choices, any items with an `index` property are re‑inserted at the appropriate positions.
+   * - For top‑level non-group items, if every item is non‑group, then we re‑insert the indexed items in the final array.
+   * Parameters:
+   * - `choices`: An array of choices or simple values
+   * - `className`: An optional default className
+   * Returns the formatted array of choices.
+   * #### formatchoices example
+   * ```ts
+   * const people = [
+   *   {
+   *     name: "Utah",
+   *     choices: ["John", "Mindy"],
+   *   },
+   *   {
+   *     name: "Alaska",
+   *     choices: ["Beth"],
+   *   },
+   * ];
+   * const choices = formatChoices(people);
+   * await arg("Select a person from their group", choices);
+   * ```
+   [Examples](https://scriptkit.com?query=formatChoices) | [Docs](https://johnlindquist.github.io/kit-docs/#formatChoices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=formatChoices)
+   */
   var formatChoices: (choices: Choice[], className?: string) => Choice[]
 
+  /**
+   * Preloads data for a prompt.
+   * #### preload example
+   * ```ts
+   * await preload({
+   *   name: "John",
+   *   age: 40
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=preload) | [Docs](https://johnlindquist.github.io/kit-docs/#preload) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=preload)
+   */
   var preload: (scriptPath?: string) => void
 
+  /**
+   * Sets selected choices for a prompt.
+   * #### setSelectedChoices example
+   * ```ts
+   * await setSelectedChoices(["John", "Mindy"])
+   * ```
+   [Examples](https://scriptkit.com?query=setSelectedChoices) | [Docs](https://johnlindquist.github.io/kit-docs/#setSelectedChoices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setSelectedChoices)
+   */
   var setSelectedChoices: (choices: Choice[]) => Promise<void>
   var toggleAllSelectedChoices: () => Promise<void>
   var trace: Trace
 
-  type Metadata = import('./core').Metadata
+  type Metadata = import('./core.js').Metadata
+
+  /**
+   * The `metadata` object can include:
+   * - `name`: Display name in Script Kit UI (defaults to filename)
+   * - `author`: Creator's name
+   * - `description`: Brief script summary
+   * - `enter`: Text shown on Enter button
+   * - `alias`: Alternative search term
+   * - `image`: Path to script icon
+   * - `shortcut`: Global keyboard shortcut, e.g, cmd+opt+4
+   * - `shortcode`: Execute when typed + space in menu
+   * - `trigger`: Execute when typed in menu
+   * - `expand`: Text expansion trigger (replaces deprecated `snippet`)
+   * - `keyword`: Search keyword for menu
+   * - `pass`: Pass menu input as arg (true/string/RegExp)
+   * - `group`: Menu organization category
+   * - `exclude`: Hide from menu
+   * - `watch`: File/dir to watch for changes
+   * - `log`: Disable logging if false
+   * - `background`: Run as background process
+   * - `system`: Trigger on system events (sleep/wake/etc)
+   * - `schedule`: Cron expression for timing
+   * - `access`: REST API access level (public/key/private)
+   * - `response`: Allow REST API response
+   * - `index`: Order within group### Metadata
+   * #### metadata example
+   * ```ts
+   * metadata = {
+   *   name: "Metadata Example",
+   *   description: "This is an example of how to use metadata in a script",
+   *   author: "John Lindquist",
+   * };
+   * ```
+   [Examples](https://scriptkit.com?query=metadata) | [Docs](https://johnlindquist.github.io/kit-docs/#metadata) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=metadata)
+   */
   var metadata: Metadata
 }

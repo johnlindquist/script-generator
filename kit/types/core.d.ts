@@ -36,7 +36,7 @@ export interface Choice<Value = any> {
       }
     | string
   onFocus?: (input: string, state: AppState) => string | Promise<string>
-  onSubmit?: (input: string, state: AppState) => void | Symbol | Promise<void | Symbol>
+  onSubmit?: (input: string, state: AppState) => void | symbol | Promise<void | symbol>
   enter?: string
   disableSubmit?: boolean
   info?: boolean
@@ -95,12 +95,8 @@ export interface ScriptMetadata extends Metadata {
   social?: string
   social_url?: string
   exclude?: boolean
-  schedule?: string
-  system?: string
   watch?: string
-  background?: boolean | 'auto'
   type: ProcessType
-  timeout?: number
   tabs?: string[]
   tag?: string
   log?: boolean
@@ -152,6 +148,8 @@ export type Scriptlet = Script & {
 export type Snippet = Script & {
   group: 'Snippets'
   text: string
+  snippetKey?: string
+  postfix?: string
 }
 
 export type PromptBounds = {
@@ -274,6 +272,7 @@ export interface PromptData {
   show?: boolean
   scriptlet?: boolean
   actionsConfig?: ActionsConfig
+  grid?: boolean
 }
 
 export type GenerateChoices = (input: string) => Choice<any>[] | Promise<Choice<any>[]>
@@ -398,7 +397,7 @@ export type ChannelHandler = (input?: string, state?: AppState) => void | Promis
 export type SubmitHandler = (
   input?: string,
   state?: AppState
-) => void | Symbol | Promise<void | Symbol>
+) => void | symbol | Promise<void | symbol>
 
 export type PromptConfig = {
   validate?: (input: string) => boolean | string | Promise<boolean | string>
@@ -463,6 +462,23 @@ export type CronExpression =
   | `${string} ${string} ${string} ${string} ${string}`
   | `${string} ${string} ${string} ${string} ${string} ${string}`
 
+type OptModifier = 'opt' | 'option' | 'alt'
+type CmdModifier = 'cmd' | 'command'
+type CtrlModifier = 'ctrl' | 'control'
+type ShiftModifier = 'shift'
+
+type Modifier = OptModifier | CmdModifier | CtrlModifier | ShiftModifier
+type Key = string
+type Separator = ' ' | '+'
+
+type ModifierCombination =
+  | Modifier
+  | `${Modifier}${Separator}${Modifier}`
+  | `${Modifier}${Separator}${Modifier}${Separator}${Modifier}`
+  | `${Modifier}${Separator}${Modifier}${Separator}${Modifier}${Separator}${Modifier}`
+
+export type MetadataShortcut = `${ModifierCombination}${Separator}${Key}`
+
 export interface Metadata {
   /** The author's name */
   author?: string
@@ -480,7 +496,7 @@ export interface Metadata {
   /** Defines the path to an image to be used for the script */
   image?: string
   /** Defines a global keyboard shortcut to trigger the script. */
-  shortcut?: string
+  shortcut?: MetadataShortcut
   /**
    * Similar to {@link trigger}, defines a string that, when typed in the main menu
    * followed by a space, immediately executes the script.
@@ -514,8 +530,6 @@ export interface Metadata {
   log?: boolean
   /** Designates the script as a background process, running continuously in the background. */
   background?: boolean | 'auto'
-  /** Defines the number of seconds after which the script will be terminated */
-  timeout?: number
   /** Associates the script with system events such as sleep, wake, or shutdown. */
   system?:
     | 'suspend'
@@ -530,9 +544,16 @@ export interface Metadata {
 
   /** Specifies a cron expression for scheduling the script to run at specific times or intervals. */
   schedule?: CronExpression
+  /** Indicates whether the script can be run through the rest API */
   access?: 'public' | 'key' | 'private'
+  /** Indicates whether the script can return a response through the rest API */
   response?: boolean
+  /** Indicates the order of the script in its group in the main menu */
   index?: number
+  /** Indicates whether to disable logs for the script */
+  log?: boolean
+  /** Optimization: if this script won't require a prompt, set this to false */
+  prompt?: boolean
 }
 
 export interface ProcessInfo {

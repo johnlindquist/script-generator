@@ -1,14 +1,13 @@
 import { execaCommand as exec } from 'execa'
-import type { editor } from './editor.api'
+import type { editor as editorApi } from './editor.api.d.ts'
 
 import {
-  type Key,
-  Key as CoreKeyEnum,
+  type Key as CoreKeyEnum,
   Channel,
   Mode,
   type statuses,
   type PROMPT as PROMPT_OBJECT,
-} from '../core/enum'
+} from '../core/enum.js'
 
 import type { AppDb } from '../core/db.js'
 
@@ -24,17 +23,19 @@ import {
   type ScoredChoice,
   type Script,
   type Shortcut,
-} from './core'
-import type { BrowserWindowConstructorOptions, Display, Rectangle } from './electron'
+} from './core.js'
+import type { BrowserWindowConstructorOptions, Display, Rectangle } from './electron.js'
 
-import type { Trash } from './packages'
-import type { marked } from '../globals/marked.ts'
+import type { Trash } from './packages.js'
+import type { marked } from '../globals/marked.js'
+import type { Token as MarkedToken } from 'marked'
 import type { ChildProcess } from 'node:child_process'
-import type { UiohookKeyboardEvent, UiohookMouseEvent, UiohookWheelEvent } from './io'
-import type { FileSearchOptions } from './platform'
-import { ReadStream, WriteStream } from 'node:fs'
-import type { NotificationConstructorOptions } from './notify'
-import type { ShebangConfig } from '../core/shebang'
+import type { UiohookKeyboardEvent, UiohookMouseEvent, UiohookWheelEvent } from './io.js'
+import type { KeyEnum } from '../core/keyboard.js'
+import type { FileSearchOptions } from './platform.js'
+import type { NotificationConstructorOptions } from './notify.js'
+import type { ShebangConfig } from '../core/shebang.js'
+import type { Readable } from 'node:stream'
 
 export type Status = (typeof statuses)[number]
 
@@ -132,9 +133,9 @@ export type Toast = (toast: string, options?: ToastOptions) => void
 
 export type Prompt = {
   closeActions(): Promise<void>
-  close(): Promise<void>
-  openActions(): Promise<void>
-  setInput(input: string): Promise<void>
+  close(): void
+  openActions(): void
+  setInput(input: string): void
   focus(): Promise<void>
   blur(): Promise<void>
   hide(): Promise<void>
@@ -155,6 +156,22 @@ export type Screenshot = (displayId?: number, bounds?: Rectangle) => Promise<Buf
 export type ScreenshotConfig = {
   displayId?: Parameters<Screenshot>[0]
   bounds?: Parameters<Screenshot>[1]
+}
+
+export type MediaDeviceInfo = {
+  name: string
+  description: string
+  group: string
+  value: {
+    deviceId: string
+    kind: string
+    label: string
+    groupId: string
+  }
+  deviceId: string
+  kind: string
+  label: string
+  groupId: string
 }
 
 export type GetMediaDevices = () => Promise<MediaDeviceInfo[]>
@@ -190,7 +207,7 @@ export interface EditorProps {
   width: number
 }
 
-export type EditorOptions = editor.IStandaloneEditorConstructionOptions & {
+export type EditorOptions = editorApi.IStandaloneEditorConstructionOptions & {
   file?: string
   footer?: string
   scrollTo?: 'top' | 'center' | 'bottom'
@@ -218,7 +235,7 @@ export interface TextareaConfig extends PromptConfig {
   value?: string
 }
 
-export type EditorRef = editor.IStandaloneCodeEditor
+export type EditorRef = editorApi.IStandaloneCodeEditor
 
 export type PromptBounds = {
   x: number
@@ -314,9 +331,7 @@ export interface KeyData {
   win: boolean
   shortcut: string
 }
-export interface Hotkey {
-  (placeholder?: string | PromptConfig): Promise<KeyData>
-}
+export type Hotkey = (placeholder?: string | PromptConfig) => Promise<KeyData>
 
 type SetImage = string | { src: string }
 
@@ -627,8 +642,8 @@ export interface ChannelMap {
 
   [Channel.KEYBOARD_CONFIG]: { autoDelayMs: number }
   [Channel.KEYBOARD_TYPE]: string
-  [Channel.KEYBOARD_PRESS_KEY]: Key[]
-  [Channel.KEYBOARD_RELEASE_KEY]: Key[]
+  [Channel.KEYBOARD_PRESS_KEY]: CoreKeyEnum[]
+  [Channel.KEYBOARD_RELEASE_KEY]: CoreKeyEnum[]
 
   [Channel.SCRIPT_CHANGED]: Script
   [Channel.SCRIPT_REMOVED]: Script
@@ -650,7 +665,6 @@ export interface ChannelMap {
   [Channel.START_MIC]: MicConfig
   [Channel.SCREENSHOT]: ScreenshotConfig
   [Channel.SYSTEM_CLICK]: boolean
-  [Channel.SYSTEM_MOVE]: boolean
   [Channel.SYSTEM_KEYDOWN]: boolean
   [Channel.SYSTEM_KEYUP]: boolean
   [Channel.SYSTEM_MOUSEDOWN]: boolean
@@ -686,6 +700,8 @@ export type ScrollTo = (location: 'top' | 'bottom' | 'center') => Promise<void>
 
 export type SetTextareaValue = (value: string) => void
 
+export type SetIgnoreBlur = (ignoreBlur: boolean) => void
+
 export type SetFocused = (id: string) => void
 
 export type SetResize = (resize: boolean) => void
@@ -716,17 +732,17 @@ export interface KitTheme {
 
 export type SetTheme = (theme: string) => Promise<void>
 
-export type SetPlaceholder = (placeholder: string) => void
+export type SetPlaceholder = (placeholder: string) => Promise<void>
 
-export type SetEnter = (text: string) => void
+export type SetEnter = (text: string) => Promise<void>
 
-export type SetPanel = (html: string, containerClasses?: string) => void
+export type SetPanel = (html: string, containerClasses?: string) => Promise<void>
 
-export type SetFooter = (footer: string) => void
+export type SetFooter = (footer: string) => Promise<void>
 
-export type SetPrompt = (config: Partial<PromptData>) => void
-export type SetPreview = (html: string, containerClasses?: string) => void
-export type SetBounds = (bounds: Partial<Rectangle>) => void
+export type SetPrompt = (config: Partial<PromptData>) => Promise<void>
+export type SetPreview = (html: string, containerClasses?: string) => Promise<void>
+export type SetBounds = (bounds: Partial<Rectangle>) => Promise<void>
 
 export type SendKeystroke = (keyData: Partial<KeyData>) => void
 
@@ -741,9 +757,7 @@ export type GetEditorHistory = () => Promise<
   }[]
 >
 
-export interface Submit {
-  (value: any): Promise<void>
-}
+export type Submit = (value: any) => Promise<void>
 
 export type ShowOptions = BrowserWindowConstructorOptions & {
   ttl?: number
@@ -751,9 +765,7 @@ export type ShowOptions = BrowserWindowConstructorOptions & {
   center?: boolean
 }
 
-export interface ShowAppWindow {
-  (content: string, options?: ShowOptions): Promise<void>
-}
+export type ShowAppWindow = (content: string, options?: ShowOptions) => Promise<void>
 
 export interface ClipboardItem {
   id: string
@@ -812,17 +824,17 @@ export interface Keyboard {
    * Presses a key.
    * @param keys The keys to press.
    */
-  pressKey: (...keys: Key[]) => Promise<void>
+  pressKey: (...keys: CoreKeyEnum[]) => Promise<void>
   /**
    * Releases a key.
    * @param keys The keys to release.
    */
-  releaseKey: (...keys: Key[]) => Promise<void>
+  releaseKey: (...keys: CoreKeyEnum[]) => Promise<void>
   /**
    * Taps a key.
    * @param keys The keys to tap.
    */
-  tap: (...keys: Key[]) => Promise<void>
+  tap: (...keys: CoreKeyEnum[]) => Promise<void>
   /**
    * @deprecated Use `keyboard.typeDelayed` or set `KIT_TYPING_RATE` and use `keyboard.type` instead.
    */
@@ -875,7 +887,7 @@ export type Docs<T = any> = (
   markdownPath: string,
   options?:
     | Partial<PromptConfig>
-    | ((sections?: GuideSection[], tokens?: marked.Token[]) => Promise<Partial<PromptConfig>>)
+    | ((sections?: GuideSection[], tokens?: MarkedToken[]) => Promise<Partial<PromptConfig>>)
 ) => Promise<T>
 
 export type ExecLog = (command: string, logger?: typeof console.log) => ChildProcess
@@ -995,14 +1007,171 @@ export interface HideOptions {
 }
 declare global {
   var textarea: TextArea
+  /**
+   * Use `await drop()` to prompt the user to drop a file or folder.
+   * #### drop example
+   * ```ts
+   * // Dropping text or an image from the browser returns a string
+   * let fileInfos = await drop()
+   * let filePaths = fileInfos.map(f => f.path).join(",")
+   * await div(md(filePaths))
+   * ```
+   [Examples](https://scriptkit.com?query=drop) | [Docs](https://johnlindquist.github.io/kit-docs/#drop) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=drop)
+   */
   var drop: Drop
+  /**
+   * `div` displays HTML. Pass a string of HTML to `div` to render it. `div` is commonly used in conjunction with `md` to render markdown.
+   * 1. Just like arg, the first argument is a string or a prompt configuration object.
+   * 2. Optional:The second argument is a string of tailwind class to apply to the container, e.g., `bg-white p-4`.
+   * #### div example
+   * ```ts
+   * await div(`Hello world!`)
+   * ```
+   * #### div with markdown
+   * ```ts
+   * await div(md(`
+   * # example!
+   [Examples](https://scriptkit.com?query=div) | [Docs](https://johnlindquist.github.io/kit-docs/#div) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=div)
+   */
   var div: Div
+  /**
+   * Use an HTML form which returns an Object based on the names of the form fields.
+   * #### form example
+   * ```ts
+   * let result = await form(`
+   * <div class="p-4">
+   *     <input type="text" name="textInput" placeholder="Text Input" />
+   *     <input type="password" name="passwordInput" placeholder="Password" />
+   *     <input type="email" name="emailInput" placeholder="Email" />
+   *     <input type="number" name="numberInput" placeholder="Number" />
+   *     <input type="date" name="dateInput" placeholder="Date" />
+   *     <input type="time" name="timeInput" placeholder="Time" />
+   *     <input type="datetime-local" name="dateTimeInput" placeholder="Date and Time" />
+   *     <input type="month" name="monthInput" placeholder="Month" />
+   *     <input type="week" name="weekInput" placeholder="Week" />
+   *     <input type="url" name="urlInput" placeholder="URL" />
+   *     <input type="search" name="searchInput" placeholder="Search" />
+   *     <input type="tel" name="telInput" placeholder="Telephone" />
+   *     <input type="color" name="colorInput" placeholder="Color" />
+   *     <textarea name="textareaInput" placeholder="Textarea"></textarea>
+   * </div>
+   * `)
+   * inspect(result)
+   * ```
+   [Examples](https://scriptkit.com?query=form) | [Docs](https://johnlindquist.github.io/kit-docs/#form) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=form)
+   */
   var form: Form
+  /**
+   * The `fields` prompt allows you to rapidly create a form with fields. 
+   * 1. An array of labels or objects with label and field properties.
+   * #### fields example
+   * ```ts
+   * let [first, last] = await fields(["First name", "Last name"])
+   * ```
+   * #### fields edit the keys and values of an object
+   * ```ts
+   * let data = {
+   *   name: "John",
+   *   age: 42,
+   *   location: "USA",
+   * };
+   * let result = await fields(
+   *   Object.entries(data).map(([key, value]) => ({
+   *     name: key,
+   *     label: key,
+   *     value: String(value),
+   *   }))
+   * );
+   * let newData = Object.entries(data).map(([key], i) => ({
+   *   [key]: result[i],
+   * }));
+   * inspect(newData);
+   * ```
+   * #### fields with field properties
+   * ```ts
+   * let [name, age] = await fields([
+   *     {
+   *         name: "name",
+   *         label: "Name",
+   *         type: "text",
+   *         placeholder: "John"
+   *     },
+   *     {
+   *         name: "age",
+   *         label: "Age",
+   *         type: "number",
+   *         placeholder: "40"
+   *     }
+   * ])
+   * ```
+   [Examples](https://scriptkit.com?query=fields) | [Docs](https://johnlindquist.github.io/kit-docs/#fields) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=fields)
+   */
   var fields: Fields
   var emoji: Emoji
+  /**
+   * The `editor` function opens a text editor with the given text. The editor is a full-featured "Monaco" editor with syntax highlighting, find/replace, and more. The editor is a great way to edit or update text to write a file. The default language is markdown.
+   * #### editor example
+   * ```ts
+   * let content = await editor()
+   * ```
+   * #### editor load remote text content
+   * ```ts
+   * let response = await get(`https://raw.githubusercontent.com/johnlindquist/kit/main/API.md`)
+   * let content = await editor(response.data)
+   * ```
+   * #### editor with initial content
+   * ```ts
+   * let content = await editor("Hello world!")
+   * ```
+   [Examples](https://scriptkit.com?query=editor) | [Docs](https://johnlindquist.github.io/kit-docs/#editor) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=editor)
+   */
   var editor: Editor
+  /**
+   * The `template` prompt will present the editor populated by your template. You can then tab through each variable in your template and edit it. 
+   * 1. The first argument is a string template. Add variables using $1, $2, etc. You can also use 
+   * [//]: # (\${1:default value} to set a default value.&#41;)
+   * #### template example
+   * ```ts
+   * let text = await template(`Hello $1!`)
+   * ```
+   * #### template standard usage
+   * ```ts
+   * let text = await template(`
+   * Dear \${1:name},
+   * Please meet me at \${2:address}
+   * Sincerely, John`)
+   * ```
+   [Examples](https://scriptkit.com?query=template) | [Docs](https://johnlindquist.github.io/kit-docs/#template) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=template)
+   */
   var template: Template
 
+  /**
+   * The `hotkey` prompt allows you to press modifier keys, then submits once you've pressed a non-monodifier key. For example, press `command` then `e` to submit key info about the `command` and `e` keys:
+   * ```json
+   * {
+   *   "key": "e",
+   *   "command": true,
+   *   "shift": false,
+   *   "option": false,
+   *   "control": false,
+   *   "fn": false,
+   *   "hyper": false,
+   *   "os": false,
+   *   "super": false,
+   *   "win": false,
+   *   "shortcut": "command e",
+   *   "keyCode": "KeyE"
+   * }
+   * ```
+   * This can be useful when you want to use a palette of commands and trigger each of them by switching on a hotkey.
+   * 1. Optional: The first argument is a string to display in the prompt.
+   * #### hotkey example
+   * ```ts
+   * let keyInfo = await hotkey()
+   * await editor(JSON.stringify(keyInfo, null, 2))
+   * ```
+   [Examples](https://scriptkit.com?query=hotkey) | [Docs](https://johnlindquist.github.io/kit-docs/#hotkey) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hotkey)
+   */
   var hotkey: Hotkey
   var send: Send
   var sendWait: (channel: Channel, value?: any, timeout?: number) => Promise<any>
@@ -1013,6 +1182,14 @@ declare global {
   var setFocused: SetFocused
   var setEnter: SetEnter
   var setPlaceholder: SetPlaceholder
+  /**
+   * Sets the panel content.
+   * #### setPanel example
+   * ```ts
+   * await setPanel("<h1>Hello, world!</h1>")
+   * ```
+   [Examples](https://scriptkit.com?query=setPanel) | [Docs](https://johnlindquist.github.io/kit-docs/#setPanel) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPanel)
+   */
   var setPanel: SetPanel
   var setFooter: SetFooter
   var addChoice: AddChoice
@@ -1021,7 +1198,23 @@ declare global {
   var setFormData: SetFormData
   var clearTabs: () => void
   var setDiv: SetPanel
+  /**
+   * Sets the preview content.
+   * #### setPreview example
+   * ```ts
+   * await setPreview("<h1>Preview</h1>")
+   * ```
+   [Examples](https://scriptkit.com?query=setPreview) | [Docs](https://johnlindquist.github.io/kit-docs/#setPreview) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPreview)
+   */
   var setPreview: SetPreview
+  /**
+   * Sets the prompt content.
+   * #### setPrompt example
+   * ```ts
+   * await setPrompt("<h1>Enter your name:</h1>")
+   * ```
+   [Examples](https://scriptkit.com?query=setPrompt) | [Docs](https://johnlindquist.github.io/kit-docs/#setPrompt) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPrompt)
+   */
   var setPrompt: SetPrompt
   var setBounds: SetBounds
   var getBounds: GetBounds
@@ -1034,28 +1227,155 @@ declare global {
   var scrollTo: ScrollTo
   var setFilterInput: SetInput
   var setTextareaValue: SetTextareaValue
+  /**
+   * Sets whether to ignore blur events.
+   * #### setIgnoreBlur example
+   * ```ts
+   * await setIgnoreBlur(true)
+   * ```
+   [Examples](https://scriptkit.com?query=setIgnoreBlur) | [Docs](https://johnlindquist.github.io/kit-docs/#setIgnoreBlur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setIgnoreBlur)
+   */
   var setIgnoreBlur: SetIgnoreBlur
   var setResize: SetResize
   var setPauseResize: SetResize
   var setLoading: SetLoading
   var setProgress: SetProgress
   var setRunning: SetLoading
+  /**
+   * Set the system menu bar icon and message. 
+   * Each status message will be appended to a list. 
+   * Clicking on the menu will display the list of messages. 
+   * The status and messages will be dismissed once the tray closes, so use `log` if you want to persist messages.
+   * #### setStatus example
+   * ```ts
+   * await setStatus({
+   *   message: "Working on it...",
+   *   status: "busy",
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=setStatus) | [Docs](https://johnlindquist.github.io/kit-docs/#setStatus) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setStatus)
+   */
   var setStatus: SetStatus
   var setTheme: SetTheme
   var setScriptTheme: SetTheme
 
   var showImage: ShowAppWindow
 
+  /**
+   * Shows the main prompt.
+   * #### show example
+   * ```ts
+   * await show()
+   * ```
+   [Examples](https://scriptkit.com?query=show) | [Docs](https://johnlindquist.github.io/kit-docs/#show) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=show)
+   */
   var show: () => Promise<void>
+  /**
+   * Hides the main prompt.
+   * #### hide example
+   * ```ts
+   * await hide()
+   * ```
+   [Examples](https://scriptkit.com?query=hide) | [Docs](https://johnlindquist.github.io/kit-docs/#hide) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hide)
+   */
   var hide: (hideOptions?: HideOptions) => Promise<void>
+  /**
+   * Returns focus to the previous app.
+   * #### blur example
+   * ```ts
+   * import { URL, fileURLToPath } from "node:url";
+   * await editor({
+   *   onInit: async () => {
+   *     const { workArea } = await getActiveScreen();
+   *     const topLeft = { x: workArea.x, y: workArea.y };
+   *     const size = { height: 900, width: 200 };
+   *     await setBounds({
+   *       ...topLeft,
+   *       ...size,
+   *     });
+   *     await blur();
+   * // get path to current file
+   *     const currentScript = fileURLToPath(new URL(import.meta.url));
+   *     const content = await readFile(currentScript, "utf8");
+   *     const lines = content.split("\n");
+   *     for await (const line of lines) {
+   *       editor.append(`${line}\n`);
+   *       await wait(100);
+   *     }
+   *   },
+   * });
+   * ```
+   [Examples](https://scriptkit.com?query=blur) | [Docs](https://johnlindquist.github.io/kit-docs/#blur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=blur)
+   */
   var blur: () => Promise<void>
 
+  /**
+   * `dev` Opens a standalone instance of Chrome Dev Tools so you can play with JavaScript in the console. Passing in an object will set the variable `x` to your object in the console making it easy to inspect.
+   * 1. Optional: the first argument is an object to set to the variable `x` to in the console.
+   * #### dev example
+   * ```ts
+   * dev()
+   * ```
+   * #### dev with object
+   * ```ts
+   * dev({
+   *     name: "John",
+   *     age: 40
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=dev) | [Docs](https://johnlindquist.github.io/kit-docs/#dev) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=dev)
+   */
   var dev: (object?: any) => Promise<void>
+  /**
+   * Gets the clipboard history from the in-memory clipboard
+   * #### getClipboardHistory example
+   * ```ts
+   * const history = await getClipboardHistory();
+   * const text = await arg("Select from clipboard history", history);
+   * await editor(text);
+   * ```
+   [Examples](https://scriptkit.com?query=getClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#getClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getClipboardHistory)
+   */
   var getClipboardHistory: () => Promise<ClipboardItem[]>
+  /**
+   * Clears the clipboard history.
+   * #### clearClipboardHistory example
+   * ```ts
+   * await clearClipboardHistory()
+   * ```
+   [Examples](https://scriptkit.com?query=clearClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#clearClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=clearClipboardHistory)
+   */
   var clearClipboardHistory: () => Promise<void>
   var getEditorHistory: GetEditorHistory
+  /**
+   * Removes an item from the clipboard.
+   * #### removeClipboardItem example
+   * ```ts
+   * await removeClipboardItem(item)
+   * ```
+   [Examples](https://scriptkit.com?query=removeClipboardItem) | [Docs](https://johnlindquist.github.io/kit-docs/#removeClipboardItem) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=removeClipboardItem)
+   */
   var removeClipboardItem: (id: string) => Promise<void>
   var setTab: (tabName: string) => void
+  /**
+   * Forcefully submit a value from an open prompt
+   * #### submit example
+   * ```ts
+   * const result = await arg(
+   *   {
+   *     placeholder: "Pick one in under 3 seconds or I'll pick one for you",
+   *     onInit: async () => {
+   *       await wait(3000);
+   *       submit("broccoli"); //forces a submission
+   *     },
+   *   },
+   *   ["cookie", "donut"]
+   * );
+   * // Wait for 1 second
+   * await editor(result);
+   * ```
+   [Examples](https://scriptkit.com?query=submit) | [Docs](https://johnlindquist.github.io/kit-docs/#submit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=submit)
+   */
   var submit: Submit
   var mainScript: (input?: string, tab?: string) => Promise<void>
 
@@ -1083,9 +1403,75 @@ declare global {
   var eyeDropper: () => Promise<{
     sRGBHex: string
   }>
+  /**
+   * A chat prompt. Use `chat.addMessage()` to insert messages into the chat.
+   * > Note: Manually invoke `submit` inside of a shortcut/action/etc to end the chat.
+   * Also see the included "chatgpt" example for a much more advanced scenario.
+   * #### chat example
+   * ```ts
+   * await chat({
+   *   onInit: async () => {
+   *     chat.addMessage({
+   *       // Note: text and position are implemented, there are other properties that are a WIP
+   *       text: "You like Script Kit",
+   *       position: "left",
+   *     })
+   * await wait(1000)
+   * chat.addMessage({
+   *       text: "Yeah! It's awesome!",
+   *       position: "right",
+   *     })
+   * await wait(1000)
+   * chat.addMessage({
+   *       text: "I know, right?!?",
+   *       position: "left",
+   *     })
+   * await wait(1000)
+   * chat.addMessage({
+   *       text: `<img src="https://media0.giphy.com/media/yeE6B8nEKcTMWWvBzD/giphy.gif?cid=0b9ef2f49arnbs4aajuycirjsclpbtimvib6a76g7afizgr5&ep=v1_gifs_search&rid=giphy.gif" width="200px" />`,
+   *       position: "right",
+   *     })
+   *   },
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=chat) | [Docs](https://johnlindquist.github.io/kit-docs/#chat) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=chat)
+   */
   var chat: Chat
+  /**
+   * Displays a small pop-up notification inside the Script Kit window.
+   * #### toast example
+   * ```ts
+   * await toast("Hello from Script Kit!", {
+   *   autoClose: 3000, // close after 3 seconds
+   *   pauseOnFocusLoss: false
+   * })
+   * ```
+   [Examples](https://scriptkit.com?query=toast) | [Docs](https://johnlindquist.github.io/kit-docs/#toast) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=toast)
+   */
   var toast: Toast
+  /**
+   * A file search prompt
+   * #### find example
+   * ```ts
+   * let filePath = await find("Search in the Downloads directory", {
+   *   onlyin: home("Downloads"),
+   * })
+   * await revealFile(filePath)
+   * ```
+   [Examples](https://scriptkit.com?query=find) | [Docs](https://johnlindquist.github.io/kit-docs/#find) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=find)
+   */
   var find: Find
+  /**
+   * Record from the mic, get a buffer back
+   * #### mic example
+   * ```ts
+   * const tmpMicPath = tmpPath("mic.webm");
+   * const buffer = await mic();
+   * await writeFile(tmpMicPath, buffer);
+   * await playAudioFile(tmpMicPath);
+   * ```
+   [Examples](https://scriptkit.com?query=mic) | [Docs](https://johnlindquist.github.io/kit-docs/#mic) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=mic)
+   */
   var mic: Mic
   /**
    * Captures a screenshot. Defaults to the display where the current mouse cursor is located and captures the full screen if no bounds are specified.
@@ -1094,12 +1480,58 @@ declare global {
    * @returns A Promise that resolves to a Buffer containing the screenshot data.
    */
   var screenshot: Screenshot
+  /**
+   * Prompt for webcam access. Press enter to capture an image buffer:
+   * #### webcam example
+   * ```ts
+   * let buffer = await webcam()
+   * let imagePath = tmpPath("image.jpg")
+   * await writeFile(imagePath, buffer)
+   * await revealFile(imagePath)
+   * ```
+   [Examples](https://scriptkit.com?query=webcam) | [Docs](https://johnlindquist.github.io/kit-docs/#webcam) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=webcam)
+   */
   var webcam: WebCam
   var prompt: Prompt
+  /**
+   * Retrieves available media devices.
+   * #### getMediaDevices example
+   * ```ts
+   * let devices = await getMediaDevices()
+   * ```
+   [Examples](https://scriptkit.com?query=getMediaDevices) | [Docs](https://johnlindquist.github.io/kit-docs/#getMediaDevices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getMediaDevices)
+   */
   var getMediaDevices: GetMediaDevices
+  /**
+   * Retrieves typed text from the user.
+   * #### getTypedText example
+   * ```ts
+   * let text = await getTypedText()
+   * ```
+   [Examples](https://scriptkit.com?query=getTypedText) | [Docs](https://johnlindquist.github.io/kit-docs/#getTypedText) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getTypedText)
+   */
   var getTypedText: GetTypedText
   var PROMPT: typeof PROMPT_OBJECT
-  var preventSubmit: Symbol
+  /**
+   * A symbol used to block submitting a prompt
+   * #### preventSubmit example
+   * ```ts
+   * await arg({
+   *   placeholder: "Try to submit text less than 10 characters",
+   *   onSubmit: async (input) => {
+   *     if (input.length < 10) {
+   *       setHint(
+   *         "Text must be at least 10 characters. You entered " + input.length
+   *       );
+   *       setEnter("Try Again");
+   *       return preventSubmit;
+   *     }
+   *   },
+   * });
+   * ```
+   [Examples](https://scriptkit.com?query=preventSubmit) | [Docs](https://johnlindquist.github.io/kit-docs/#preventSubmit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=preventSubmit)
+   */
+  var preventSubmit: symbol
 
   type removeListener = () => void
   /**
@@ -1145,5 +1577,22 @@ declare global {
 
   var getTheme: () => Promise<KitTheme>
 
+  /**
+   * Send a system notification
+   * > Note: osx notifications require permissions for "Terminal Notifier" in the system preferences. Due to the complicated nature of configuring notifications, please use a search engine to find the latest instructions for your osx version.
+   * > In the Script Kit menu bar icon: "Permissions -> Request Notification Permissions" might help.
+   * #### notify example
+   * ```ts
+   * await notify("Attention!")
+   * ```
+   * #### notify example body
+   * ```ts
+   * await notify({
+   *   title: "Title text goes here",
+   *   body: "Body text goes here",
+   * });
+   * ```
+   [Examples](https://scriptkit.com?query=notify) | [Docs](https://johnlindquist.github.io/kit-docs/#notify) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=notify)
+   */
   var notify: Notify
 }

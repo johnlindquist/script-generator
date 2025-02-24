@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
-import { model } from '@/lib/gemini'
+import { reasoningModel } from '@/lib/gemini'
 import { cleanCodeFences, extractUserInfo } from '@/lib/generation'
 import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
@@ -141,7 +141,7 @@ const generateFinalScript = async (req: NextRequest) => {
       JSON.stringify(extractUserInfo(session, dbUser))
     )
 
-    const result = await model.generateContentStream(finalPrompt)
+    const result = await reasoningModel.generateContentStream(finalPrompt)
 
     let fullScript = ''
     let aborted = false
