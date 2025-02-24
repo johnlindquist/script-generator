@@ -107,7 +107,7 @@ interface LineIndicatorProps {
 function LineIndicator({ count, position }: LineIndicatorProps) {
   return (
     <div
-      className={`-mx-4 ${position === 'above' ? '' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-xs border-${position === 'above' ? 'b' : 't'} border-amber-400/20 hover:bg-amber-400/20 transition-colors text-center`}
+      className={`-mx-4 ${position === 'above' ? '' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-xs border-${position === 'above' ? 'b' : 't'} border-amber-400/20 text-center`}
     >
       {count} {position === 'above' ? '' : ''}
       {count === 1 ? 'line' : 'lines'} {position} • View full script
@@ -152,9 +152,9 @@ export default function ScriptCard({
 
   return (
     <article
-      className={`w-full border rounded sm:p-5 group p-3 shadow-2xl flex flex-col break-inside transition-colors bg-card ${
-        truncate ? 'h-auto sm:h-[500px]' : 'h-full'
-      }`}
+      className={`w-full border rounded sm:p-5 p-3 shadow-2xl flex flex-col break-inside ${
+        truncate ? 'group transition-colors' : ''
+      } bg-card ${truncate ? 'h-auto sm:h-[500px]' : 'h-full'}`}
       data-script-id={script.id}
       data-debug={JSON.stringify({
         isLocked: script.locked,
@@ -167,9 +167,9 @@ export default function ScriptCard({
         <div className="flex justify-between">
           <Link
             href={`/${script.owner?.username}/${script.id}`}
-            className="block hover:opacity-75 transition-opacity flex justify-between items-center"
+            className="block flex justify-between items-center"
           >
-            <h3 className="text-xl font-semibold mb-2">
+            <h3 className="text-xl font-semibold mb-2 select-text">
               {highlightText(script.title, searchQuery)}
             </h3>
           </Link>
@@ -207,57 +207,116 @@ export default function ScriptCard({
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col saturate-75 group-hover:saturate-100 overflow-hidden opacity-75 group-hover:opacity-100 transition ease-in-out">
-        <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
-          <div className="bg-background rounded h-full border transition-colors">
-            <Highlight
-              theme={themes.gruvboxMaterialDark}
-              code={relevantContent}
-              language="typescript"
-            >
-              {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                <div className="relative flex flex-col h-full">
-                  <pre
-                    className={`${className} px-4 text-xs h-full flex flex-col ${truncate ? 'overflow-hidden' : 'overflow-y-auto'}`}
-                    style={{
-                      ...style,
-                      margin: 0,
-                      background: 'transparent',
-                      minHeight: '100%',
-                    }}
-                  >
-                    {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
-                    <div className="flex-1 min-h-0 overflow-y-hidden">
-                      {tokens.map((line, i) => {
-                        const lineContent = line.map(token => token.content).join('')
-                        const shouldHighlight =
-                          searchQuery &&
-                          lineContent.toLowerCase().includes(searchQuery.toLowerCase())
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {truncate ? (
+          <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
+            <div className="bg-background rounded h-full border transition-colors">
+              <Highlight
+                theme={themes.gruvboxMaterialDark}
+                code={relevantContent}
+                language="typescript"
+              >
+                {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                  <div className="relative flex flex-col h-full">
+                    <pre
+                      className={`${className} px-4 text-xs h-full flex flex-col overflow-y-auto`}
+                      style={{
+                        ...style,
+                        margin: 0,
+                        background: 'transparent',
+                        minHeight: '100%',
+                        userSelect: 'text',
+                        WebkitUserSelect: 'text',
+                        cursor: 'text',
+                      }}
+                    >
+                      {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
+                      <div className="flex-1 min-h-0 overflow-y-hidden select-text">
+                        {tokens.map((line, i) => {
+                          const lineContent = line.map(token => token.content).join('')
+                          const shouldHighlight =
+                            searchQuery &&
+                            lineContent.toLowerCase().includes(searchQuery.toLowerCase())
 
-                        return (
-                          <div
-                            key={i}
-                            {...getLineProps({ line })}
-                            className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
-                          >
-                            {line.map((token, key) => (
-                              <span key={key} {...getTokenProps({ token })} />
-                            ))}
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {linesAfter > 0 && (
-                      <div className="flex-shrink-0">
-                        <LineIndicator count={linesAfter} position="below" />
+                          return (
+                            <div
+                              key={i}
+                              {...getLineProps({ line })}
+                              className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
+                            >
+                              {line.map((token, key) => (
+                                <span key={key} {...getTokenProps({ token })} />
+                              ))}
+                            </div>
+                          )
+                        })}
                       </div>
-                    )}
-                  </pre>
-                </div>
-              )}
-            </Highlight>
+                      {linesAfter > 0 && (
+                        <div className="flex-shrink-0">
+                          <LineIndicator count={linesAfter} position="below" />
+                        </div>
+                      )}
+                    </pre>
+                  </div>
+                )}
+              </Highlight>
+            </div>
+          </Link>
+        ) : (
+          <div className="block flex-1 min-h-0">
+            <div className="bg-background rounded h-full border">
+              <Highlight
+                theme={themes.gruvboxMaterialDark}
+                code={relevantContent}
+                language="typescript"
+              >
+                {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                  <div className="relative flex flex-col h-full">
+                    <pre
+                      className={`${className} px-4 text-xs h-full flex flex-col overflow-y-auto`}
+                      style={{
+                        ...style,
+                        margin: 0,
+                        background: 'transparent',
+                        minHeight: '100%',
+                        userSelect: 'text',
+                        WebkitUserSelect: 'text',
+                        cursor: 'text',
+                      }}
+                    >
+                      {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
+                      <div className="flex-1 min-h-0 overflow-y-hidden select-text">
+                        {tokens.map((line, i) => {
+                          const lineContent = line.map(token => token.content).join('')
+                          const shouldHighlight =
+                            searchQuery &&
+                            lineContent.toLowerCase().includes(searchQuery.toLowerCase())
+
+                          return (
+                            <div
+                              key={i}
+                              {...getLineProps({ line })}
+                              className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
+                            >
+                              {line.map((token, key) => (
+                                <span key={key} {...getTokenProps({ token })} />
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {linesAfter > 0 && (
+                        <div className="flex-shrink-0">
+                          <LineIndicator count={linesAfter} position="below" />
+                        </div>
+                      )}
+                    </pre>
+                  </div>
+                )}
+              </Highlight>
+            </div>
           </div>
-        </Link>
+        )}
       </div>
       <div className="flex flex-wrap justify-between items-start gap-y-4 pt-5 flex-shrink-0">
         <div className="flex gap-2 min-w-fit">
