@@ -13,10 +13,10 @@
     }
   ],
   "functions": {
-    "api/generate-draft": {
+    "app/api/generate-draft/route": {
       "maxDuration": 30
     },
-    "api/generate-final": {
+    "app/api/generate-final/route": {
       "maxDuration": 30
     }
   }
