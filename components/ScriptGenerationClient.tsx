@@ -523,7 +523,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     let chunksReceived = 0
     let lastChunkTime = Date.now()
     let lastChunkSize = 0
-    let currentDisplayedText = '// Generating final script...\n\n'
+    let currentDisplayedText = ''
 
     // Debug the current state for better tracking
     console.log('[FINAL_EFFECT_DEBUG] Effect triggered with state:', {
@@ -616,13 +616,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           ).catch(console.error)
         }
 
-        // Add a log message to the editor initially to show streaming has started
-        const initialMessage = '// Generating final script...\n\n'
+        // Clear the editor initially - we'll show a spinner overlay instead of text
         const editor = editorRef.current
         const model = editor?.getModel()
         if (model) {
-          model.setValue(initialMessage)
-          currentDisplayedText = initialMessage
+          model.setValue('')
+          currentDisplayedText = ''
         }
 
         const startTime = Date.now()
@@ -829,16 +828,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     handleStreamedText,
     send,
   ])
-
-  // Add a cancel generation handler
-  const handleCancelGeneration = useCallback(() => {
-    console.log('[CANCEL] Cancelling generation')
-
-    // Send the cancel event to the state machine
-    send({ type: 'CANCEL_GENERATION' })
-
-    // The streaming service will be aborted by the state machine
-  }, [send])
 
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {
@@ -1353,6 +1342,15 @@ Instructions:
                     beforeMount={initializeTheme}
                     theme="gruvboxTheme"
                   />
+
+                  {/* Show spinner overlay when in generatingFinal state and no content yet */}
+                  {state.matches('generatingFinal') &&
+                    (!state.context.editableScript ||
+                      state.context.editableScript.trim() === '') && (
+                      <div className="absolute inset-0 bg-zinc-900/80 flex items-center justify-center z-10">
+                        <Loader2 className="h-12 w-12 animate-spin text-amber-400" />
+                      </div>
+                    )}
                 </div>
               </div>
               {state.matches('complete') && (
