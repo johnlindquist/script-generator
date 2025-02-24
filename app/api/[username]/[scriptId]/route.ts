@@ -46,6 +46,9 @@ const deleteScript = async (request: NextRequest, context?: RouteContext) => {
       prisma.scriptVersion.deleteMany({
         where: { scriptId: scriptId },
       }),
+      prisma.install.deleteMany({
+        where: { scriptId: scriptId },
+      }),
       prisma.script.delete({
         where: { id: scriptId },
       }),
