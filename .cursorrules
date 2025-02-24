@@ -1,23 +1,28 @@
+Never start a dev server. I'll do that manually.
+
 ## PROJECT OVERVIEW
+
 - This is a Next.js + React application using TypeScript, Tailwind CSS, Shadcn UI, and XState.
 - We use server components by default (Next.js 13+), and only switch to client components when strictly necessary.
 
 ## CODE STYLE
-- **TypeScript**  
-  - Always use strict typing (never `any`).  
-  - Prefer interfaces over types for objects, and avoid `enum`—use map-like objects or string unions instead.  
+
+- **TypeScript**
+  - Always use strict typing (never `any`).
+  - Prefer interfaces over types for objects, and avoid `enum`—use map-like objects or string unions instead.
   - Use descriptive variable/function names (e.g., `isLoading`, `hasError`).
-- **React**  
-  - Favor functional components with hooks over class components.  
-  - Keep components small, focused, and testable; reduce complex `useEffect` logic.  
+- **React**
+  - Favor functional components with hooks over class components.
+  - Keep components small, focused, and testable; reduce complex `useEffect` logic.
   - Use server components (RSC) unless you need client-side interactivity.
-- **Naming Conventions**  
-  - Folders/files: `kebab-case` (e.g., `auth-wizard`).  
-  - Functions/variables: `camelCase`.  
-  - Components/classes: `PascalCase`.  
+- **Naming Conventions**
+  - Folders/files: `kebab-case` (e.g., `auth-wizard`).
+  - Functions/variables: `camelCase`.
+  - Components/classes: `PascalCase`.
   - Favor named exports to encourage clarity and organization.
 
 ## FOLDER ORGANIZATION
+
 - Standard Next.js 13+ app folder structure:
   - `app/` for routes, `layout.tsx`, `loading.tsx`, `error.tsx` (server components by default).
   - Shared components in `components/`.
@@ -25,6 +30,7 @@
   - Keep feature-specific code grouped logically.
 
 ## TECH STACK
+
 - **Front-end**: Next.js 13+, React, TypeScript, Tailwind CSS, Shadcn UI, Radix UI.
 - **State Machines**: XState v5 (prefer `createMachine` and typed actions/guards).
 - **Performance**:
@@ -33,6 +39,7 @@
   - Lazy-load noncritical components; consider dynamic imports.
 
 ## PROJECT-SPECIFIC STANDARDS
+
 - **Error Handling**:
   - Use early returns/guard clauses in functions.
   - Model expected errors in return values; reserve try/catch for truly unexpected issues.
@@ -44,30 +51,36 @@
   - Rely on `fromPromise` for async tasks.
 
 ## WORKFLOW & RELEASE RULES
+
 - All code submissions should include any new or changed files in full (not partial snippets).
 - Ensure you include necessary imports and explanatory comments.
 - No new external packages should be added without team approval.
 
 ## REFERENCE EXAMPLES
+
 - Sample usage of server components, dynamic imports, and Next.js routes can be found in the `app/` directory.
 - Example XState machine definitions are in `machines/`; follow the typed approach as shown in `machines/exampleMachine.ts`.
 
 ## PROJECT DOCUMENTATION & CONTEXT SYSTEM
+
 - Keep large architectural details in separate documents (e.g., `architecture.md`).
 - Use `.cursorrules` to address recurring instructions (naming, file structure) and keep it updated.
 - When adding or removing major features, remember to update relevant docs accordingly.
 
 ## DEBUGGING
+
 - When encountering a bug, provide a clear summary, possible solutions, and reasons for each solution.
 - Always ask for clarification if anything is ambiguous before making large refactors or changes.
 
 ## FINAL DOs AND DON’Ts
-- **DO**  
-  - Use explicit return types for all functions.  
-  - Comply with folder structure and naming conventions.  
-  - Favor server components and typed data flow with TypeScript and XState.  
 
-- **DON’T**  
-  - Overwrite entire files unless necessary—provide minimal, targeted changes.  
-  - Use `use client` or heavy client-side logic without a good reason.  
+- **DO**
+
+  - Use explicit return types for all functions.
+  - Comply with folder structure and naming conventions.
+  - Favor server components and typed data flow with TypeScript and XState.
+
+- **DON’T**
+  - Overwrite entire files unless necessary—provide minimal, targeted changes.
+  - Use `use client` or heavy client-side logic without a good reason.
   - Exceed these `.cursorrules` or internal docs without team discussion.

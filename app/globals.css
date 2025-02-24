@@ -269,3 +269,41 @@ textarea,
     --radius: 0.75rem;
   }
 }
+
+/* Streaming highlight effect for new content */
+.streaming-highlight {
+  background-color: rgba(100, 149, 237, 0.3); /* Cornflower blue with transparency */
+  animation: highlight-fade 1s ease-out;
+  position: relative;
+}
+
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(100, 149, 237, 0.5);
+  }
+  100% {
+    background-color: rgba(100, 149, 237, 0.1);
+  }
+}
+
+/* Add a subtle left border to highlight new content */
+.streaming-highlight::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: rgba(100, 149, 237, 0.8);
+  animation: border-pulse 1s ease-in-out infinite;
+}
+
+@keyframes border-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

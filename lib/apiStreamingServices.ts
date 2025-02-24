@@ -77,8 +77,8 @@ export const generateFinalWithStream = async (
     signal?: AbortSignal
   }
 ): Promise<{ script: string }> => {
-  console.log('[API] Starting generateFinalWithStream:', {
-    prompt: params.prompt,
+  console.log('[API_STREAM_DEBUG] Starting generateFinalWithStream:', {
+    prompt: params.prompt.substring(0, 50) + '...',
     scriptId: params.scriptId,
     timestamp: params.interactionTimestamp,
     hasSignal: !!callbacks.signal,
@@ -87,9 +87,14 @@ export const generateFinalWithStream = async (
 
   // Check if already aborted before we even start
   if (callbacks.signal?.aborted) {
-    console.log('[API] Request aborted before starting')
+    console.log('[API_STREAM_DEBUG] Request aborted before starting')
     throw new DOMException('The operation was aborted', 'AbortError')
   }
+
+  // Variables to track stream state
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  let finalScript = ''
+  let forceFlushInterval: NodeJS.Timeout | null = null
 
   try {
     callbacks.onStartStreaming()
@@ -110,7 +115,7 @@ export const generateFinalWithStream = async (
     })
 
     if (!response.ok) {
-      console.error('[API] HTTP error response:', {
+      console.error('[API_STREAM_DEBUG] HTTP error response:', {
         status: response.status,
         statusText: response.statusText,
       })
@@ -128,79 +133,235 @@ export const generateFinalWithStream = async (
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const reader = response.body?.getReader()
+    // Check again if aborted after fetch but before reading
+    if (callbacks.signal?.aborted) {
+      console.log('[API_STREAM_DEBUG] Request aborted after fetch but before reading')
+      throw new DOMException('The operation was aborted', 'AbortError')
+    }
+
+    // Fix the TypeScript error by handling the optional chaining properly
+    const bodyReader = response.body?.getReader()
+    reader = bodyReader || null
     if (!reader) {
-      console.error('[API] No reader available from response')
+      console.error('[API_STREAM_DEBUG] No reader available from response')
       callbacks.onError({ message: 'No reader available' })
       throw new Error('No reader available')
     }
 
-    let finalScript = ''
     let lastChunkEndsWithNewline = false
     let chunkCounter = 0
+    let lastChunkTime = Date.now()
+    let bufferForSmallChunks = ''
 
-    while (true) {
-      // Check if aborted
+    // Reduce buffer size and time to make streaming more visible
+    const MIN_CHUNK_SIZE = 10 // Reduced from 20 to make streaming more visible
+    const MAX_BUFFER_TIME = 50 // Reduced from 100ms to make streaming more frequent
+
+    // Track total bytes received for debugging
+    let totalBytesReceived = 0
+    const startTime = Date.now()
+
+    console.log('[API_STREAM_DEBUG] Starting to read stream with buffer settings:', {
+      minChunkSize: MIN_CHUNK_SIZE,
+      maxBufferTime: MAX_BUFFER_TIME,
+      timestamp: new Date().toISOString(),
+    })
+
+    // Helper function to flush buffer and send content
+    const flushBuffer = () => {
+      if (bufferForSmallChunks.length === 0) return
+
+      finalScript += bufferForSmallChunks
+
+      // Ensure proper line breaks around metadata comments
+      finalScript = finalScript.replace(/^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm, '$1\n$4')
+      finalScript = finalScript.replace(
+        /^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm,
+        '$1\n$4'
+      )
+
+      console.log(`[API_STREAM_DEBUG] Flushing buffer:`, {
+        size: bufferForSmallChunks.length,
+        totalScriptLength: finalScript.length,
+        bufferPreview:
+          bufferForSmallChunks.substring(0, 50) + (bufferForSmallChunks.length > 50 ? '...' : ''),
+        timestamp: new Date().toISOString(),
+      })
+
+      // Check if aborted before sending chunk
       if (callbacks.signal?.aborted) {
-        console.log('[API] Stream reading aborted by signal')
-        reader
-          .cancel('Stream aborted by client')
-          .catch(e => console.warn('[API] Error cancelling reader:', e))
-        throw new DOMException('The operation was aborted', 'AbortError')
+        console.log('[API_STREAM_DEBUG] Skipping onChunk callback due to abort signal')
+        return
       }
 
-      try {
-        const { done, value } = await reader.read()
-        if (done) {
-          console.log('[API] Stream reading complete, total chunks:', chunkCounter)
-          break
-        }
-
-        chunkCounter++
-        const chunk = new TextDecoder().decode(value)
-        console.log(`[API] Received chunk #${chunkCounter}, size:`, value.length)
-
-        // Handle line breaks at chunk boundaries
-        if (lastChunkEndsWithNewline && chunk.startsWith('\n')) {
-          finalScript = finalScript.slice(0, -1)
-        }
-
-        finalScript += chunk
-        lastChunkEndsWithNewline = chunk.endsWith('\n')
-
-        // Ensure proper line breaks around metadata comments
-        finalScript = finalScript.replace(
-          /^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm,
-          '$1\n$4'
-        )
-        finalScript = finalScript.replace(
-          /^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm,
-          '$1\n$4'
-        )
-
-        callbacks.onChunk(finalScript)
-      } catch (readError) {
-        // If the read operation was aborted, handle it gracefully
-        if (readError instanceof DOMException && readError.name === 'AbortError') {
-          console.log('[API] Read operation aborted')
-          throw readError
-        }
-
-        console.error('[API] Error reading from stream:', readError)
-        callbacks.onError({ message: 'Error reading from stream' })
-        throw readError
-      }
+      callbacks.onChunk(finalScript)
+      bufferForSmallChunks = ''
+      lastChunkTime = Date.now()
     }
 
-    return { script: finalScript }
+    // Set up a timer to force flush the buffer periodically
+    forceFlushInterval = setInterval(() => {
+      // Check if aborted before flushing
+      if (callbacks.signal?.aborted) {
+        console.log('[API_STREAM_DEBUG] Skipping force flush due to abort signal')
+        return
+      }
+
+      if (bufferForSmallChunks.length > 0) {
+        console.log('[API_STREAM_DEBUG] Force flushing buffer due to timer')
+        flushBuffer()
+      }
+    }, MAX_BUFFER_TIME)
+
+    try {
+      while (true) {
+        // Check if aborted
+        if (callbacks.signal?.aborted) {
+          console.log('[API_STREAM_DEBUG] Stream reading aborted by signal')
+          if (reader) {
+            try {
+              await reader.cancel('Stream aborted by client')
+              console.log('[API_STREAM_DEBUG] Reader cancelled successfully')
+            } catch (e) {
+              console.warn('[API_STREAM_DEBUG] Error cancelling reader:', e)
+            }
+          }
+          throw new DOMException('The operation was aborted', 'AbortError')
+        }
+
+        try {
+          // Check if reader is still valid
+          if (!reader) {
+            console.log('[API_STREAM_DEBUG] Reader is null, breaking loop')
+            break
+          }
+
+          const { done, value } = await reader.read()
+          if (done) {
+            const totalTime = Date.now() - startTime
+            console.log('[API_STREAM_DEBUG] Stream reading complete:', {
+              totalChunks: chunkCounter,
+              totalBytes: totalBytesReceived,
+              totalTime: `${totalTime}ms`,
+              avgBytesPerChunk: Math.round(totalBytesReceived / (chunkCounter || 1)),
+              timestamp: new Date().toISOString(),
+            })
+
+            // Send any remaining buffered content
+            if (bufferForSmallChunks.length > 0) {
+              console.log('[API_STREAM_DEBUG] Sending final buffered content:', {
+                size: bufferForSmallChunks.length,
+                content:
+                  bufferForSmallChunks.substring(0, 50) +
+                  (bufferForSmallChunks.length > 50 ? '...' : ''),
+                timestamp: new Date().toISOString(),
+              })
+              flushBuffer()
+            }
+
+            break
+          }
+
+          chunkCounter++
+          totalBytesReceived += value.length
+          const chunk = new TextDecoder().decode(value)
+
+          console.log(`[API_STREAM_DEBUG] Received chunk #${chunkCounter}:`, {
+            size: value.length,
+            content: chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''),
+            timeSinceStart: `${Date.now() - startTime}ms`,
+            timestamp: new Date().toISOString(),
+          })
+
+          // Handle line breaks at chunk boundaries
+          if (lastChunkEndsWithNewline && chunk.startsWith('\n')) {
+            finalScript = finalScript.slice(0, -1)
+          }
+
+          // Add to buffer instead of directly to finalScript
+          bufferForSmallChunks += chunk
+          lastChunkEndsWithNewline = chunk.endsWith('\n')
+
+          const currentTime = Date.now()
+          const timeSinceLastChunk = currentTime - lastChunkTime
+
+          // Decide whether to send the buffer based on size or time
+          if (
+            bufferForSmallChunks.length >= MIN_CHUNK_SIZE ||
+            timeSinceLastChunk >= MAX_BUFFER_TIME
+          ) {
+            flushBuffer()
+          } else {
+            console.log(`[API_STREAM_DEBUG] Buffering chunk:`, {
+              currentBufferSize: bufferForSmallChunks.length,
+              timeSinceLastSend: `${timeSinceLastChunk}ms`,
+              belowThreshold: bufferForSmallChunks.length < MIN_CHUNK_SIZE,
+              timestamp: new Date().toISOString(),
+            })
+          }
+        } catch (readError) {
+          // If the read operation was aborted, handle it gracefully
+          if (readError instanceof DOMException && readError.name === 'AbortError') {
+            console.log('[API_STREAM_DEBUG] Read operation aborted')
+            throw readError
+          }
+
+          console.error('[API_STREAM_DEBUG] Error reading from stream:', readError)
+          callbacks.onError({ message: 'Error reading from stream' })
+          throw readError
+        }
+      }
+
+      return { script: finalScript }
+    } catch (error) {
+      // Allow abort errors to propagate normally
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('[API_STREAM_DEBUG] Operation aborted error:', error.message)
+        throw error
+      }
+
+      console.error('[API_STREAM_DEBUG] Stream reading error:', error)
+      if (error instanceof Response && error.status === 429) {
+        callbacks.onError({
+          message: 'Daily generation limit reached. Try again tomorrow!',
+        })
+      } else {
+        callbacks.onError({
+          message: error instanceof Error ? error.message : 'Failed to generate final script',
+        })
+      }
+      throw error
+    } finally {
+      // Clear the force flush interval
+      if (forceFlushInterval) {
+        clearInterval(forceFlushInterval)
+        forceFlushInterval = null
+      }
+
+      // Ensure reader is properly closed if it exists
+      if (reader) {
+        try {
+          // Only try to cancel if not already aborted
+          if (!callbacks.signal?.aborted) {
+            await reader.cancel('Stream cleanup').catch(e => {
+              console.warn('[API_STREAM_DEBUG] Error cancelling reader during cleanup:', e)
+            })
+          }
+        } catch (e) {
+          console.warn('[API_STREAM_DEBUG] Error during reader cleanup:', e)
+        } finally {
+          reader = null
+        }
+      }
+    }
   } catch (error) {
     // Allow abort errors to propagate normally
     if (error instanceof DOMException && error.name === 'AbortError') {
-      console.log('[API] Operation aborted error:', error.message)
+      console.log('[API_STREAM_DEBUG] Operation aborted error:', error.message)
       throw error
     }
 
-    console.error('[API] Stream reading error:', error)
+    console.error('[API_STREAM_DEBUG] Stream reading error:', error)
     if (error instanceof Response && error.status === 429) {
       callbacks.onError({
         message: 'Daily generation limit reached. Try again tomorrow!',
@@ -211,5 +372,10 @@ export const generateFinalWithStream = async (
       })
     }
     throw error
+  } finally {
+    // Ensure interval is cleared in the outer finally block as well
+    if (forceFlushInterval) {
+      clearInterval(forceFlushInterval)
+    }
   }
 }
