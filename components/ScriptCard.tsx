@@ -263,9 +263,9 @@ export default function ScriptCard({
         <div className="flex gap-2 min-w-fit">
           <CopyButtonClient content={script.content} />
 
-          {isOwner && !script.locked && (
+          {isOwner && (
             <>
-              <EditButtonClient scriptId={script.id} />
+              {!script.locked && <EditButtonClient scriptId={script.id} />}
               <DeleteButtonClient
                 scriptId={script.id}
                 onDeleted={() => {
