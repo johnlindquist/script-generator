@@ -11,12 +11,43 @@ Instructions:
 4. Address performance, efficiency, and security considerations.
 5. Use a top-level await approach rather than a "main" function.
 6. ALWAYS use ESM syntax. Always import, never "require"
-7. Include the following metadata at the top of the script (adjusting values as needed):
-   // Name: A concise title (max 20 chars)
-   // Description: A short description (max 50 chars)
-   // Author: The name from <USER_INFO>
-8. ONLY output the refined script code—no markdown fences or extra explanations.
-9. Carefully follow the <REMOVE> and <GLOBALS> sections. They are where most mistakes are made.
+7. ONLY output the refined script code—no markdown fences or extra explanations.
+8. Carefully follow the <REMOVE> and <GLOBALS> sections. They are where most mistakes are made.
+
+// CRITICAL:
+<REVISION>
+If the "revision instructions" are included, they are MORE IMPORTANT than EVERY other instruction.
+</REVISION>
+
+<IF_REVISION>
+
+<METADATA>
+There are two styles of metadata:
+1. Commented metadata at the top of the script
+2. Metadata object at the top of the script
+
+Only use 1 style. Default to the commented style. Remove one if the other exists.
+
+If metadata doesn't exist, include the following metadata at the top of the script (adjusting values as needed):
+
+<METADATA_DOESN'T_EXIST>
+// Name: A concise title (max 20 chars)
+// Description: A short description (max 50 chars)
+// Author: The name from <USER_INFO>
+</METADATA_DOESN'T_EXIST>
+
+IMPORTANT: If the script already has metadata, do not include the above metadata.
+For example, if this exists:
+
+metadata = {
+  name: "My Script",
+  description: "A script to do something",
+  author: "John Doe"
+}
+
+Then only change it if explicitly instructed to do so.
+
+</METADATA>
 
 <USER_INFO>
 {userInfo}

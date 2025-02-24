@@ -778,7 +778,7 @@ Instructions:
       console.log('Heading height:', {
         height: headingRef.current.offsetHeight,
         text: headingRef.current.textContent,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     }
   }, [state.context.generatedScript, isGenerating, isThinking, generationPhase])
@@ -786,7 +786,10 @@ Instructions:
   return (
     <div className="px-5 w-full">
       <div className="min-h-[120px] flex items-center justify-center">
-        <h1 ref={headingRef} className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center max-w-4xl">
+        <h1
+          ref={headingRef}
+          className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center max-w-4xl"
+        >
           {isGenerating || isThinking ? (
             <AnimatedText
               text={
@@ -800,7 +803,9 @@ Instructions:
           ) : state.context.generatedScript ? (
             <div className="flex flex-col gap-4">
               <span className="block">{STRINGS.SCRIPT_GENERATION.headingDone.split('.')[0]}</span>
-              <span className="block text-[0.85em] text-muted-foreground font-normal">{STRINGS.SCRIPT_GENERATION.headingDone.split('.')[1]}</span>
+              <span className="block text-[0.85em] text-muted-foreground font-normal">
+                {STRINGS.SCRIPT_GENERATION.headingDone.split('.')[1]}
+              </span>
             </div>
           ) : (
             heading
@@ -842,7 +847,7 @@ Instructions:
               size="icon"
               disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
               className="absolute right-3 bottom-3"
-            // className="flex items-center gap-2 bg-primary text-primary-foregorund px-6 py-2 rounded font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              // className="flex items-center gap-2 bg-primary text-primary-foregorund px-6 py-2 rounded font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
                 <ArrowPathIcon className="w-5 h-5 animate-spin" />
@@ -902,7 +907,7 @@ Instructions:
             className="rounded-full"
             onClick={handleFeelingLucky}
             disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
-          // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
+            // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
           >
             <SparklesIcon className="w-5 h-5" />
             I'm Feeling Lucky
@@ -916,7 +921,7 @@ Instructions:
               send({ type: 'SET_PROMPT', prompt })
               send({ type: 'FROM_SUGGESTION', value: true })
             }}
-            setIsFromSuggestion={() => { }}
+            setIsFromSuggestion={() => {}}
             suggestions={suggestions}
           />
         </div>
@@ -989,6 +994,7 @@ Instructions:
                         {STRINGS.SCRIPT_GENERATION.startOver}
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           const scriptToRevise =
                             state.context.editableScript || state.context.generatedScript

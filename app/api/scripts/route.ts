@@ -222,8 +222,7 @@ export async function GET(request: NextRequest) {
       resultsOnPage: scripts.length,
       page,
       matches: scripts.map(script => {
-        const content = script.content
-        const lines = content.split('\n')
+        const lines = script.content.split('\n')
         const matchingLines = lines
           .map((line, i) => ({ line, lineNumber: i + 1 }))
           .filter(({ line }) => line.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -246,12 +245,24 @@ export async function GET(request: NextRequest) {
     isFavorited: script.favorites ? script.favorites.length > 0 : false,
   }))
 
-  return NextResponse.json({
+  const result = {
     scripts: formattedScripts,
     totalPages,
     currentPage: page,
     ...(searchTerm ? { searchTerm } : {}),
-  })
+  }
+
+  // Build the response and add caching headers:
+  const response = NextResponse.json(result)
+  if (!session) {
+    // For public (non-user‑specific) data, cache at the edge for 60 seconds
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
+  } else {
+    // For user-specific responses, disable caching
+    response.headers.set('Cache-Control', 'private, max-age=0, no-cache')
+  }
+
+  return response
 }
 
 export async function POST(request: NextRequest) {
