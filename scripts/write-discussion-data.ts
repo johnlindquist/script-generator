@@ -4,7 +4,7 @@ import { gql, GraphQLClient } from 'graphql-request'
 import slugify from 'slugify'
 
 import { Discussion } from '../src/lib/get-discussions'
-import { Extension, LoadedScript } from '../src/utils/types'
+import { Extension, LoadedScript } from './types'
 
 export enum Category {
   Announcements = 'MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyODIwMDgw',

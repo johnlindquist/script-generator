@@ -1,5 +1,5 @@
 import '@johnlindquist/kit'
-import { Extension, LoadedScript } from '../src/utils/types'
+import { Extension, LoadedScript } from './types'
 
 const githubURL = 'https://api.github.com/graphql'
 
