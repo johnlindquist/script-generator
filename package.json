@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "fetch-sponsors": "tsx scripts/fetch-sponsors.ts",
     "announcements-data": "pnpm write-discussion-data Announcements",
+    "course-data": "pnpm write-course-data script-kit-showcase-for-optimizing-your-everyday-workflows-e20ceab4",
     "docs-data": "pnpm write-discussion-data Docs",
     "get-scripts": "kit get-scripts",
     "guide-data": "pnpm write-discussion-data Guide",
