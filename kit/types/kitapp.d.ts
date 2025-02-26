@@ -198,6 +198,7 @@ export type Editor = ((
   getCursorOffset: () => Promise<number>
   moveCursor: (offset: number) => Promise<void>
   insertText: (text: string) => Promise<void>
+  setText: (text: string) => Promise<void>
   // setCodeHint: (hint: string) => Promise<void>
 }
 
@@ -844,7 +845,7 @@ export interface Keyboard {
 export interface Mouse {
   leftClick: () => Promise<void>
   rightClick: () => Promise<void>
-  move: (points: [{ x: number; y: number }]) => Promise<void>
+  move: (points: { x: number; y: number }[]) => Promise<void>
   setPosition: (position: { x: number; y: number }) => Promise<void>
 }
 
@@ -1016,7 +1017,7 @@ declare global {
    * let filePaths = fileInfos.map(f => f.path).join(",")
    * await div(md(filePaths))
    * ```
-   [Examples](https://scriptkit.com?query=drop) | [Docs](https://johnlindquist.github.io/kit-docs/#drop) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=drop)
+   * [Examples](https://scriptkit.com?query=drop) | [Docs](https://johnlindquist.github.io/kit-docs/#drop) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=drop)
    */
   var drop: Drop
   /**
@@ -1031,7 +1032,8 @@ declare global {
    * ```ts
    * await div(md(`
    * # example!
-   [Examples](https://scriptkit.com?query=div) | [Docs](https://johnlindquist.github.io/kit-docs/#div) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=div)
+   *
+   * [Examples](https://scriptkit.com?query=div) | [Docs](https://johnlindquist.github.io/kit-docs/#div) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=div)
    */
   var div: Div
   /**
@@ -1058,11 +1060,11 @@ declare global {
    * `)
    * inspect(result)
    * ```
-   [Examples](https://scriptkit.com?query=form) | [Docs](https://johnlindquist.github.io/kit-docs/#form) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=form)
+   * [Examples](https://scriptkit.com?query=form) | [Docs](https://johnlindquist.github.io/kit-docs/#form) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=form)
    */
   var form: Form
   /**
-   * The `fields` prompt allows you to rapidly create a form with fields. 
+   * The `fields` prompt allows you to rapidly create a form with fields.
    * 1. An array of labels or objects with label and field properties.
    * #### fields example
    * ```ts
@@ -1104,7 +1106,7 @@ declare global {
    *     }
    * ])
    * ```
-   [Examples](https://scriptkit.com?query=fields) | [Docs](https://johnlindquist.github.io/kit-docs/#fields) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=fields)
+   * [Examples](https://scriptkit.com?query=fields) | [Docs](https://johnlindquist.github.io/kit-docs/#fields) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=fields)
    */
   var fields: Fields
   var emoji: Emoji
@@ -1123,12 +1125,12 @@ declare global {
    * ```ts
    * let content = await editor("Hello world!")
    * ```
-   [Examples](https://scriptkit.com?query=editor) | [Docs](https://johnlindquist.github.io/kit-docs/#editor) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=editor)
+   * [Examples](https://scriptkit.com?query=editor) | [Docs](https://johnlindquist.github.io/kit-docs/#editor) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=editor)
    */
   var editor: Editor
   /**
-   * The `template` prompt will present the editor populated by your template. You can then tab through each variable in your template and edit it. 
-   * 1. The first argument is a string template. Add variables using $1, $2, etc. You can also use 
+   * The `template` prompt will present the editor populated by your template. You can then tab through each variable in your template and edit it.
+   * 1. The first argument is a string template. Add variables using $1, $2, etc. You can also use
    * [//]: # (\${1:default value} to set a default value.&#41;)
    * #### template example
    * ```ts
@@ -1141,7 +1143,7 @@ declare global {
    * Please meet me at \${2:address}
    * Sincerely, John`)
    * ```
-   [Examples](https://scriptkit.com?query=template) | [Docs](https://johnlindquist.github.io/kit-docs/#template) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=template)
+   * [Examples](https://scriptkit.com?query=template) | [Docs](https://johnlindquist.github.io/kit-docs/#template) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=template)
    */
   var template: Template
 
@@ -1170,7 +1172,7 @@ declare global {
    * let keyInfo = await hotkey()
    * await editor(JSON.stringify(keyInfo, null, 2))
    * ```
-   [Examples](https://scriptkit.com?query=hotkey) | [Docs](https://johnlindquist.github.io/kit-docs/#hotkey) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hotkey)
+   * [Examples](https://scriptkit.com?query=hotkey) | [Docs](https://johnlindquist.github.io/kit-docs/#hotkey) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hotkey)
    */
   var hotkey: Hotkey
   var send: Send
@@ -1188,7 +1190,7 @@ declare global {
    * ```ts
    * await setPanel("<h1>Hello, world!</h1>")
    * ```
-   [Examples](https://scriptkit.com?query=setPanel) | [Docs](https://johnlindquist.github.io/kit-docs/#setPanel) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPanel)
+   * [Examples](https://scriptkit.com?query=setPanel) | [Docs](https://johnlindquist.github.io/kit-docs/#setPanel) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPanel)
    */
   var setPanel: SetPanel
   var setFooter: SetFooter
@@ -1204,7 +1206,7 @@ declare global {
    * ```ts
    * await setPreview("<h1>Preview</h1>")
    * ```
-   [Examples](https://scriptkit.com?query=setPreview) | [Docs](https://johnlindquist.github.io/kit-docs/#setPreview) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPreview)
+   * [Examples](https://scriptkit.com?query=setPreview) | [Docs](https://johnlindquist.github.io/kit-docs/#setPreview) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPreview)
    */
   var setPreview: SetPreview
   /**
@@ -1213,7 +1215,7 @@ declare global {
    * ```ts
    * await setPrompt("<h1>Enter your name:</h1>")
    * ```
-   [Examples](https://scriptkit.com?query=setPrompt) | [Docs](https://johnlindquist.github.io/kit-docs/#setPrompt) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPrompt)
+   * [Examples](https://scriptkit.com?query=setPrompt) | [Docs](https://johnlindquist.github.io/kit-docs/#setPrompt) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setPrompt)
    */
   var setPrompt: SetPrompt
   var setBounds: SetBounds
@@ -1233,7 +1235,7 @@ declare global {
    * ```ts
    * await setIgnoreBlur(true)
    * ```
-   [Examples](https://scriptkit.com?query=setIgnoreBlur) | [Docs](https://johnlindquist.github.io/kit-docs/#setIgnoreBlur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setIgnoreBlur)
+   * [Examples](https://scriptkit.com?query=setIgnoreBlur) | [Docs](https://johnlindquist.github.io/kit-docs/#setIgnoreBlur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setIgnoreBlur)
    */
   var setIgnoreBlur: SetIgnoreBlur
   var setResize: SetResize
@@ -1242,9 +1244,9 @@ declare global {
   var setProgress: SetProgress
   var setRunning: SetLoading
   /**
-   * Set the system menu bar icon and message. 
-   * Each status message will be appended to a list. 
-   * Clicking on the menu will display the list of messages. 
+   * Set the system menu bar icon and message.
+   * Each status message will be appended to a list.
+   * Clicking on the menu will display the list of messages.
    * The status and messages will be dismissed once the tray closes, so use `log` if you want to persist messages.
    * #### setStatus example
    * ```ts
@@ -1253,7 +1255,7 @@ declare global {
    *   status: "busy",
    * })
    * ```
-   [Examples](https://scriptkit.com?query=setStatus) | [Docs](https://johnlindquist.github.io/kit-docs/#setStatus) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setStatus)
+   * [Examples](https://scriptkit.com?query=setStatus) | [Docs](https://johnlindquist.github.io/kit-docs/#setStatus) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=setStatus)
    */
   var setStatus: SetStatus
   var setTheme: SetTheme
@@ -1267,7 +1269,7 @@ declare global {
    * ```ts
    * await show()
    * ```
-   [Examples](https://scriptkit.com?query=show) | [Docs](https://johnlindquist.github.io/kit-docs/#show) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=show)
+   * [Examples](https://scriptkit.com?query=show) | [Docs](https://johnlindquist.github.io/kit-docs/#show) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=show)
    */
   var show: () => Promise<void>
   /**
@@ -1276,7 +1278,7 @@ declare global {
    * ```ts
    * await hide()
    * ```
-   [Examples](https://scriptkit.com?query=hide) | [Docs](https://johnlindquist.github.io/kit-docs/#hide) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hide)
+   * [Examples](https://scriptkit.com?query=hide) | [Docs](https://johnlindquist.github.io/kit-docs/#hide) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=hide)
    */
   var hide: (hideOptions?: HideOptions) => Promise<void>
   /**
@@ -1305,7 +1307,7 @@ declare global {
    *   },
    * });
    * ```
-   [Examples](https://scriptkit.com?query=blur) | [Docs](https://johnlindquist.github.io/kit-docs/#blur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=blur)
+   * [Examples](https://scriptkit.com?query=blur) | [Docs](https://johnlindquist.github.io/kit-docs/#blur) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=blur)
    */
   var blur: () => Promise<void>
 
@@ -1323,7 +1325,7 @@ declare global {
    *     age: 40
    * })
    * ```
-   [Examples](https://scriptkit.com?query=dev) | [Docs](https://johnlindquist.github.io/kit-docs/#dev) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=dev)
+   * [Examples](https://scriptkit.com?query=dev) | [Docs](https://johnlindquist.github.io/kit-docs/#dev) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=dev)
    */
   var dev: (object?: any) => Promise<void>
   /**
@@ -1334,7 +1336,7 @@ declare global {
    * const text = await arg("Select from clipboard history", history);
    * await editor(text);
    * ```
-   [Examples](https://scriptkit.com?query=getClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#getClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getClipboardHistory)
+   * [Examples](https://scriptkit.com?query=getClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#getClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getClipboardHistory)
    */
   var getClipboardHistory: () => Promise<ClipboardItem[]>
   /**
@@ -1343,7 +1345,7 @@ declare global {
    * ```ts
    * await clearClipboardHistory()
    * ```
-   [Examples](https://scriptkit.com?query=clearClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#clearClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=clearClipboardHistory)
+   * [Examples](https://scriptkit.com?query=clearClipboardHistory) | [Docs](https://johnlindquist.github.io/kit-docs/#clearClipboardHistory) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=clearClipboardHistory)
    */
   var clearClipboardHistory: () => Promise<void>
   var getEditorHistory: GetEditorHistory
@@ -1353,7 +1355,7 @@ declare global {
    * ```ts
    * await removeClipboardItem(item)
    * ```
-   [Examples](https://scriptkit.com?query=removeClipboardItem) | [Docs](https://johnlindquist.github.io/kit-docs/#removeClipboardItem) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=removeClipboardItem)
+   * [Examples](https://scriptkit.com?query=removeClipboardItem) | [Docs](https://johnlindquist.github.io/kit-docs/#removeClipboardItem) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=removeClipboardItem)
    */
   var removeClipboardItem: (id: string) => Promise<void>
   var setTab: (tabName: string) => void
@@ -1374,7 +1376,7 @@ declare global {
    * // Wait for 1 second
    * await editor(result);
    * ```
-   [Examples](https://scriptkit.com?query=submit) | [Docs](https://johnlindquist.github.io/kit-docs/#submit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=submit)
+   * [Examples](https://scriptkit.com?query=submit) | [Docs](https://johnlindquist.github.io/kit-docs/#submit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=submit)
    */
   var submit: Submit
   var mainScript: (input?: string, tab?: string) => Promise<void>
@@ -1385,8 +1387,70 @@ declare global {
   var log: typeof console.log
   var warn: typeof console.warn
 
+  /**
+   * > Note: Please use with caution
+   * Type and/or tap keys on your keyboard
+   * #### keyboard example
+   * ```ts
+   * prompt: false, // 99% of the time you'll want to hide the prompt
+   * };
+   * await keyboard.type("Hello, world!");
+   * ```
+   * #### keyboard example keys
+   * ```ts
+   * prompt: false,
+   * };
+   * await keyboard.tap(Key.LeftSuper, Key.A);
+   * await wait(100);
+   * await keyboard.tap(Key.LeftSuper, Key.C);
+   * await wait(100);
+   * await keyboard.tap(Key.LeftSuper, Key.N);
+   * await wait(100);
+   * await keyboard.tap(Key.LeftSuper, Key.V);
+   * ```
+   * [Examples](https://scriptkit.com?query=keyboard) | [Docs](https://johnlindquist.github.io/kit-docs/#keyboard) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=keyboard)
+   */
   var keyboard: Keyboard
+  /**
+   * > Note: Please use with caution
+   * move and click the system mouse
+   * #### mouse example
+   * ```ts
+   * await mouse.move([
+   *   { x: 100, y: 100 },
+   *   { x: 200, y: 200 },
+   * ]);
+   * await mouse.leftClick();
+   * await wait(100);
+   * await mouse.rightClick();
+   * await wait(100);
+   * await mouse.setPosition({ x: 1000, y: 1000 });
+   * ```
+   * [Examples](https://scriptkit.com?query=mouse) | [Docs](https://johnlindquist.github.io/kit-docs/#mouse) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=mouse)
+   */
   var mouse: Mouse
+  /**
+   * Read and write to the system clipboard
+   * #### clipboard example
+   * ```ts
+   * // Write and read text to the clipboard
+   * await clipboard.writeText("Hello from Script Kit!");
+   * const result = await clipboard.readText();
+   * await editor(result);
+   * ```
+   * #### clipboard example image
+   * ```ts
+   * const iconPath = kitPath("images", "icon.png");
+   * const imageBuffer = await readFile(iconPath);
+   * // Write and read image buffers to the clipboard
+   * await clipboard.writeImage(imageBuffer);
+   * const resultBuffer = await clipboard.readImage();
+   * const outputPath = home("Downloads", "icon-copy.png");
+   * await writeFile(outputPath, resultBuffer);
+   * await revealFile(outputPath);
+   * ```
+   * [Examples](https://scriptkit.com?query=clipboard) | [Docs](https://johnlindquist.github.io/kit-docs/#clipboard) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=clipboard)
+   */
   var clipboard: KitClipboard
 
   var execLog: ExecLog
@@ -1400,6 +1464,26 @@ declare global {
   var registerShortcut: RegisterShortcut
   var unregisterShortcut: UnregisterShortcut
   var startDrag: (filePath: string, iconPath?: string) => void
+  /**
+   * Grab a color from your desktop
+   * > Note: Behaves best on Mac. Windows _might_ be locked to only the Script Kit app prompt.
+   * ```
+   * {
+   *     "sRGBHex": "#e092d9",
+   *     "rgb": "rgb(224, 146, 217)",
+   *     "rgba": "rgba(224, 146, 217, 1)",
+   *     "hsl": "hsl(305, 56%, 73%)",
+   *     "hsla": "hsla(305, 56%, 73%, 1)",
+   *     "cmyk": "cmyk(0%, 35%, 3%, 12%)"
+   *   }
+   * ```
+   * #### eyeDropper example
+   * ```ts
+   * const result = await eyeDropper();
+   * await editor(JSON.stringify(result, null, 2));
+   * ```
+   * [Examples](https://scriptkit.com?query=eyeDropper) | [Docs](https://johnlindquist.github.io/kit-docs/#eyeDropper) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=eyeDropper)
+   */
   var eyeDropper: () => Promise<{
     sRGBHex: string
   }>
@@ -1434,7 +1518,7 @@ declare global {
    *   },
    * })
    * ```
-   [Examples](https://scriptkit.com?query=chat) | [Docs](https://johnlindquist.github.io/kit-docs/#chat) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=chat)
+   * [Examples](https://scriptkit.com?query=chat) | [Docs](https://johnlindquist.github.io/kit-docs/#chat) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=chat)
    */
   var chat: Chat
   /**
@@ -1446,7 +1530,7 @@ declare global {
    *   pauseOnFocusLoss: false
    * })
    * ```
-   [Examples](https://scriptkit.com?query=toast) | [Docs](https://johnlindquist.github.io/kit-docs/#toast) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=toast)
+   * [Examples](https://scriptkit.com?query=toast) | [Docs](https://johnlindquist.github.io/kit-docs/#toast) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=toast)
    */
   var toast: Toast
   /**
@@ -1458,7 +1542,7 @@ declare global {
    * })
    * await revealFile(filePath)
    * ```
-   [Examples](https://scriptkit.com?query=find) | [Docs](https://johnlindquist.github.io/kit-docs/#find) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=find)
+   * [Examples](https://scriptkit.com?query=find) | [Docs](https://johnlindquist.github.io/kit-docs/#find) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=find)
    */
   var find: Find
   /**
@@ -1470,7 +1554,7 @@ declare global {
    * await writeFile(tmpMicPath, buffer);
    * await playAudioFile(tmpMicPath);
    * ```
-   [Examples](https://scriptkit.com?query=mic) | [Docs](https://johnlindquist.github.io/kit-docs/#mic) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=mic)
+   * [Examples](https://scriptkit.com?query=mic) | [Docs](https://johnlindquist.github.io/kit-docs/#mic) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=mic)
    */
   var mic: Mic
   /**
@@ -1489,7 +1573,7 @@ declare global {
    * await writeFile(imagePath, buffer)
    * await revealFile(imagePath)
    * ```
-   [Examples](https://scriptkit.com?query=webcam) | [Docs](https://johnlindquist.github.io/kit-docs/#webcam) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=webcam)
+   * [Examples](https://scriptkit.com?query=webcam) | [Docs](https://johnlindquist.github.io/kit-docs/#webcam) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=webcam)
    */
   var webcam: WebCam
   var prompt: Prompt
@@ -1499,7 +1583,7 @@ declare global {
    * ```ts
    * let devices = await getMediaDevices()
    * ```
-   [Examples](https://scriptkit.com?query=getMediaDevices) | [Docs](https://johnlindquist.github.io/kit-docs/#getMediaDevices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getMediaDevices)
+   * [Examples](https://scriptkit.com?query=getMediaDevices) | [Docs](https://johnlindquist.github.io/kit-docs/#getMediaDevices) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getMediaDevices)
    */
   var getMediaDevices: GetMediaDevices
   /**
@@ -1508,7 +1592,7 @@ declare global {
    * ```ts
    * let text = await getTypedText()
    * ```
-   [Examples](https://scriptkit.com?query=getTypedText) | [Docs](https://johnlindquist.github.io/kit-docs/#getTypedText) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getTypedText)
+   * [Examples](https://scriptkit.com?query=getTypedText) | [Docs](https://johnlindquist.github.io/kit-docs/#getTypedText) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getTypedText)
    */
   var getTypedText: GetTypedText
   var PROMPT: typeof PROMPT_OBJECT
@@ -1529,7 +1613,7 @@ declare global {
    *   },
    * });
    * ```
-   [Examples](https://scriptkit.com?query=preventSubmit) | [Docs](https://johnlindquist.github.io/kit-docs/#preventSubmit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=preventSubmit)
+   * [Examples](https://scriptkit.com?query=preventSubmit) | [Docs](https://johnlindquist.github.io/kit-docs/#preventSubmit) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=preventSubmit)
    */
   var preventSubmit: symbol
 
@@ -1592,7 +1676,7 @@ declare global {
    *   body: "Body text goes here",
    * });
    * ```
-   [Examples](https://scriptkit.com?query=notify) | [Docs](https://johnlindquist.github.io/kit-docs/#notify) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=notify)
+   * [Examples](https://scriptkit.com?query=notify) | [Docs](https://johnlindquist.github.io/kit-docs/#notify) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=notify)
    */
   var notify: Notify
 }
