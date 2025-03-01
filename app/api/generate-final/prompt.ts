@@ -1,4 +1,4 @@
-import { getKitTypes } from '@/lib/generation'
+import { getDocsContent, getExampleScripts, getKitTypes } from '@/lib/generation'
 
 export const FINAL_PASS_PROMPT = `
 You are a TypeScript script generator and code reviewer. 
@@ -46,7 +46,6 @@ metadata = {
 }
 
 Then only change it if explicitly instructed to do so.
-
 </METADATA>
 
 <USER_INFO>
@@ -56,6 +55,14 @@ Then only change it if explicitly instructed to do so.
 <SCRIPT>
 {script}
 </SCRIPT>
+
+<DOCS>
+${getDocsContent()}
+</DOCS>
+
+<EXAMPLES>
+${getExampleScripts()}
+</EXAMPLES>
 
 <TYPES>
 ${getKitTypes()}
@@ -67,12 +74,13 @@ import {foo} from "@johnlindquist/kit" is highly suspicious.
 In most cases, simply use: import "@johnlindquist/kit"
 </REMOVE>
 
-<REMOVE>
+<REMOVE_NODE_IMPORTS>
 // Remove these imports if you find them. They should be globals!
+import path from 'node:path'
 import { readdir, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ensureDir } from 'fs-extra';
-</REMOVE>
+</REMOVE_NODE_IMPORTS>
 
 <GLOBALS>
 Many Node.js APIs are globally provided. Only import them if not defined globally.
@@ -82,14 +90,16 @@ For example, never import fs, path, or other common Node.js modules like these!
 If you find a Node.js API imported and it's listed as a global in our types, REMOVE IT!
 </GLOBALS>
 
-<NOTABLE_GLOBALS>
-// Never import these:
-- await path()
-</NOTABLE_GLOBALS>
+
 
 <LEGACY>
 The "npm" function is deprecated. Please use standard ES Module or TypeScript imports.
 </LEGACY>
+
+<COMMENTS>
+Add comments to parts of the code where you could have made different decisions.
+Tell the user why you chose what you did and ask them to refer to documentation around other options.
+</COMMENTS>
 
 Re-generate ONLY the improved script content below this line:
 `
