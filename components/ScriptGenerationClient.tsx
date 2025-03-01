@@ -289,59 +289,54 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           timestamp: new Date().toISOString(),
         })
 
-        // Ensure we scroll to the bottom - fix the TypeScript error
+        // Ensure we scroll to the bottom with smooth animation
         const lineCount = model.getLineCount()
         if (editor) {
-          // Use revealLine as a fallback if revealLineInCenter is not available
-          if (typeof editor.revealLineInCenter === 'function') {
-            editor.revealLineInCenter(lineCount)
-            console.log('[STREAMING_DEBUG] Revealed line in center:', {
-              lineCount,
-              timestamp: new Date().toISOString(),
-            })
-          } else {
+          // Use a small delay to ensure the content is rendered before scrolling
+          requestAnimationFrame(() => {
+            // Always scroll to bottom
             editor.revealLine(lineCount)
-            console.log('[STREAMING_DEBUG] Revealed line (fallback):', {
+            console.log('[STREAMING_DEBUG] Revealed last line:', {
               lineCount,
               timestamp: new Date().toISOString(),
             })
-          }
 
-          // Add a visual indicator that new content has been added
-          // This is done by briefly highlighting the last line
-          try {
-            const lastLineLength = model.getLineLength(lineCount) || 0
+            // Add a visual indicator that new content has been added
+            try {
+              const lastLineLength = model.getLineLength(lineCount) || 0
 
-            // Only attempt to add decorations if the method exists
-            if (typeof editor.deltaDecorations === 'function') {
-              const decorations = editor.deltaDecorations(
-                [],
-                [
-                  {
-                    range: {
-                      startLineNumber: lineCount,
-                      startColumn: 1,
-                      endLineNumber: lineCount,
-                      endColumn: lastLineLength + 1,
+              // Only attempt to add decorations if the method exists
+              if (typeof editor.deltaDecorations === 'function') {
+                const decorations = editor.deltaDecorations(
+                  [],
+                  [
+                    {
+                      range: {
+                        startLineNumber: lineCount,
+                        startColumn: 1,
+                        endLineNumber: lineCount,
+                        endColumn: lastLineLength + 1,
+                      },
+                      options: {
+                        className: 'streaming-highlight',
+                        isWholeLine: true,
+                        animate: true, // Enable decoration animation
+                      },
                     },
-                    options: {
-                      className: 'streaming-highlight',
-                      isWholeLine: true,
-                    },
-                  },
-                ]
-              )
+                  ]
+                )
 
-              // Remove the decoration after a short delay
-              setTimeout(() => {
-                if (editor && typeof editor.deltaDecorations === 'function') {
-                  editor.deltaDecorations(decorations, [])
-                }
-              }, 300)
+                // Remove the decoration after a short delay
+                setTimeout(() => {
+                  if (editor && typeof editor.deltaDecorations === 'function') {
+                    editor.deltaDecorations(decorations, [])
+                  }
+                }, 300)
+              }
+            } catch (decorationError) {
+              console.warn('[STREAMING_DEBUG] Error adding decoration:', decorationError)
             }
-          } catch (decorationError) {
-            console.warn('[STREAMING_DEBUG] Error adding decoration:', decorationError)
-          }
+          })
         }
 
         // Also update the streamedText state to keep it in sync
