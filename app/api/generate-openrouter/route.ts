@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
-import { model } from '@/lib/gemini'
 import { cleanCodeFences } from '@/lib/generation'
 import { logInteraction } from '@/lib/interaction-logger'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { streamText } from 'ai'
 import { DRAFT_PASS_PROMPT } from './prompt'
+import {
+  createOpenRouterWithReasoning,
+  enhancePromptWithReasoningRequest,
+} from '@/lib/reasoning-extractor'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 const CLI_API_KEY = process.env.CLI_API_KEY
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL
 
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
@@ -23,7 +30,7 @@ export async function POST(req: Request) {
   // Check for web user if not CLI
   if (!userId) {
     if (!session?.user?.id) {
-      console.error('[API Route] No user ID found:', { requestId })
+      console.error('[OpenRouter API] No user ID found:', { requestId })
       return new Response('Unauthorized', { status: 401 })
     }
     userId = session.user.id
@@ -39,7 +46,7 @@ export async function POST(req: Request) {
           username: session?.user?.username || 'Unknown',
         }
 
-  console.log('[API Route] User info for prompt:', {
+  console.log('[OpenRouter API] User info for prompt:', {
     requestId,
     userId,
     isCLI: userId === 'cli-user',
@@ -48,20 +55,13 @@ export async function POST(req: Request) {
 
   try {
     const interactionTimestamp = req.headers.get('Interaction-Timestamp') || 'unknown'
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', {
+    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-openrouter route', {
       requestId,
     })
 
     // Check for CLI API key first
     const apiKey = req.headers.get('X-CLI-API-Key')?.toLowerCase()
     const expectedApiKey = CLI_API_KEY?.toLowerCase()
-
-    console.log('[API Route] Auth details:', {
-      requestId,
-      apiKey,
-      expectedApiKey,
-      headers: Object.fromEntries(req.headers.entries()),
-    })
 
     if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
       // Skip auth for CLI tools with valid API key
@@ -70,11 +70,6 @@ export async function POST(req: Request) {
       })
       userId = 'cli-user' // Use a special ID for CLI requests
     } else {
-      console.log('[API Route] API key mismatch:', {
-        requestId,
-        receivedKey: apiKey,
-        expectedKey: CLI_API_KEY,
-      })
       // Fall back to session auth for web requests
       if (!session?.user) {
         return new NextResponse('Unauthorized', { status: 401 })
@@ -83,39 +78,52 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}))
-    const { prompt, luckyRequestId } = body
+    const { prompt, luckyRequestId, extractReasoning } = body
 
-    console.log('[API Route] Request details:', {
+    console.log('[OpenRouter API] Request details:', {
       requestId,
       luckyRequestId,
       hasPrompt: !!prompt,
       hasTimestamp: !!interactionTimestamp,
       userId: userId,
       source: luckyRequestId ? 'lucky' : 'direct',
+      extractReasoning: !!extractReasoning,
     })
 
     if (!interactionTimestamp) {
-      console.error('[API Route] Missing interaction timestamp:', {
+      console.error('[OpenRouter API] Missing interaction timestamp:', {
         requestId,
       })
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
 
-    logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/generate-draft route', {
-      requestId,
-      luckyRequestId,
-      source: luckyRequestId ? 'lucky' : 'direct',
-    })
-
     if (!prompt) {
-      console.error('[API Route] Missing prompt:', { requestId })
+      console.error('[OpenRouter API] Missing prompt:', { requestId })
       logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt', {
         requestId,
       })
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
 
-    console.log('[API Route] Checking user usage:', {
+    // Check for OpenRouter API key
+    if (!OPENROUTER_API_KEY) {
+      console.error('[OpenRouter API] Missing OpenRouter API key:', { requestId })
+      logInteraction(interactionTimestamp, 'serverRoute', 'Missing OpenRouter API key', {
+        requestId,
+      })
+      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 500 })
+    }
+
+    // Check for OpenRouter model
+    if (!DEFAULT_MODEL) {
+      console.error('[OpenRouter API] Missing OpenRouter model:', { requestId })
+      logInteraction(interactionTimestamp, 'serverRoute', 'Missing OpenRouter model', {
+        requestId,
+      })
+      return NextResponse.json({ error: 'OpenRouter model not configured' }, { status: 500 })
+    }
+
+    console.log('[OpenRouter API] Checking user usage:', {
       requestId,
       userId: userId,
       source: luckyRequestId ? 'lucky' : 'direct',
@@ -203,112 +211,122 @@ export async function POST(req: Request) {
       },
     })
 
-    // Generate draft script using Gemini
-    const draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
+    // Generate draft script using OpenRouter
+    let draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
       '{userInfo}',
       JSON.stringify(userInfo)
     )
 
-    console.log('[API Route] Starting draft generation:', {
+    // If reasoning extraction is requested, enhance the prompt
+    if (extractReasoning) {
+      draftPrompt = enhancePromptWithReasoningRequest(draftPrompt)
+    }
+
+    console.log('[OpenRouter API] Starting draft generation:', {
       requestId,
       prompt,
       source: luckyRequestId ? 'lucky' : 'direct',
+      model: DEFAULT_MODEL,
+      extractReasoning: !!extractReasoning,
     })
 
-    const result = await model.generateContentStream(draftPrompt)
+    // Initialize the model based on whether reasoning extraction is requested
+    let result
+    if (extractReasoning && OPENROUTER_API_KEY) {
+      // Use the utility function to create a model with reasoning extraction
+      const modelWithReasoning = createOpenRouterWithReasoning(OPENROUTER_API_KEY, DEFAULT_MODEL)
 
-    let aborted = false
-    // Using the scriptId from the DB record for client compatibility
-    console.log('[API Route] Using script ID:', { requestId, scriptId })
+      result = await streamText({
+        model: modelWithReasoning,
+        prompt: draftPrompt,
+      })
+    } else {
+      // Create standard OpenRouter instance without reasoning extraction
+      const openrouter = createOpenRouter({
+        apiKey: OPENROUTER_API_KEY || '',
+      })
 
+      result = await streamText({
+        model: openrouter(DEFAULT_MODEL),
+        prompt: draftPrompt,
+      })
+    }
+
+    console.log('[OpenRouter API] Using script ID:', { requestId, scriptId })
+
+    // Create a new stream response
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          console.log('[API Route] Starting stream:', { requestId, scriptId })
+          console.log('[OpenRouter API] Starting stream:', { requestId, scriptId })
           controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
 
           try {
-            for await (const chunk of result.stream) {
-              if (aborted) {
-                console.log('[API Route] Generation aborted:', {
-                  requestId,
-                  scriptId,
-                })
-                break
-              }
-              const text = cleanCodeFences(chunk.text())
-              console.log('[API Route] Streaming chunk:', {
+            // Use textStream property which is the correct way to access the stream
+            for await (const chunk of result.textStream) {
+              const text = cleanCodeFences(chunk || '')
+              console.log('[OpenRouter API] Streaming chunk:', {
                 requestId,
                 scriptId,
                 chunkSize: text.length,
-                preview: text.length > 0 ? text : '(no text)',
+                preview: text.length > 0 ? text.substring(0, 50) : '(no text)',
               })
               controller.enqueue(new TextEncoder().encode(text))
             }
-          } catch (streamError) {
-            if (streamError instanceof Error && streamError.name === 'AbortError') {
-              console.log('[API Route] Stream aborted:', {
-                requestId,
-                scriptId,
-              })
-              aborted = true
-              return
-            }
-            throw streamError
-          }
 
-          if (!aborted) {
-            console.log('[API Route] Draft generation completed:', {
+            // If reasoning was extracted, log it
+            if (extractReasoning && result.reasoning) {
+              // Await the reasoning Promise to get the actual string value
+              const reasoningText = await result.reasoning
+
+              if (reasoningText) {
+                console.log('[OpenRouter API] Extracted reasoning:', {
+                  requestId,
+                  scriptId,
+                  reasoningLength: reasoningText.length,
+                  reasoningPreview: reasoningText.substring(0, 100) + '...',
+                })
+
+                // Store the reasoning in the database using an available field
+                await prisma.script.update({
+                  where: { id: scriptId },
+                  data: {
+                    summary: `Reasoning: ${reasoningText.substring(0, 200)}...`,
+                  },
+                })
+              }
+            }
+
+            console.log('[OpenRouter API] Stream completed:', { requestId, scriptId })
+          } catch (error) {
+            console.error('[OpenRouter API] Error in stream:', {
               requestId,
               scriptId,
+              error: error instanceof Error ? error.message : String(error),
             })
-            controller.enqueue(new TextEncoder().encode(''))
+            controller.error(error)
           }
-          controller.close()
         } catch (error) {
-          console.error('[API Route] Stream error:', {
+          console.error('[OpenRouter API] Error in stream start:', {
             requestId,
             scriptId,
             error: error instanceof Error ? error.message : String(error),
           })
           controller.error(error)
+        } finally {
+          controller.close()
         }
       },
-      cancel() {
-        console.log('[API Route] Stream cancelled:', { requestId, scriptId })
-        aborted = true
-      },
     })
 
-    console.log('[API Route] Returning stream response:', {
-      requestId,
-      scriptId,
-    })
-    return new NextResponse(stream)
+    // Return the stream response
+    return new Response(stream)
   } catch (error) {
-    console.error('[API Route] Error in generateDraftScript:', {
+    console.error('[OpenRouter API] Unhandled error:', {
       requestId,
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     })
-
-    const interactionTimestamp =
-      req.headers.get('Interaction-Timestamp') ||
-      new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-
-    const body = await req.json().catch(() => ({}))
-    const { luckyRequestId } = body
-
-    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/generate-draft route', {
-      error: error instanceof Error ? error.message : String(error),
-      requestId,
-      source: luckyRequestId ? 'lucky' : 'direct',
-    })
-    return NextResponse.json(
-      {
-        error: 'Failed to generate script',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
   }
 }

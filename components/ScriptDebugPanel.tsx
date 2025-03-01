@@ -18,7 +18,6 @@ interface ScriptDebugPanelProps {
   luckyRequestId: string | null
   isFromLucky: boolean
   isFromSuggestion: boolean
-  isTransitioningToFinal: boolean
   error: string | null
 }
 
@@ -31,7 +30,6 @@ export default function ScriptDebugPanel({
   luckyRequestId,
   isFromLucky,
   isFromSuggestion,
-  isTransitioningToFinal,
   error,
 }: ScriptDebugPanelProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -77,7 +75,6 @@ export default function ScriptDebugPanel({
     luckyRequestId,
     isFromLucky,
     isFromSuggestion,
-    isTransitioningToFinal,
     error,
   ])
 
@@ -221,12 +218,6 @@ export default function ScriptDebugPanel({
                         className="text-[10px]"
                       >
                         isFromSuggestion: {isFromSuggestion.toString()}
-                      </Badge>
-                      <Badge
-                        variant={isTransitioningToFinal ? 'default' : 'outline'}
-                        className="text-[10px]"
-                      >
-                        isTransitioningToFinal: {isTransitioningToFinal.toString()}
                       </Badge>
                     </div>
                   </div>

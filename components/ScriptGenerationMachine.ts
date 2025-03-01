@@ -2,7 +2,7 @@ import { setup, assign, fromPromise } from 'xstate'
 import { toast } from 'react-hot-toast'
 import { logInteraction } from '@/lib/interaction-logger'
 import { saveScript, saveAndInstallScript } from '@/lib/apiService'
-import { generateDraftWithStream, generateFinalWithStream } from '@/lib/apiStreamingServices'
+import { generateDraftWithStream } from '@/lib/apiStreamingServices'
 import { ScriptGenerationEvent } from '@/types/scriptGeneration'
 
 /**
@@ -19,8 +19,8 @@ import { ScriptGenerationEvent } from '@/types/scriptGeneration'
  * @property {string|null} interactionTimestamp - Timestamp used for logging interactions
  * @property {boolean} isFromLucky - Whether this is triggered from the "lucky" feature
  * @property {string|null} luckyRequestId - Unique ID for a lucky request, if relevant
- * @property {string|null} lastRefinementRequestId - Request ID used in the refine step
- * @property {boolean} isTransitioningToFinal - Indicates whether the generation is transitioning to final
+ * @property {string|null} lastRefinementRequestId - Unique ID for a last refinement request, if relevant
+ * @property {boolean} isTransitioningToFinal - Indicates whether the script is transitioning to final
  */
 interface ScriptGenerationContext {
   prompt: string
@@ -98,58 +98,6 @@ export const scriptGenerationMachine = setup({
         )
       }
       return generateDraftWithStream(typedInput, emit)
-    }),
-    generateFinalScript: fromPromise(async ({ input, emit }) => {
-      const typedInput = input as ScriptGenerationContext
-      if (typedInput.interactionTimestamp) {
-        await logInteraction(
-          typedInput.interactionTimestamp,
-          'stateMachine',
-          'Starting final script generation',
-          { scriptId: typedInput.scriptId }
-        )
-      }
-      try {
-        const result = await generateFinalWithStream(
-          {
-            prompt: typedInput.prompt,
-            requestId: typedInput.requestId,
-            luckyRequestId: typedInput.luckyRequestId,
-            interactionTimestamp: typedInput.interactionTimestamp || new Date().toISOString(),
-            scriptId: typedInput.scriptId,
-            editableScript: typedInput.editableScript,
-          },
-          {
-            onStartStreaming: () => {
-              emit({ type: 'START_STREAMING_FINAL' } as ScriptGenerationEvent)
-            },
-            onChunk: text => {
-              emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: text } as ScriptGenerationEvent)
-            },
-            onError: error => {
-              if (error.message === 'UNAUTHORIZED') {
-                window.location.href = '/sign-in'
-                return
-              }
-              emit({ type: 'SET_ERROR', error: error.message } as ScriptGenerationEvent)
-            },
-          }
-        )
-        return result
-      } catch (error) {
-        if (error instanceof Response && error.status === 429) {
-          emit({
-            type: 'SET_ERROR',
-            error: 'Daily generation limit reached. Try again tomorrow!',
-          } as ScriptGenerationEvent)
-        } else {
-          emit({
-            type: 'SET_ERROR',
-            error: error instanceof Error ? error.message : 'Failed to generate final script',
-          } as ScriptGenerationEvent)
-        }
-        throw error
-      }
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext
@@ -296,16 +244,21 @@ export const scriptGenerationMachine = setup({
             }),
           ],
         },
-        SET_TRANSITIONING_TO_FINAL: {
-          actions: [
-            assign({
-              isTransitioningToFinal: ({ event }) =>
-                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
-            }),
-            createLogAction('Transitioning to final flag set', context => ({
-              isTransitioningToFinal: context.isTransitioningToFinal,
-            })),
-          ],
+        RESET_MACHINE: {
+          actions: assign({
+            prompt: '',
+            editableScript: '',
+            generatedScript: null,
+            error: null,
+            requestId: null,
+            isFromSuggestion: false,
+            scriptId: null,
+            interactionTimestamp: null,
+            isFromLucky: false,
+            luckyRequestId: null,
+            lastRefinementRequestId: null,
+            isTransitioningToFinal: false,
+          }),
         },
       },
     },
@@ -346,7 +299,7 @@ export const scriptGenerationMachine = setup({
     },
 
     /**
-     * Initial generation state - streaming the first version.
+     * Generation state - streaming the script.
      * Handles the streaming response and updates.
      */
     generatingDraft: {
@@ -361,14 +314,13 @@ export const scriptGenerationMachine = setup({
         src: 'generateDraftScript',
         input: ({ context }) => context,
         onDone: {
-          target: 'generatingFinal',
+          target: 'complete',
           actions: [
-            assign(({ event }) => ({
+            assign({
               error: null,
-              scriptId: (event as { output: GenerateInitialResponse }).output.scriptId,
-              lastRefinementRequestId: crypto.randomUUID(),
-              isTransitioningToFinal: true,
-            })),
+              scriptId: ({ event }) => (event.output as GenerateInitialResponse).scriptId,
+              generatedScript: ({ context }) => context.editableScript,
+            }),
             createLogAction('Draft generation complete', context => ({
               scriptId: context.scriptId,
               requestId: context.requestId,
@@ -383,7 +335,6 @@ export const scriptGenerationMachine = setup({
                 const err = event.error as Error
                 return err?.message || 'An unknown error occurred'
               },
-              lastRefinementRequestId: null,
             }),
             createLogAction('Draft generation failed', context => ({
               error: context.error,
@@ -413,88 +364,39 @@ export const scriptGenerationMachine = setup({
               prompt: '',
               error: null,
               editableScript: '',
-              lastRefinementRequestId: null,
             }),
             createLogAction('Generation cancelled', context => ({ requestId: context.requestId })),
           ],
         },
-        SET_TRANSITIONING_TO_FINAL: {
+        START_STREAMING_FINAL: {
+          target: 'generatingFinal',
           actions: [
             assign({
-              isTransitioningToFinal: ({ event }) =>
-                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
+              error: null,
             }),
-            createLogAction('Transitioning to final flag set', context => ({
-              isTransitioningToFinal: context.isTransitioningToFinal,
+            createLogAction('Starting final generation', context => ({
+              scriptId: context.scriptId,
+              requestId: context.requestId,
             })),
           ],
         },
       },
     },
 
+    /**
+     * Final generation state - refining the script.
+     * Handles the final pass of generation with refinements.
+     */
     generatingFinal: {
-      entry: [
-        ({ context }) => {
-          if (context.interactionTimestamp) {
-            logStateTransition('generatingFinal', context.interactionTimestamp, {
-              scriptId: context.scriptId,
-              message: 'Starting final script generation',
-            }).catch(console.error)
-          }
-        },
-      ],
-      invoke: {
-        id: 'generateFinalScript',
-        src: 'generateFinalScript',
-        input: ({ context }) => context,
-        onDone: {
-          target: 'complete',
-          actions: [
-            assign({
-              error: null,
-              generatedScript: ({ event }) => {
-                const output = event.output as { script: string }
-                return output.script
-              },
-              editableScript: ({ event }) => {
-                const output = event.output as { script: string }
-                return output.script
-              },
-            }),
-            createLogAction('Final generation complete', context => ({
-              scriptId: context.scriptId,
-            })),
-          ],
-        },
-        onError: {
-          target: 'idle',
-          actions: [
-            assign({
-              error: ({ event }) => {
-                const error = event.error as Error
-                return error?.message || 'An unknown error occurred'
-              },
-              lastRefinementRequestId: null,
-            }),
-            createLogAction('Final generation failed', context => ({
-              error: context.error,
-              scriptId: context.scriptId,
-            })),
-          ],
-        },
+      entry: ({ context }) => {
+        if (context.interactionTimestamp) {
+          logStateTransition('generatingFinal', context.interactionTimestamp, {
+            requestId: context.requestId,
+            scriptId: context.scriptId,
+          }).catch(console.error)
+        }
       },
       on: {
-        START_STREAMING_FINAL: {
-          target: 'complete',
-          actions: [
-            assign({
-              generatedScript: ({ context }) => context.editableScript,
-            }),
-            createLogAction('Final streaming complete, transitioning to complete', context => ({
-              scriptId: context.scriptId,
-            })),
-          ],
-        },
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
             editableScript: ({ event }) => event.script,
@@ -505,30 +407,31 @@ export const scriptGenerationMachine = setup({
             assign({
               error: ({ event }) => String(event.error),
             }),
-            createLogAction('Error during generation', context => ({ error: context.error })),
+            createLogAction('Error during final generation', context => ({ error: context.error })),
+          ],
+        },
+        START_STREAMING_FINAL: {
+          target: 'complete',
+          actions: [
+            assign({
+              generatedScript: ({ context }) => context.editableScript,
+            }),
+            createLogAction('Final generation complete', context => ({
+              scriptId: context.scriptId,
+              requestId: context.requestId,
+            })),
           ],
         },
         CANCEL_GENERATION: {
           target: 'idle',
           actions: [
             assign({
+              prompt: '',
               error: null,
               editableScript: '',
-              lastRefinementRequestId: null,
             }),
             createLogAction('Final generation cancelled', context => ({
-              scriptId: context.scriptId,
-            })),
-          ],
-        },
-        SET_TRANSITIONING_TO_FINAL: {
-          actions: [
-            assign({
-              isTransitioningToFinal: ({ event }) =>
-                (event as { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }).value,
-            }),
-            createLogAction('Transitioning to final flag set', context => ({
-              isTransitioningToFinal: context.isTransitioningToFinal,
+              requestId: context.requestId,
             })),
           ],
         },
@@ -541,9 +444,6 @@ export const scriptGenerationMachine = setup({
      */
     complete: {
       entry: [
-        assign({
-          isTransitioningToFinal: false,
-        }),
         ({ context }) => {
           if (context.interactionTimestamp) {
             logStateTransition('complete', context.interactionTimestamp, {

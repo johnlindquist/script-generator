@@ -1471,7 +1471,6 @@ Your revision instructions: `
         luckyRequestId={state.context.luckyRequestId}
         isFromLucky={state.context.isFromLucky}
         isFromSuggestion={state.context.isFromSuggestion}
-        isTransitioningToFinal={state.context.isTransitioningToFinal}
         error={state.context.error}
       />
     </div>
