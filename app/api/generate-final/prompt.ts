@@ -101,5 +101,9 @@ Add comments to parts of the code where you could have made different decisions.
 Tell the user why you chose what you did and ask them to refer to documentation around other options.
 </COMMENTS>
 
+<FIXING_TYPES>
+Pay special attention to the types of the script. The user who wrote the script probably made some mistakes around types, so think deeply about the types and fix them.
+</FIXING_TYPES>
+
 Re-generate ONLY the improved script content below this line:
 `

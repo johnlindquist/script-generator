@@ -36,6 +36,7 @@ import { FaGithub } from 'react-icons/fa'
 import { ArrowUp } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Loader2 } from 'lucide-react'
+import ScriptDebugPanel from '@/components/ScriptDebugPanel'
 
 interface EditorRef {
   getModel: () => {
@@ -1464,6 +1465,20 @@ Your revision instructions: `
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Debug Panel - Only visible in development */}
+      <ScriptDebugPanel
+        state={state.value as string}
+        editorContent={state.context.editableScript || ''}
+        prompt={state.context.prompt}
+        scriptId={state.context.scriptId}
+        requestId={state.context.requestId}
+        luckyRequestId={state.context.luckyRequestId}
+        isFromLucky={state.context.isFromLucky}
+        isFromSuggestion={state.context.isFromSuggestion}
+        isTransitioningToFinal={state.context.isTransitioningToFinal}
+        error={state.context.error}
+      />
     </div>
   )
 }
