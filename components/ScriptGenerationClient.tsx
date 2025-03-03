@@ -19,8 +19,9 @@ import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
-import { fetchUsage, generateLucky, generateDraftWithStream } from '@/lib/apiService'
+import { fetchUsage, generateLucky, generateDraftWithProvider } from '@/lib/apiService'
 import { generateFinalWithStream } from '@/lib/apiStreamingServices'
+import { scriptGenerationConfig } from '@/lib/config'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { cn } from '@/lib/utils'
@@ -258,36 +259,83 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
       // Compare content length to determine update approach
       if (text.length > currentContent.length) {
-        // Normal case: we have new content to append
-        const newContent = text.slice(currentContent.length)
+        // Instead of simply slicing based on length, we need to ensure we're not breaking at a newline
+        // Find the common prefix between the current content and the new text
+        let commonPrefixLength = 0
+        const minLength = Math.min(currentContent.length, text.length)
+
+        for (let i = 0; i < minLength; i++) {
+          if (currentContent[i] !== text[i]) {
+            break
+          }
+          commonPrefixLength++
+        }
+
+        // Get the new content to append, ensuring we don't break in the middle of a line
+        const newContent = text.slice(commonPrefixLength)
 
         console.log('[STREAMING_DEBUG] Appending new content:', {
+          commonPrefixLength,
           newContentLength: newContent.length,
           newContentPreview: newContent.substring(0, 30) + (newContent.length > 30 ? '...' : ''),
           timestamp: new Date().toISOString(),
         })
 
-        // Get the last line position
-        const range = model.getFullModelRange()
+        // If the current content ends with an incomplete line (no newline at the end)
+        // and the new content starts with the completion of that line,
+        // we need to handle this special case
+        if (
+          commonPrefixLength > 0 &&
+          commonPrefixLength < currentContent.length &&
+          !currentContent.endsWith('\n') &&
+          text.charAt(commonPrefixLength - 1) !== '\n'
+        ) {
+          // Find the last newline in the current content
+          const lastNewlineIndex = currentContent.lastIndexOf('\n')
 
-        // Create an edit operation to append the new content
-        const editResult = model.applyEdits([
-          {
-            range: {
-              startLineNumber: range.endLineNumber,
-              startColumn: range.endColumn,
-              endLineNumber: range.endLineNumber,
-              endColumn: range.endColumn,
+          if (lastNewlineIndex >= 0) {
+            // Replace from the last newline to the end
+            const range = model.getFullModelRange()
+            // const lastLine = currentContent.substring(lastNewlineIndex + 1)
+            const replacementText = text.substring(lastNewlineIndex + 1)
+
+            model.applyEdits([
+              {
+                range: {
+                  startLineNumber: range.endLineNumber,
+                  startColumn: 1,
+                  endLineNumber: range.endLineNumber,
+                  endColumn: range.endColumn,
+                },
+                text: replacementText,
+              },
+            ])
+          } else {
+            // If there's no newline in the current content, replace everything
+            model.setValue(text)
+          }
+        } else {
+          // Normal case: append the new content
+          const range = model.getFullModelRange()
+
+          const editResult = model.applyEdits([
+            {
+              range: {
+                startLineNumber: range.endLineNumber,
+                startColumn: range.endColumn,
+                endLineNumber: range.endLineNumber,
+                endColumn: range.endColumn,
+              },
+              text: newContent,
             },
-            text: newContent,
-          },
-        ])
+          ])
 
-        console.log('[STREAMING_DEBUG] Edit operation result:', {
-          success: Array.isArray(editResult) && editResult.length > 0,
-          newModelLength: model.getValue().length,
-          timestamp: new Date().toISOString(),
-        })
+          console.log('[STREAMING_DEBUG] Edit operation result:', {
+            success: Array.isArray(editResult) && editResult.length > 0,
+            newModelLength: model.getValue().length,
+            timestamp: new Date().toISOString(),
+          })
+        }
 
         // Ensure we scroll to the bottom with smooth animation
         const lineCount = model.getLineCount()
@@ -405,9 +453,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
     let isMounted = true
     const startStreaming = async () => {
-      console.log('[DRAFT EFFECT] Starting generateDraftWithStream call', {
+      console.log('[DRAFT EFFECT] Starting generateDraftWithProvider call', {
         prompt: state.context.prompt.slice(0, 50) + (state.context.prompt.length > 50 ? '...' : ''),
         timestamp: new Date().toISOString(),
+        provider: scriptGenerationConfig.draftProvider,
       })
 
       try {
@@ -416,7 +465,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           state.context.interactionTimestamp ||
           new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
 
-        await generateDraftWithStream(
+        // Use the configured provider
+        await generateDraftWithProvider(
+          scriptGenerationConfig.draftProvider,
           state.context.prompt,
           state.context.luckyRequestId,
           timestamp,
@@ -451,9 +502,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               toast.error(error.message)
               send({ type: 'SET_ERROR', error: error.message })
             },
-          }
+          },
+          { extractReasoning: scriptGenerationConfig.extractReasoning }
         )
-        console.log('[DRAFT EFFECT] Completed generateDraftWithStream call successfully')
+        console.log('[DRAFT EFFECT] Completed generateDraftWithProvider call successfully')
       } catch (err) {
         // Skip processing if component is unmounted or request was aborted
         if (!isMounted || signal.aborted) {
@@ -464,7 +516,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         if (err instanceof DOMException && err.name === 'AbortError') {
           console.log('[DRAFT EFFECT] Draft generation was aborted normally')
         } else {
-          console.error('[DRAFT EFFECT] generateDraftWithStream threw an exception:', err)
+          console.error('[DRAFT EFFECT] generateDraftWithProvider threw an exception:', err)
           send({
             type: 'SET_ERROR',
             error: err instanceof Error ? err.message : 'An error occurred during draft generation',
@@ -527,6 +579,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         generatingFinal: state.matches('generatingFinal'),
         complete: state.matches('complete'),
         thinkingDraft: state.matches('thinkingDraft'),
+        generatingDraft: state.matches('generatingDraft'),
       },
       scriptId: state.context.scriptId,
       hasStarted: finalGenerationStartedRef.current,
@@ -814,7 +867,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       }
     }
   }, [
-    // Only re-run when scriptId, state or other essentials change
     state.matches,
     state.context.scriptId,
     state.context.prompt,
@@ -924,9 +976,16 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
   }, [isAuthenticated, send])
 
+  // Add a submission lock state to prevent duplicate submissions
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    // Prevent duplicate submission
+    if (isSubmitting) return
+
     // if less than 15 characters, throw error
     if (!state.context.prompt.trim() || state.context.prompt.trim().length < 15) {
       send({ type: 'SET_ERROR', error: 'Please provide a prompt with at least 15 characters' })
@@ -939,6 +998,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       return
     }
 
+    // Lock submission
+    setIsSubmitting(true)
+
     // Generate a single timestamp for the entire interaction chain
     const interactionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
     send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
@@ -948,12 +1010,20 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+
+      // Prevent duplicate submission
+      if (isSubmitting) return
+
       if (!state.context.prompt.trim() || state.context.prompt.trim().length < 9) return
       if (!isAuthenticated) {
         showSignInModal()
         // signIn()
         return
       }
+
+      // Lock submission
+      setIsSubmitting(true)
+
       // Use the same timestamp from handleSubmit if it exists
       const interactionTimestamp =
         state.context.interactionTimestamp ||
@@ -963,6 +1033,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   }
 
   const isGenerating = state.matches('generatingDraft') || state.matches('generatingFinal')
+
   const isThinking = state.matches('thinkingDraft')
   const generationPhase = state.matches('thinkingDraft')
     ? 'thinkingDraft'
@@ -1077,7 +1148,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       })
 
       // Now do the standard "GENERATE_DRAFT" call with the same timestamp
-      console.log('Dispatching GENERATE_DRAFT with timestamp:', interactionTimestamp)
       send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
     } catch (err) {
       console.error('Lucky generation failed:', err)
@@ -1138,6 +1208,21 @@ Instructions:
       })
     }
   }, [state.context.generatedScript, isGenerating, isThinking, generationPhase])
+
+  // Add effect to reset submission lock when state changes or when an error is set
+  useEffect(() => {
+    // Check for states that should reset the submission lock
+    // Using string literals that match the actual state names in the machine
+    if (
+      state.matches('generatingDraft') ||
+      state.matches('generatingFinal') ||
+      state.matches('complete') ||
+      state.matches('idle') ||
+      state.context.error !== null // Check for error in context instead of an error state
+    ) {
+      setIsSubmitting(false)
+    }
+  }, [state])
 
   return (
     <div className="px-5 w-full">

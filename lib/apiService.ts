@@ -318,3 +318,166 @@ export async function generateDraftWithStream(
     throw err
   }
 }
+
+export async function generateOpenRouterDraftWithStream(
+  prompt: string,
+  luckyRequestId: string | null,
+  timestamp: string,
+  signal: AbortSignal,
+  callbacks: StreamCallbacks = {},
+  extractReasoning: boolean = false
+): Promise<void> {
+  console.log('[API] Starting generateOpenRouterDraftWithStream:', {
+    prompt,
+    luckyRequestId,
+    timestamp,
+    isAborted: signal.aborted,
+    extractReasoning,
+  })
+
+  try {
+    const res = await fetch('/api/generate-openrouter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Interaction-Timestamp': timestamp,
+      },
+      body: JSON.stringify({
+        prompt,
+        luckyRequestId,
+        extractReasoning,
+      }),
+      signal,
+    })
+
+    console.log('[API] OpenRouter fetch response received:', {
+      status: res.status,
+      ok: res.ok,
+      timestamp: new Date().toISOString(),
+    })
+
+    if (res.status === 401) {
+      console.error('[API] Unauthorized error')
+      throw new Error('UNAUTHORIZED')
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      console.error('[API] OpenRouter response not OK:', {
+        status: res.status,
+        data,
+        timestamp: new Date().toISOString(),
+      })
+
+      // Add toast notifications for different error cases
+      if (res.status === 429) {
+        toast.error('Daily generation limit reached. Try again tomorrow!')
+      } else if (res.status === 401) {
+        toast.error('Session expired. Please sign in again.')
+      } else {
+        toast.error(data.error || 'Failed to generate draft')
+      }
+
+      throw new Error(data.error || 'Failed to generate draft')
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) {
+      console.error('[API] No reader available')
+      throw new Error('No reader available')
+    }
+
+    try {
+      let buffer = ''
+      console.log('[API] Starting OpenRouter stream reading')
+      callbacks.onStartStreaming?.()
+
+      while (true) {
+        try {
+          const { done, value } = await reader.read()
+          if (done) {
+            console.log('[API] OpenRouter stream reading complete')
+            break
+          }
+
+          const text = new TextDecoder().decode(value)
+          buffer += text
+
+          // Only trim when checking for script ID
+          const trimmedBuffer = buffer.trim()
+          const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+          if (idMatch) {
+            const scriptId = idMatch[1]
+            console.log('[API] Script ID received:', scriptId)
+            buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+            callbacks.onScriptId?.(scriptId)
+          }
+
+          console.log('[API] OpenRouter chunk received:', {
+            chunkSize: text.length,
+            totalBufferSize: buffer.length,
+            timestamp: new Date().toISOString(),
+          })
+          callbacks.onChunk?.(buffer)
+        } catch (readError) {
+          console.error('[API] Error during OpenRouter stream read:', readError)
+          if (signal.aborted) {
+            console.log('[API] OpenRouter stream aborted')
+            return
+          }
+          // If we get a read error but have a buffer, we can still use it
+          if (buffer) {
+            console.log('[API] Using existing buffer despite read error')
+            callbacks.onChunk?.(buffer)
+          }
+          break
+        }
+      }
+
+      // Only proceed if we have a valid buffer and haven't been aborted
+      if (buffer && !signal.aborted) {
+        console.log('[API] Final OpenRouter buffer delivery:', {
+          bufferSize: buffer.length,
+          timestamp: new Date().toISOString(),
+        })
+        callbacks.onChunk?.(buffer)
+      }
+    } finally {
+      if (!signal.aborted) {
+        console.log('[API] Cancelling OpenRouter reader')
+        reader.cancel().catch(err => {
+          console.error('[API] Error cancelling OpenRouter reader:', err)
+        })
+      }
+    }
+  } catch (error) {
+    console.error('[API] Error in generateOpenRouterDraftWithStream:', error)
+    const err = error instanceof Error ? error : new Error('Generation failed')
+    callbacks.onError?.(err)
+    throw err
+  }
+}
+
+// Function to choose between implementations
+export async function generateDraftWithProvider(
+  provider: 'default' | 'openrouter',
+  prompt: string,
+  luckyRequestId: string | null,
+  timestamp: string,
+  signal: AbortSignal,
+  callbacks: StreamCallbacks = {},
+  options: { extractReasoning?: boolean } = {}
+): Promise<void> {
+  if (provider === 'openrouter') {
+    return generateOpenRouterDraftWithStream(
+      prompt,
+      luckyRequestId,
+      timestamp,
+      signal,
+      callbacks,
+      options.extractReasoning
+    )
+  } else {
+    return generateDraftWithStream(prompt, luckyRequestId, timestamp, signal, callbacks)
+  }
+}

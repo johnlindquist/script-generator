@@ -12,6 +12,14 @@ const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 12 // 12 requests per minute
 
 export async function middleware(request: NextRequest) {
+  // Skip authentication for the prompt-text route
+  if (
+    request.nextUrl.pathname.includes('/prompt-template') ||
+    request.nextUrl.pathname.includes('/api/generate-openrouter/prompt-text')
+  ) {
+    return NextResponse.next()
+  }
+
   // Only apply rate limiting to the generate endpoint
   if (!request.nextUrl.pathname.startsWith('/api/generate')) {
     return NextResponse.next()

@@ -2,8 +2,12 @@ import { setup, assign, fromPromise } from 'xstate'
 import { toast } from 'react-hot-toast'
 import { logInteraction } from '@/lib/interaction-logger'
 import { saveScript, saveAndInstallScript } from '@/lib/apiService'
-import { generateDraftWithStream } from '@/lib/apiStreamingServices'
+import {
+  generateDraftWithStream,
+  generateOpenRouterDraftWithStream,
+} from '@/lib/apiStreamingServices'
 import { ScriptGenerationEvent } from '@/types/scriptGeneration'
+import { scriptGenerationConfig } from '@/lib/config'
 
 /**
  * The contextual data for the scriptGenerationMachine.
@@ -94,10 +98,33 @@ export const scriptGenerationMachine = setup({
           typedInput.interactionTimestamp,
           'stateMachine',
           'Starting draft script generation',
-          { prompt: typedInput.prompt }
+          {
+            prompt: typedInput.prompt,
+            provider: scriptGenerationConfig.draftProvider,
+          }
         )
       }
-      return generateDraftWithStream(typedInput, emit)
+
+      try {
+        // Use the appropriate function based on the configuration
+        if (scriptGenerationConfig.draftProvider === 'openrouter') {
+          return generateOpenRouterDraftWithStream(typedInput, emit)
+        } else {
+          return generateDraftWithStream(typedInput, emit)
+        }
+      } catch (error) {
+        console.error('Error generating draft script:', error)
+
+        // Check for duplicate request error
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('similar request is already being processed')) {
+          toast.error('A similar request is already being processed. Please wait.')
+        } else {
+          toast.error('Failed to generate script. Please try again.')
+        }
+
+        throw error
+      }
     }),
     saveScriptService: fromPromise(async ({ input }) => {
       const typedInput = input as ScriptGenerationContext

@@ -34,6 +34,13 @@ export async function generateDraft(
     throw new Error('UNAUTHORIZED')
   }
 
+  if (response.status === 429) {
+    // Handle too many requests (duplicate request)
+    const errorData = await response.json().catch(() => ({}))
+    console.warn('Duplicate request detected:', errorData)
+    throw new Error(errorData.error || 'A similar request is already being processed')
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.details || 'Failed to generate draft')
@@ -64,9 +71,20 @@ export async function generateDraft(
   // Always process the response for reasoning
   const { text, reasoning, hasReasoning } = extractReasoningManually(buffer)
 
+  // Ensure we never return undefined for script
+  const script = text || buffer || ''
+
+  if (!script || script.trim() === '') {
+    console.warn('Generated script is empty after processing', {
+      bufferLength: buffer.length,
+      hasText: !!text,
+      hasReasoning,
+    })
+  }
+
   return {
     scriptId,
-    script: text || buffer, // Use the text without reasoning tags, fallback to buffer if extraction fails
+    script, // Use the text without reasoning tags, fallback to buffer, then to empty string
     reasoning: reasoning || '',
     hasReasoning,
   }

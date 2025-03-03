@@ -1,6 +1,7 @@
 import { ScriptGenerationEvent } from '@/types/scriptGeneration'
 import { logInteraction } from '@/lib/interaction-logger'
 import { generateDraft, generateFinal } from '@/lib/apiService'
+import { generateDraft as generateOpenRouterDraft } from '@/lib/openrouterService'
 
 interface StreamingServiceInput {
   prompt: string
@@ -41,6 +42,16 @@ export const generateScript = async (
     emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
     emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
     return { script: result.script, scriptId: result.scriptId }
+  } else if (url.includes('generate-openrouter')) {
+    const result = await generateOpenRouterDraft(
+      input.prompt,
+      input.requestId,
+      input.luckyRequestId,
+      input.interactionTimestamp
+    )
+    emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
+    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
+    return { script: result.script, scriptId: result.scriptId }
   } else {
     const result = await generateFinal(
       input.scriptId || '',
@@ -59,6 +70,59 @@ export const generateDraftWithStream = async (
   emit: (event: ScriptGenerationEvent) => void
 ): Promise<StreamingServiceResult> => {
   return generateScript('/api/generate-draft', input, emit)
+}
+
+export const generateOpenRouterDraftWithStream = async (
+  input: StreamingServiceInput,
+  emit: (event: ScriptGenerationEvent) => void
+): Promise<StreamingServiceResult> => {
+  if (input.interactionTimestamp) {
+    await logInteraction(
+      input.interactionTimestamp,
+      'stateMachine',
+      'Starting OpenRouter script generation',
+      {
+        prompt: input.prompt,
+      }
+    )
+  }
+
+  try {
+    const result = await generateOpenRouterDraft(
+      input.prompt,
+      input.requestId,
+      input.luckyRequestId,
+      input.interactionTimestamp
+    )
+
+    // Ensure we emit these events to update the state machine context
+    if (result.scriptId) {
+      emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
+      console.log('[OpenRouter] Set script ID:', result.scriptId)
+    } else {
+      console.error('[OpenRouter] No script ID returned from generateOpenRouterDraft')
+    }
+
+    // Check if script is undefined, null, or empty string
+    if (result.script === undefined || result.script === null) {
+      console.error('[OpenRouter] No script returned from generateOpenRouterDraft')
+      // Use a default empty string to prevent further errors
+      result.script = ''
+    } else if (result.script.trim() === '') {
+      console.warn('[OpenRouter] Empty script returned from generateOpenRouterDraft')
+      // The script is empty but not undefined/null, so we'll still use it
+    } else {
+      console.log('[OpenRouter] Updated editable script, length:', result.script.length)
+    }
+
+    // Always emit the UPDATE_EDITABLE_SCRIPT event, even if the script is empty
+    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
+
+    return { script: result.script, scriptId: result.scriptId }
+  } catch (error) {
+    console.error('[OpenRouter] Error in generateOpenRouterDraftWithStream:', error)
+    throw error
+  }
 }
 
 export const generateFinalWithStream = async (

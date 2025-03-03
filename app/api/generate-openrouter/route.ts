@@ -20,9 +20,22 @@ const CLI_API_KEY = process.env.CLI_API_KEY
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL
 
+// In-memory cache to track in-flight requests
+// This will be reset when the serverless function is recycled
+const inFlightRequests = new Map<string, boolean>()
+
+// Helper to clean up in-flight requests after a timeout
+// const cleanupInFlightRequest = (key: string, timeoutMs = 30000) => {
+//   setTimeout(() => {
+//     inFlightRequests.delete(key)
+//     console.log(`[OpenRouter API] Cleaned up in-flight request: ${key}`)
+//   }, timeoutMs)
+// }
+
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
   const session = await getServerSession(authOptions)
+  let uniqueKey: string | null = null
 
   // Get user info from request
   let userId = req.headers.get('X-CLI-API-Key') ? 'cli-user' : undefined
@@ -96,6 +109,32 @@ export async function POST(req: Request) {
       })
       return NextResponse.json({ error: 'Missing interaction timestamp' }, { status: 400 })
     }
+
+    // Implement idempotency check using a unique key based on user, prompt, and timestamp
+    uniqueKey = `${userId}-${prompt.substring(0, 50)}-${interactionTimestamp}`
+
+    if (inFlightRequests.has(uniqueKey)) {
+      console.warn('[OpenRouter API] Duplicate request detected:', {
+        requestId,
+        uniqueKey,
+        userId,
+      })
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Duplicate request rejected', {
+        requestId,
+        uniqueKey,
+      })
+      return NextResponse.json(
+        { error: 'A similar request is already being processed' },
+        { status: 429 }
+      )
+    }
+
+    // Mark this request as in-flight
+    inFlightRequests.set(uniqueKey, true)
+    console.log('[OpenRouter API] Request marked as in-flight:', { uniqueKey })
+
+    // We'll clean up at the end of the request instead of using a timeout
+    // This ensures we don't have lingering in-flight requests
 
     if (!prompt) {
       console.error('[OpenRouter API] Missing prompt:', { requestId })
@@ -322,11 +361,29 @@ export async function POST(req: Request) {
     // Return the stream response
     return new Response(stream)
   } catch (error) {
-    console.error('[OpenRouter API] Unhandled error:', {
+    console.error('[OpenRouter API] Error in generate-openrouter route:', {
       requestId,
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
     })
-    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+
+    // Clean up the in-flight request on error
+    if (uniqueKey) {
+      inFlightRequests.delete(uniqueKey)
+      console.log('[OpenRouter API] Cleaned up in-flight request on error:', { uniqueKey })
+    }
+
+    return NextResponse.json(
+      {
+        error: 'Failed to generate script',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    )
+  } finally {
+    // Ensure the in-flight request is cleaned up
+    if (uniqueKey) {
+      inFlightRequests.delete(uniqueKey)
+      console.log('[OpenRouter API] Cleaned up in-flight request in finally block:', { uniqueKey })
+    }
   }
 }
