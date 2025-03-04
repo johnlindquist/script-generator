@@ -1,5 +1,14 @@
 import { getDocsContent, getExampleScripts, getKitTypes } from '@/lib/generation'
 
+/*
+
+metadata = {
+    name: "Name of the Script",
+    description: "Description of the script",
+    author: "Author from above"
+}
+    */
+
 export const DRAFT_PASS_PROMPT = `
 You are a TypeScript script generator. 
 Your task is to create a workable draft script based on the user’s prompt. 
@@ -14,11 +23,9 @@ Instructions:
 <METADATA>
 By default, start the script with the global metadata approach using the current logged in user's info: {userInfo}
 
-metadata = {
-    name: "Name of the Script",
-    author: "Author from above",
-    description: "Description of the script"
-}
+// Name: Name of the Script
+// Description: Description of the script
+// Author: Author from above
 
 </METADATA>
 
@@ -48,7 +55,16 @@ import { readdir, rename } from 'node:fs/promises'
 import { rename } from 'node:fs/promises';
 import { join } from 'node:path'
 import { ensureDir } from 'fs-extra';
+
+Never create a "main" or "run" function. Always favor "top-level" code and patterns.
 </AVOID>
+
+<BEST_PRACTICES>
+- Use top-level code and patterns.
+- Never create a "main" or "run" function.
+- Use async/await for better readability.
+- Keep functions small and focused (single responsibility).
+</BEST_PRACTICES>
 
 Generate ONLY the script content below this line:
 `

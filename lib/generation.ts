@@ -268,6 +268,16 @@ export function parseScriptFromMarkdown(content: string): {
     }
   }
 
+  // If we didn't find a name in comments, try to extract from metadata block
+  if (!metadata.name) {
+    // Try to match the metadata object format: metadata = { name: "Script Name" }
+    const metadataRegex = /metadata\s*=\s*\{\s*name\s*:\s*["']([^"']+)["']/i
+    const metadataMatch = content.match(metadataRegex)
+    if (metadataMatch) {
+      metadata.name = metadataMatch[1].trim()
+    }
+  }
+
   // If we found a 'Name' field, let's keep it short
   if (metadata.name) {
     // Truncate metadata.name if it's too long
