@@ -91,6 +91,7 @@ export const STRINGS = {
 
   SCRIPT_GENERATION: {
     // Headings
+    headingWhileReasoning: 'Reasoning',
     headingWhileGenerating: 'Generating Draft',
     headingWhileRefining: 'Thinking Deeply and Refining',
     headingThinkingDraft: 'Thinking',

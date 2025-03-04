@@ -431,6 +431,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           state.context.interactionTimestamp ||
           new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
 
+        // Transition to generatingDraft state before starting the API call
+        send({ type: 'START_STREAMING_DRAFT' })
+
         // Use the configured provider
         await generateDraftWithProvider(
           scriptGenerationConfig.draftProvider,
@@ -442,10 +445,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             onStartStreaming: () => {
               if (!isMounted || signal.aborted) return
               console.log('[DRAFT EFFECT] onStartStreaming callback invoked')
-              if (state.matches('thinkingDraft')) {
-                console.log('[DRAFT EFFECT] Transitioning to START_STREAMING_DRAFT')
-                send({ type: 'START_STREAMING_DRAFT' })
-              }
             },
             onScriptId: scriptId => {
               if (!isMounted || signal.aborted) return
@@ -472,6 +471,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           { extractReasoning: scriptGenerationConfig.extractReasoning }
         )
         console.log('[DRAFT EFFECT] Completed generateDraftWithProvider call successfully')
+
+        // Signal completion to the state machine
+        if (isMounted && !signal.aborted) {
+          send({
+            type: 'COMPLETE_GENERATION',
+            script: state.context.editableScript || '',
+          })
+        }
       } catch (err) {
         // Skip processing if component is unmounted or request was aborted
         if (!isMounted || signal.aborted) {
@@ -887,7 +894,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
               text={
                 generationPhase === 'thinkingDraft'
                   ? STRINGS.SCRIPT_GENERATION.headingThinkingDraft
-                  : STRINGS.SCRIPT_GENERATION.headingWhileGenerating
+                  : state.context.editableScript && state.context.editableScript.trim().length > 0
+                    ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
+                    : STRINGS.SCRIPT_GENERATION.headingWhileReasoning
               }
             />
           ) : state.context.generatedScript ? (

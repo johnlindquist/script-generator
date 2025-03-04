@@ -42,13 +42,6 @@ interface ScriptGenerationContext {
 }
 
 /**
- * Response type for the initial script generation
- */
-interface GenerateInitialResponse {
-  scriptId: string
-}
-
-/**
  * Helper function to log state transitions
  */
 async function logStateTransition(
@@ -332,39 +325,6 @@ export const scriptGenerationMachine = setup({
           }).catch(console.error)
         }
       },
-      invoke: {
-        src: 'generateDraftScript',
-        input: ({ context }) => context,
-        onDone: {
-          target: 'complete',
-          actions: [
-            assign({
-              error: null,
-              scriptId: ({ event }) => (event.output as GenerateInitialResponse).scriptId,
-              generatedScript: ({ context }) => context.editableScript,
-            }),
-            createLogAction('Draft generation complete', context => ({
-              scriptId: context.scriptId,
-              requestId: context.requestId,
-            })),
-          ],
-        },
-        onError: {
-          target: 'idle',
-          actions: [
-            assign({
-              error: ({ event }) => {
-                const err = event.error as Error
-                return err?.message || 'An unknown error occurred'
-              },
-            }),
-            createLogAction('Draft generation failed', context => ({
-              error: context.error,
-              requestId: context.requestId,
-            })),
-          ],
-        },
-      },
       on: {
         UPDATE_EDITABLE_SCRIPT: {
           actions: assign({
@@ -388,6 +348,19 @@ export const scriptGenerationMachine = setup({
               editableScript: '',
             }),
             createLogAction('Generation cancelled', context => ({ requestId: context.requestId })),
+          ],
+        },
+        COMPLETE_GENERATION: {
+          target: 'complete',
+          actions: [
+            assign({
+              error: null,
+              generatedScript: ({ context }) => context.editableScript,
+            }),
+            createLogAction('Draft generation complete', context => ({
+              scriptId: context.scriptId,
+              requestId: context.requestId,
+            })),
           ],
         },
       },

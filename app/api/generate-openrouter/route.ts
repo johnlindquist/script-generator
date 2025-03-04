@@ -303,12 +303,20 @@ export async function POST(req: Request) {
           try {
             // Use textStream property which is the correct way to access the stream
             for await (const chunk of result.textStream) {
-              const text = cleanCodeFences(chunk || '')
+              // Preserve whitespace chunks (including newlines)
+              // Check if chunk is just whitespace (spaces, tabs, newlines)
+              const isWhitespaceOnly = chunk && /^[\s\n\r]+$/.test(chunk)
+
+              // Apply cleanCodeFences to non-whitespace chunks only
+              const text = isWhitespaceOnly ? chunk : cleanCodeFences(chunk || '')
+
               console.log('[OpenRouter API] Streaming chunk:', {
                 requestId,
                 scriptId,
                 chunkSize: text.length,
-                preview: text.length > 0 ? text.substring(0, 50) : '(no text)',
+                isWhitespace: isWhitespaceOnly,
+                preview:
+                  text.length > 0 ? text.substring(0, 50).replace(/\n/g, '\\n') : '(no text)',
               })
               controller.enqueue(new TextEncoder().encode(text))
             }
