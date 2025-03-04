@@ -7,6 +7,11 @@ const nextConfig = {
     })
     return config
   },
+  functions: {
+    'app/api/generate-openrouter/**/*': {
+      maxDuration: 60, // Set 60 second timeout specifically for the generate-openrouter route
+    },
+  },
   images: {
     remotePatterns: [
       {
