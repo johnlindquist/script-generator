@@ -970,6 +970,97 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
   // Add this at the top with other refs
   const previousStateRef = useRef<string>('')
 
+  // When the state changes to generatingDraft, ensure the editor is ready
+  useEffect(() => {
+    // This will run when we transition to the generatingDraft state
+    if (state.matches('generatingDraft')) {
+      console.log('[EDITOR_SETUP] State transitioned to generatingDraft', {
+        timestamp: new Date().toISOString(),
+        provider: scriptGenerationConfig.draftProvider,
+        hasEditor: !!editorRef.current,
+        hasModel: editorRef.current?.getModel() !== null,
+        streamedTextLength: streamedText?.length || 0,
+        editableScriptLength: state.context.editableScript?.length || 0,
+        environment: process.env.NODE_ENV,
+      })
+
+      // If we don't have an editor when generation starts,
+      // make sure we setup an interval to check and apply text when it becomes available
+      if (!editorRef.current || !editorRef.current.getModel()) {
+        console.log('[EDITOR_SETUP] Editor not ready when generation started, setting up polling', {
+          timestamp: new Date().toISOString(),
+        })
+
+        // Clear any existing interval
+        if (editorPollIntervalRef.current) {
+          clearInterval(editorPollIntervalRef.current)
+        }
+
+        // Setup polling to check for editor and apply text once available
+        editorPollIntervalRef.current = setInterval(() => {
+          const editor = editorRef.current
+          const model = editor?.getModel()
+
+          console.log('[EDITOR_POLL] Checking for editor availability', {
+            timestamp: new Date().toISOString(),
+            hasEditor: !!editor,
+            hasModel: !!model,
+            streamedTextLength: streamedText?.length || 0,
+            editableScriptLength: state.context.editableScript?.length || 0,
+          })
+
+          // If we have the editor and model now, apply the text and clear the interval
+          if (editor && model) {
+            // Apply the latest streamed text or editableScript
+            const textToApply = state.context.editableScript || streamedText || ''
+
+            if (textToApply && textToApply.length > 0) {
+              console.log('[EDITOR_POLL] Editor now available, applying cached text', {
+                timestamp: new Date().toISOString(),
+                textLength: textToApply.length,
+              })
+
+              model.setValue(textToApply)
+              const lineCount = model.getLineCount()
+              editor.revealLine(lineCount)
+            }
+
+            // Clear interval since we've applied the text
+            clearInterval(editorPollIntervalRef.current as NodeJS.Timeout)
+            editorPollIntervalRef.current = null
+          }
+        }, 500) // Poll every 500ms
+      }
+    } else if (editorPollIntervalRef.current) {
+      // Clear polling if we're not in the generatingDraft state
+      console.log('[EDITOR_SETUP] Clearing editor poll interval as state is not generatingDraft', {
+        timestamp: new Date().toISOString(),
+        currentState: state.value,
+      })
+      clearInterval(editorPollIntervalRef.current)
+      editorPollIntervalRef.current = null
+    }
+
+    // Clean up interval on unmount
+    return () => {
+      if (editorPollIntervalRef.current) {
+        console.log('[EDITOR_SETUP] Cleaning up editor poll interval on effect cleanup', {
+          timestamp: new Date().toISOString(),
+        })
+        clearInterval(editorPollIntervalRef.current)
+        editorPollIntervalRef.current = null
+      }
+    }
+  }, [
+    state.matches,
+    state.context.editableScript,
+    streamedText,
+    scriptGenerationConfig.draftProvider,
+  ])
+
+  // Add this at the top with other refs
+  const editorPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
   return (
     <div className="px-5 w-full">
       <div className="min-h-[120px] flex items-center justify-center">

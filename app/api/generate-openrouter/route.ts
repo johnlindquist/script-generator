@@ -20,6 +20,14 @@ const CLI_API_KEY = process.env.CLI_API_KEY
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL
 
+// Log environment variables for debugging
+console.log('[OpenRouter API] Environment configuration:', {
+  OPENROUTER_API_KEY_SET: !!OPENROUTER_API_KEY,
+  OPENROUTER_DEFAULT_MODEL: DEFAULT_MODEL, // Intentionally exposing model for debugging
+  environment: process.env.NODE_ENV,
+  timestamp: new Date().toISOString(),
+})
+
 // In-memory cache to track in-flight requests
 // This will be reset when the serverless function is recycled
 const inFlightRequests = new Map<string, boolean>()
@@ -267,28 +275,68 @@ export async function POST(req: Request) {
       source: luckyRequestId ? 'lucky' : 'direct',
       model: DEFAULT_MODEL,
       extractReasoning: !!extractReasoning,
+      timestamp: new Date().toISOString(),
+      modelConfigCheck: {
+        modelValue: DEFAULT_MODEL,
+        isModelConfigured: !!DEFAULT_MODEL,
+        apiKeyConfigured: !!OPENROUTER_API_KEY,
+      },
     })
 
     // Initialize the model based on whether reasoning extraction is requested
     let result
-    if (extractReasoning && OPENROUTER_API_KEY) {
-      // Use the utility function to create a model with reasoning extraction
-      const modelWithReasoning = createOpenRouterWithReasoning(OPENROUTER_API_KEY, DEFAULT_MODEL)
+    try {
+      if (extractReasoning && OPENROUTER_API_KEY) {
+        // Use the utility function to create a model with reasoning extraction
+        console.log('[OpenRouter API] Creating OpenRouter instance with reasoning extraction:', {
+          requestId,
+          model: DEFAULT_MODEL,
+          timestamp: new Date().toISOString(),
+        })
 
-      result = await streamText({
-        model: modelWithReasoning,
-        prompt: draftPrompt,
-      })
-    } else {
-      // Create standard OpenRouter instance without reasoning extraction
-      const openrouter = createOpenRouter({
-        apiKey: OPENROUTER_API_KEY || '',
-      })
+        const modelWithReasoning = createOpenRouterWithReasoning(OPENROUTER_API_KEY, DEFAULT_MODEL)
 
-      result = await streamText({
-        model: openrouter(DEFAULT_MODEL),
-        prompt: draftPrompt,
+        result = await streamText({
+          model: modelWithReasoning,
+          prompt: draftPrompt,
+        })
+      } else {
+        // Create standard OpenRouter instance without reasoning extraction
+        console.log('[OpenRouter API] Creating standard OpenRouter instance:', {
+          requestId,
+          model: DEFAULT_MODEL,
+          timestamp: new Date().toISOString(),
+        })
+
+        const openrouter = createOpenRouter({
+          apiKey: OPENROUTER_API_KEY || '',
+        })
+
+        // Verify the model value before using it
+        if (!DEFAULT_MODEL) {
+          throw new Error('OpenRouter model not properly configured')
+        }
+
+        result = await streamText({
+          model: openrouter(DEFAULT_MODEL),
+          prompt: draftPrompt,
+        })
+      }
+
+      console.log('[OpenRouter API] Stream result object created successfully:', {
+        requestId,
+        hasTextStream: !!result?.textStream,
+        timestamp: new Date().toISOString(),
       })
+    } catch (modelError) {
+      console.error('[OpenRouter API] Error creating or using OpenRouter model:', {
+        requestId,
+        error: modelError instanceof Error ? modelError.message : String(modelError),
+        stack: modelError instanceof Error ? modelError.stack : 'No stack trace',
+        model: DEFAULT_MODEL,
+        timestamp: new Date().toISOString(),
+      })
+      throw modelError // Re-throw to be handled by the outer catch block
     }
 
     console.log('[OpenRouter API] Using script ID:', { requestId, scriptId })
@@ -297,29 +345,100 @@ export async function POST(req: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          console.log('[OpenRouter API] Starting stream:', { requestId, scriptId })
-          controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
+          console.log('[OpenRouter API] Starting stream:', {
+            requestId,
+            scriptId,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+          })
+
+          // First, send the script ID
+          const scriptIdText = `__SCRIPT_ID__${scriptId}__SCRIPT_ID__`
+          controller.enqueue(new TextEncoder().encode(scriptIdText))
+
+          console.log('[OpenRouter API] Sent script ID to stream:', {
+            requestId,
+            scriptId,
+            scriptIdTextLength: scriptIdText.length,
+            timestamp: new Date().toISOString(),
+          })
 
           try {
+            // Debug the result object
+            console.log('[OpenRouter API] Result object structure:', {
+              requestId,
+              hasTextStream: !!result.textStream,
+              isAsyncIterable:
+                result.textStream && typeof result.textStream[Symbol.asyncIterator] === 'function',
+              hasReasoning: extractReasoning && !!result.reasoning,
+              timestamp: new Date().toISOString(),
+            })
+
+            let chunkCount = 0
+            let totalSentBytes = 0
+
             // Use textStream property which is the correct way to access the stream
             for await (const chunk of result.textStream) {
+              chunkCount++
+
+              // Skip empty chunks
+              if (!chunk) {
+                console.log('[OpenRouter API] Empty chunk received, skipping', {
+                  requestId,
+                  scriptId,
+                  chunkNumber: chunkCount,
+                  timestamp: new Date().toISOString(),
+                })
+                continue
+              }
+
               // Preserve whitespace chunks (including newlines)
               // Check if chunk is just whitespace (spaces, tabs, newlines)
-              const isWhitespaceOnly = chunk && /^[\s\n\r]+$/.test(chunk)
+              const isWhitespaceOnly = /^[\s\n\r]+$/.test(chunk)
 
               // Apply cleanCodeFences to non-whitespace chunks only
               const text = isWhitespaceOnly ? chunk : cleanCodeFences(chunk || '')
 
+              // Skip truly empty chunks after processing
+              if (!text) {
+                console.log('[OpenRouter API] Chunk became empty after processing, skipping', {
+                  requestId,
+                  scriptId,
+                  chunkNumber: chunkCount,
+                  originalChunkLength: chunk.length,
+                  timestamp: new Date().toISOString(),
+                })
+                continue
+              }
+
+              const encodedChunk = new TextEncoder().encode(text)
+              totalSentBytes += encodedChunk.byteLength
+
               console.log('[OpenRouter API] Streaming chunk:', {
                 requestId,
                 scriptId,
+                chunkNumber: chunkCount,
                 chunkSize: text.length,
+                totalSentBytes,
                 isWhitespace: isWhitespaceOnly,
-                preview:
-                  text.length > 0 ? text.substring(0, 50).replace(/\n/g, '\\n') : '(no text)',
+                preview: text.substring(0, 50).replace(/\n/g, '\\n'),
+                timestamp: new Date().toISOString(),
               })
-              controller.enqueue(new TextEncoder().encode(text))
+
+              // Send the chunk to the client
+              controller.enqueue(encodedChunk)
+
+              // Add a small delay to ensure browser can process chunks (helps with some streaming issues)
+              await new Promise(resolve => setTimeout(resolve, 5))
             }
+
+            console.log('[OpenRouter API] Stream iteration completed:', {
+              requestId,
+              scriptId,
+              totalChunks: chunkCount,
+              totalSentBytes,
+              timestamp: new Date().toISOString(),
+            })
 
             // If reasoning was extracted, log it
             if (extractReasoning && result.reasoning) {
@@ -332,6 +451,7 @@ export async function POST(req: Request) {
                   scriptId,
                   reasoningLength: reasoningText.length,
                   reasoningPreview: reasoningText.substring(0, 100) + '...',
+                  timestamp: new Date().toISOString(),
                 })
 
                 // Store the reasoning in the database using an available field
@@ -344,24 +464,61 @@ export async function POST(req: Request) {
               }
             }
 
-            console.log('[OpenRouter API] Stream completed:', { requestId, scriptId })
-          } catch (error) {
-            console.error('[OpenRouter API] Error in stream:', {
+            console.log('[OpenRouter API] Stream completed successfully:', {
               requestId,
               scriptId,
-              error: error instanceof Error ? error.message : String(error),
+              timestamp: new Date().toISOString(),
             })
-            controller.error(error)
+          } catch (error) {
+            console.error('[OpenRouter API] Error in stream processing:', {
+              requestId,
+              scriptId,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorStack: error instanceof Error ? error.stack : undefined,
+              timestamp: new Date().toISOString(),
+            })
+
+            // Don't throw the error here - just log it and continue
+            // This prevents the stream from aborting if we can recover
+
+            // Send an error message to the client if we have a connection
+            try {
+              const errorMessage = `Error during generation: ${error instanceof Error ? error.message : String(error)}`
+              controller.enqueue(new TextEncoder().encode(`\n\nERROR: ${errorMessage}`))
+            } catch (sendError) {
+              console.error('[OpenRouter API] Failed to send error message to client:', {
+                requestId,
+                scriptId,
+                error: sendError instanceof Error ? sendError.message : String(sendError),
+                timestamp: new Date().toISOString(),
+              })
+            }
           }
         } catch (error) {
-          console.error('[OpenRouter API] Error in stream start:', {
+          console.error('[OpenRouter API] Fatal error in stream start:', {
             requestId,
             scriptId,
-            error: error instanceof Error ? error.message : String(error),
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorStack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
           })
           controller.error(error)
         } finally {
-          controller.close()
+          try {
+            console.log('[OpenRouter API] Closing controller in finally block:', {
+              requestId,
+              scriptId,
+              timestamp: new Date().toISOString(),
+            })
+            controller.close()
+          } catch (closeError) {
+            console.error('[OpenRouter API] Error closing controller:', {
+              requestId,
+              scriptId,
+              error: closeError instanceof Error ? closeError.message : String(closeError),
+              timestamp: new Date().toISOString(),
+            })
+          }
         }
       },
     })

@@ -350,14 +350,25 @@ export async function generateOpenRouterDraftWithStream(
   extractReasoning: boolean = false
 ): Promise<void> {
   console.log('[API] Starting generateOpenRouterDraftWithStream:', {
-    prompt,
+    prompt: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
+    promptLength: prompt.length,
     luckyRequestId,
     timestamp,
     isAborted: signal.aborted,
     extractReasoning,
+    environment: process.env.NODE_ENV,
   })
 
   try {
+    console.log('[API] Making fetch request to /api/generate-openrouter', {
+      method: 'POST',
+      hasTimestamp: !!timestamp,
+      hasPrompt: !!prompt,
+      promptLength: prompt.length,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+    })
+
     const res = await fetch('/api/generate-openrouter', {
       method: 'POST',
       headers: {
@@ -375,11 +386,18 @@ export async function generateOpenRouterDraftWithStream(
     console.log('[API] OpenRouter fetch response received:', {
       status: res.status,
       ok: res.ok,
+      statusText: res.statusText,
+      headers: Object.fromEntries([...res.headers.entries()]),
       timestamp: new Date().toISOString(),
+      hasBody: !!res.body,
+      environment: process.env.NODE_ENV,
     })
 
     if (res.status === 401) {
-      console.error('[API] Unauthorized error')
+      console.error('[API] Unauthorized error', {
+        timestamp: new Date().toISOString(),
+        headers: Object.fromEntries([...res.headers.entries()]),
+      })
       throw new Error('UNAUTHORIZED')
     }
 
@@ -387,8 +405,11 @@ export async function generateOpenRouterDraftWithStream(
       const data = await res.json().catch(() => ({}))
       console.error('[API] OpenRouter response not OK:', {
         status: res.status,
+        statusText: res.statusText,
         data,
+        headers: Object.fromEntries([...res.headers.entries()]),
         timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
       })
 
       // Add toast notifications for different error cases
@@ -405,32 +426,62 @@ export async function generateOpenRouterDraftWithStream(
 
     const reader = res.body?.getReader()
     if (!reader) {
-      console.error('[API] No reader available')
+      console.error('[API] No reader available', {
+        timestamp: new Date().toISOString(),
+        responseType: res.type,
+        hasBody: !!res.body,
+        environment: process.env.NODE_ENV,
+      })
       throw new Error('No reader available')
     }
 
     try {
       let buffer = ''
-      console.log('[API] Starting OpenRouter stream reading')
+      console.log('[API] Starting OpenRouter stream reading', {
+        timestamp: new Date().toISOString(),
+        responseType: res.type,
+        environment: process.env.NODE_ENV,
+      })
       callbacks.onStartStreaming?.()
 
       while (true) {
         try {
+          console.log('[API] Reading chunk from OpenRouter stream', {
+            timestamp: new Date().toISOString(),
+            currentBufferLength: buffer.length,
+            environment: process.env.NODE_ENV,
+          })
+
           const { done, value } = await reader.read()
+
           if (done) {
-            console.log('[API] OpenRouter stream reading complete')
+            console.log('[API] OpenRouter stream reading complete', {
+              timestamp: new Date().toISOString(),
+              finalBufferLength: buffer.length,
+              environment: process.env.NODE_ENV,
+            })
             break
           }
 
           const text = new TextDecoder().decode(value)
           buffer += text
 
+          console.log('[API] OpenRouter chunk decoded', {
+            chunkSize: text.length,
+            chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+          })
+
           // Only trim when checking for script ID
           const trimmedBuffer = buffer.trim()
           const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
           if (idMatch) {
             const scriptId = idMatch[1]
-            console.log('[API] Script ID received:', scriptId)
+            console.log('[API] Script ID received from OpenRouter:', scriptId, {
+              timestamp: new Date().toISOString(),
+              environment: process.env.NODE_ENV,
+            })
             buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
             callbacks.onScriptId?.(scriptId)
           }
@@ -439,17 +490,38 @@ export async function generateOpenRouterDraftWithStream(
             chunkSize: text.length,
             totalBufferSize: buffer.length,
             timestamp: new Date().toISOString(),
+            chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+            hasScriptId: !!idMatch,
+            bufferPreview: buffer.substring(0, 30) + (buffer.length > 30 ? '...' : ''),
+            environment: process.env.NODE_ENV,
           })
+
+          // Call the onChunk callback with the current buffer
           callbacks.onChunk?.(buffer)
         } catch (readError) {
-          console.error('[API] Error during OpenRouter stream read:', readError)
+          console.error('[API] Error during OpenRouter stream read:', readError, {
+            errorMessage: readError instanceof Error ? readError.message : String(readError),
+            errorStack: readError instanceof Error ? readError.stack : undefined,
+            timestamp: new Date().toISOString(),
+            isAborted: signal.aborted,
+            currentBufferLength: buffer.length,
+            environment: process.env.NODE_ENV,
+          })
           if (signal.aborted) {
-            console.log('[API] OpenRouter stream aborted')
+            console.log('[API] OpenRouter stream aborted', {
+              timestamp: new Date().toISOString(),
+              environment: process.env.NODE_ENV,
+            })
             return
           }
           // If we get a read error but have a buffer, we can still use it
           if (buffer) {
-            console.log('[API] Using existing buffer despite read error')
+            console.log('[API] Using existing OpenRouter buffer despite read error', {
+              bufferLength: buffer.length,
+              timestamp: new Date().toISOString(),
+              bufferPreview: buffer.substring(0, 30) + (buffer.length > 30 ? '...' : ''),
+              environment: process.env.NODE_ENV,
+            })
             callbacks.onChunk?.(buffer)
           }
           break
@@ -461,19 +533,34 @@ export async function generateOpenRouterDraftWithStream(
         console.log('[API] Final OpenRouter buffer delivery:', {
           bufferSize: buffer.length,
           timestamp: new Date().toISOString(),
+          bufferPreview: buffer.substring(0, 30) + (buffer.length > 30 ? '...' : ''),
+          environment: process.env.NODE_ENV,
         })
         callbacks.onChunk?.(buffer)
       }
     } finally {
       if (!signal.aborted) {
-        console.log('[API] Cancelling OpenRouter reader')
+        console.log('[API] Cancelling OpenRouter reader', {
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV,
+        })
         reader.cancel().catch(err => {
-          console.error('[API] Error cancelling OpenRouter reader:', err)
+          console.error('[API] Error cancelling OpenRouter reader:', err, {
+            errorMessage: err instanceof Error ? err.message : String(err),
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+          })
         })
       }
     }
   } catch (error) {
-    console.error('[API] Error in generateOpenRouterDraftWithStream:', error)
+    console.error('[API] Error in generateOpenRouterDraftWithStream:', error, {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+      isAborted: signal.aborted,
+      environment: process.env.NODE_ENV,
+    })
     const err = error instanceof Error ? error : new Error('Generation failed')
     callbacks.onError?.(err)
     throw err
