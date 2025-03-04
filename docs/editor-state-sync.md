@@ -81,7 +81,7 @@ send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
 // Auto-scroll to bottom when new content is streamed
 useEffect(() => {
   const editor = editorRef.current
-  if (editor && (state.matches('generatingDraft') || state.matches('generatingFinal'))) {
+  if (editor && state.matches('generatingDraft')) {
     const model = editor.getModel()
     if (model) {
       const lineCount = model.getLineCount()

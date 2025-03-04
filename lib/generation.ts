@@ -175,7 +175,7 @@ export function cleanCodeFences(text: string): string {
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
 
   // Remove leading newlines and whitespace before first non-empty line
-  cleaned = cleaned.replace(/^\s*\n+/, '')
+  cleaned = cleaned.replace(/^\s*\n/, '')
 
   // Ensure proper line breaks around metadata comments
   cleaned = cleaned.replace(/^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm, '$1\n$4')

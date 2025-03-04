@@ -74,8 +74,18 @@ export async function generateDraft(
   // Ensure we never return undefined for script
   const script = text || buffer || ''
 
-  if (!script || script.trim() === '') {
+  // Only consider a script truly empty if:
+  // 1. The buffer has a reasonable length (not just a few initial characters)
+  // 2. After processing, we still don't have meaningful content
+  const MIN_BUFFER_LENGTH_THRESHOLD = 50 // Minimum characters to consider a valid response
+  if ((!script || script.trim() === '') && buffer.length > MIN_BUFFER_LENGTH_THRESHOLD) {
     console.warn('Generated script is empty after processing', {
+      bufferLength: buffer.length,
+      hasText: !!text,
+      hasReasoning,
+    })
+  } else if (!script || script.trim() === '') {
+    console.log('Script appears empty, but buffer may be incomplete', {
       bufferLength: buffer.length,
       hasText: !!text,
       hasReasoning,
@@ -362,6 +372,20 @@ export async function generateDraftWithStream(
 
         // Process the final buffer for reasoning
         const { text: finalText, reasoning: finalReasoning } = extractReasoningManually(buffer)
+
+        // Check if we have meaningful content before sending the final chunk
+        const MIN_BUFFER_LENGTH_THRESHOLD = 50
+        if (
+          (!finalText || finalText.trim() === '') &&
+          buffer.length < MIN_BUFFER_LENGTH_THRESHOLD
+        ) {
+          console.log('[OpenRouter API] Final buffer appears incomplete or empty', {
+            bufferLength: buffer.length,
+            hasText: !!finalText,
+            hasReasoning: !!finalReasoning,
+          })
+          // Still send what we have, but log that it might be incomplete
+        }
 
         // Send the final processed text
         callbacks.onChunk?.(finalText || buffer)

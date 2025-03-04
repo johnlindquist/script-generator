@@ -1061,38 +1061,6 @@ export const scriptGenerationMachine = setup({
       },
       draftComplete: {
         on: {
-          GENERATE_FINAL: {
-            target: 'generatingFinal',
-            actions: 'prepareForFinalGeneration',
-          },
-          UPDATE_EDITABLE_SCRIPT: {
-            actions: 'updateEditableScript',
-          },
-          RESET: {
-            target: 'idle',
-            actions: 'resetContext',
-          },
-        },
-      },
-      generatingFinal: {
-        on: {
-          UPDATE_EDITABLE_SCRIPT: {
-            actions: 'updateEditableScript',
-          },
-          SET_TRANSITIONING_TO_FINAL: {
-            actions: 'setTransitioningToFinal',
-          },
-          START_STREAMING_FINAL: {
-            target: 'complete',
-          },
-          ERROR: {
-            target: 'error',
-            actions: 'setError',
-          },
-        },
-      },
-      complete: {
-        on: {
           UPDATE_EDITABLE_SCRIPT: {
             actions: 'updateEditableScript',
           },
@@ -1498,7 +1466,6 @@ export function useScriptGeneration() {
     isThinkingDraft: state.matches('thinkingDraft'),
     isGeneratingDraft: state.matches('generatingDraft'),
     isDraftComplete: state.matches('draftComplete'),
-    isGeneratingFinal: state.matches('generatingFinal'),
     isComplete: state.matches('complete'),
     isError: state.matches('error'),
 
@@ -1766,7 +1733,7 @@ export const scriptGenerationMachine = setup({
           GENERATE_DRAFT: [
             {
               target: 'requireAuth',
-              guard: 'needsAuthentication',
+              guard: 'hasValidPrompt',
             },
             {
               target: 'thinkingDraft',
@@ -2219,6 +2186,7 @@ export function VersionToggle() {
 
 Add comprehensive documentation for the V2 implementation:
 
+`````
 ````markdown
 # Script Generation V2
 
@@ -2244,8 +2212,11 @@ localStorage.setItem('useScriptGenerationV2', 'true')
 
 // Revert to V1 implementation
 localStorage.setItem('useScriptGenerationV2', 'false')
-```
+`````
+
 ````
+
+```
 
 Alternatively, use the `VersionToggle` component for a visual toggle switch.
 
@@ -2254,26 +2225,25 @@ Alternatively, use the `VersionToggle` component for a visual toggle switch.
 ### Directory Structure
 
 ```
-/components/ScriptGenerationV2                # Main V2 container folder
-  /index.tsx                       # Main export with toggle mechanism
-  /ScriptGenerationClientV2.tsx    # V2 main component
-  /machines                        # State machines
-    /scriptGenerationMachine.ts
-  /hooks                           # Custom hooks
-    /useScriptGeneration.ts
-  /components                      # Sub-components
-    /PromptForm.tsx
-    /ScriptEditor.tsx
-    # Other components
-  /services                        # API service modules
-    /draftGenerationService.ts
-    /finalGenerationService.ts
-    # Other services
-  /types                           # Type definitions
-    /index.ts
-  /tests                           # Unit and integration tests
-    # Test files
-```
+
+/components/ScriptGenerationV2 # Main V2 container folder
+/index.tsx # Main export with toggle mechanism
+/ScriptGenerationClientV2.tsx # V2 main component
+/machines # State machines
+/scriptGenerationMachine.ts
+/hooks # Custom hooks
+/useScriptGeneration.ts
+/components # Sub-components
+/PromptForm.tsx
+/ScriptEditor.tsx # Other components
+/services # API service modules
+/draftGenerationService.ts
+/finalGenerationService.ts # Other services
+/types # Type definitions
+/index.ts
+/tests # Unit and integration tests # Test files
+
+````
 
 ### State Machine
 
@@ -2282,8 +2252,6 @@ The core of the implementation is the XState v5 state machine in `machines/scrip
 - `idle`: Initial state, waiting for user input
 - `thinkingDraft`: Initiating draft generation
 - `generatingDraft`: Streaming draft content
-- `draftComplete`: Draft generation complete
-- `generatingFinal`: Refining the script
 - `complete`: Final script ready
 - `error`: Error state
 

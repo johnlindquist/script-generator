@@ -137,13 +137,14 @@ const updateScript = async (request: NextRequest, context?: RouteContext) => {
       return NextResponse.json({ error: 'Not authorized to modify this script' }, { status: 403 })
     }
 
-    const { saved, content } = await request.json()
+    const { saved, content, title } = await request.json()
 
     const updatedScript = await prisma.script.update({
       where: { id: scriptId },
       data: {
         ...(typeof saved === 'boolean' ? { saved } : {}),
         ...(typeof content === 'string' ? { content } : {}),
+        ...(typeof title === 'string' ? { title } : {}),
       },
     })
 

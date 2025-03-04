@@ -24,7 +24,6 @@ import { scriptGenerationConfig } from '@/lib/config'
  * @property {boolean} isFromLucky - Whether this is triggered from the "lucky" feature
  * @property {string|null} luckyRequestId - Unique ID for a lucky request, if relevant
  * @property {string|null} lastRefinementRequestId - Unique ID for a last refinement request, if relevant
- * @property {boolean} isTransitioningToFinal - Indicates whether the script is transitioning to final
  */
 interface ScriptGenerationContext {
   prompt: string
@@ -40,7 +39,6 @@ interface ScriptGenerationContext {
   isFromLucky: boolean
   luckyRequestId: string | null
   lastRefinementRequestId: string | null
-  isTransitioningToFinal: boolean
 }
 
 /**
@@ -170,7 +168,6 @@ export const scriptGenerationMachine = setup({
     isFromLucky: false,
     luckyRequestId: null,
     lastRefinementRequestId: null,
-    isTransitioningToFinal: false,
   },
   states: {
     /**
@@ -189,7 +186,6 @@ export const scriptGenerationMachine = setup({
           isFromLucky: false,
           luckyRequestId: null,
           lastRefinementRequestId: null,
-          isTransitioningToFinal: false,
         }),
         ({ context }) => {
           if (context.interactionTimestamp) {
@@ -284,7 +280,6 @@ export const scriptGenerationMachine = setup({
             isFromLucky: false,
             luckyRequestId: null,
             lastRefinementRequestId: null,
-            isTransitioningToFinal: false,
           }),
         },
       },
@@ -395,73 +390,6 @@ export const scriptGenerationMachine = setup({
             createLogAction('Generation cancelled', context => ({ requestId: context.requestId })),
           ],
         },
-        START_STREAMING_FINAL: {
-          target: 'generatingFinal',
-          actions: [
-            assign({
-              error: null,
-            }),
-            createLogAction('Starting final generation', context => ({
-              scriptId: context.scriptId,
-              requestId: context.requestId,
-            })),
-          ],
-        },
-      },
-    },
-
-    /**
-     * Final generation state - refining the script.
-     * Handles the final pass of generation with refinements.
-     */
-    generatingFinal: {
-      entry: ({ context }) => {
-        if (context.interactionTimestamp) {
-          logStateTransition('generatingFinal', context.interactionTimestamp, {
-            requestId: context.requestId,
-            scriptId: context.scriptId,
-          }).catch(console.error)
-        }
-      },
-      on: {
-        UPDATE_EDITABLE_SCRIPT: {
-          actions: assign({
-            editableScript: ({ event }) => event.script,
-          }),
-        },
-        SET_ERROR: {
-          actions: [
-            assign({
-              error: ({ event }) => String(event.error),
-            }),
-            createLogAction('Error during final generation', context => ({ error: context.error })),
-          ],
-        },
-        START_STREAMING_FINAL: {
-          target: 'complete',
-          actions: [
-            assign({
-              generatedScript: ({ context }) => context.editableScript,
-            }),
-            createLogAction('Final generation complete', context => ({
-              scriptId: context.scriptId,
-              requestId: context.requestId,
-            })),
-          ],
-        },
-        CANCEL_GENERATION: {
-          target: 'idle',
-          actions: [
-            assign({
-              prompt: '',
-              error: null,
-              editableScript: '',
-            }),
-            createLogAction('Final generation cancelled', context => ({
-              requestId: context.requestId,
-            })),
-          ],
-        },
       },
     },
 
@@ -480,6 +408,11 @@ export const scriptGenerationMachine = setup({
         },
       ],
       on: {
+        UPDATE_EDITABLE_SCRIPT: {
+          actions: assign({
+            editableScript: ({ event }) => event.script,
+          }),
+        },
         RESET: {
           target: 'idle',
           actions: [

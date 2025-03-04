@@ -26,7 +26,8 @@
     "share-data": "pnpm write-discussion-data Share",
     "write-course-data": "kit write-course-data",
     "write-discussion-data": "kit write-discussion-data",
-    "write-repo-scripts-data": "kit write-repo-scripts-data"
+    "write-repo-scripts-data": "kit write-repo-scripts-data",
+    "db": "prisma studio"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

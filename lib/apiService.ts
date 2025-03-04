@@ -51,49 +51,6 @@ export async function generateDraft(
   return { scriptId, script: buffer }
 }
 
-export async function generateFinal(
-  scriptId: string,
-  draftScript: string,
-  requestId: string | null,
-  luckyRequestId: string | null,
-  interactionTimestamp: string | null
-): Promise<{ scriptId: string; script: string }> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (interactionTimestamp) {
-    headers['Interaction-Timestamp'] = interactionTimestamp
-  }
-
-  const response = await fetch('/api/generate-final', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ scriptId, draftScript, requestId, luckyRequestId }),
-  })
-
-  if (response.status === 401) {
-    throw new Error('UNAUTHORIZED')
-  }
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.details || 'Failed to generate final script')
-  }
-
-  const reader = response.body?.getReader()
-  if (!reader) {
-    throw new Error('No reader available for final generation')
-  }
-
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += new TextDecoder().decode(value)
-  }
-
-  return { scriptId, script: buffer }
-}
-
 export async function saveScript(prompt: string, editableScript: string): Promise<void> {
   const response = await fetch('/api/scripts', {
     method: 'POST',

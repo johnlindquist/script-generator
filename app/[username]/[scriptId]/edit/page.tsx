@@ -60,6 +60,7 @@ export default async function EditScriptPage({
         <h1 className="text-2xl font-bold text-amber-300 mb-4">Editing {script.title}</h1>
         <EditScriptClient
           initialContent={script.content}
+          initialTitle={script.title}
           username={params.username}
           scriptId={params.scriptId}
         />

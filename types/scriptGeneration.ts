@@ -2,9 +2,6 @@ export type ScriptGenerationEvent =
   | { type: 'SET_PROMPT'; prompt: string }
   | { type: 'GENERATE_DRAFT'; timestamp: string }
   | { type: 'START_STREAMING_DRAFT' }
-  | { type: 'START_STREAMING_FINAL' }
-  | { type: 'START_FINAL' }
-  | { type: 'GENERATE_FINAL' }
   | { type: 'CANCEL_GENERATION' }
   | { type: 'SAVE_SCRIPT' }
   | { type: 'SAVE_AND_INSTALL' }
@@ -17,4 +14,3 @@ export type ScriptGenerationEvent =
   | { type: 'SET_SCRIPT_ID'; scriptId: string }
   | { type: 'COMPLETE_GENERATION'; script: string }
   | { type: 'SET_LUCKY_REQUEST'; requestId: string }
-  | { type: 'SET_TRANSITIONING_TO_FINAL'; value: boolean }

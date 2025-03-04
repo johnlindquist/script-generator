@@ -5,7 +5,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
-import { logInteraction } from '@/lib/interaction-logger'
+
 import {
   DocumentCheckIcon,
   ArrowPathIcon,
@@ -20,7 +20,6 @@ import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
 import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithProvider } from '@/lib/apiService'
-import { generateFinalWithStream } from '@/lib/apiStreamingServices'
 import { scriptGenerationConfig } from '@/lib/config'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
@@ -38,6 +37,7 @@ import { ArrowUp } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Loader2 } from 'lucide-react'
 import ScriptDebugPanel from '@/components/ScriptDebugPanel'
+import { createEnhancePrompt } from '@/lib/scriptUtils'
 
 interface EditorRef {
   getModel: () => {
@@ -129,42 +129,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       isFromLucky: false,
       luckyRequestId: null,
       lastRefinementRequestId: null,
-      isTransitioningToFinal: false,
     },
   })
 
-  // Add refs to track generation state
-  const finalGenerationStartedRef = useRef(false)
-  const isStreamingRef = useRef(false)
-  const finalGenerationControllerRef = useRef<AbortController | null>(null)
   const draftGenerationControllerRef = useRef<AbortController | null>(null)
-
-  // Reset the ref when leaving generatingFinal state
-  useEffect(() => {
-    if (state.context.interactionTimestamp) {
-      logInteraction(state.context.interactionTimestamp, 'client', 'State matches changed', {
-        isGeneratingFinal: state.matches('generatingFinal'),
-        wasGeneratingStarted: finalGenerationStartedRef.current,
-        timestamp: new Date().toISOString(),
-      }).catch(console.error)
-    }
-
-    if (!state.matches('generatingFinal')) {
-      if (state.context.interactionTimestamp) {
-        logInteraction(
-          state.context.interactionTimestamp,
-          'client',
-          'Resetting final generation ref',
-          {
-            previousValue: finalGenerationStartedRef.current,
-            newState: state.value,
-            timestamp: new Date().toISOString(),
-          }
-        ).catch(console.error)
-      }
-      finalGenerationStartedRef.current = false
-    }
-  }, [state.matches, state.context.interactionTimestamp])
 
   // Add state transition observer
   useEffect(() => {
@@ -216,7 +184,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
   // Update the editor with streamed text
   useEffect(() => {
-    if (streamedText && (state.matches('generatingDraft') || state.matches('generatingFinal'))) {
+    if (streamedText && state.matches('generatingDraft')) {
       send({ type: 'UPDATE_EDITABLE_SCRIPT', script: streamedText })
     }
   }, [streamedText, state.matches])
@@ -229,12 +197,18 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       timestamp: new Date().toISOString(),
     })
 
-    const editor = editorRef.current
-    const model = editor?.getModel()
+    // Always store the latest streamed text in state
+    setStreamedText(text)
 
+    const editor = editorRef.current
+    if (!editor) {
+      console.warn('[STREAMING_DEBUG] Editor not available, storing streamed text')
+      return
+    }
+
+    const model = editor.getModel()
     if (!model) {
-      console.log('[STREAMING_DEBUG] Model not available, using fallback setStreamedText')
-      setStreamedText(text)
+      console.warn('[STREAMING_DEBUG] Model not available, storing streamed text')
       return
     }
 
@@ -253,7 +227,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       if (!currentContent.trim()) {
         console.log('[STREAMING_DEBUG] Editor empty, setting entire content')
         model.setValue(text)
-        setStreamedText(text)
         return
       }
 
@@ -386,9 +359,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
             }
           })
         }
-
-        // Also update the streamedText state to keep it in sync
-        setStreamedText(text)
       } else if (text.length < currentContent.length) {
         // Rare case: the new text is shorter (usually only happens during state transitions)
         console.log('[STREAMING_DEBUG] Replacing entire content - new text is shorter:', {
@@ -398,12 +368,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           timestamp: new Date().toISOString(),
         })
         model.setValue(text)
-        setStreamedText(text)
       } else if (text !== currentContent) {
         // If same length but different content (rare)
         console.log('[STREAMING_DEBUG] Same length but different content, replacing')
         model.setValue(text)
-        setStreamedText(text)
       } else {
         // No change needed
         console.log('[STREAMING_DEBUG] Text identical to current content, no update needed')
@@ -411,7 +379,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     } catch (error) {
       // Fallback if there's any error with the editor operations
       console.error('[STREAMING_DEBUG] Error updating editor, using fallback:', error)
-      setStreamedText(text)
 
       // Try to update the model directly as a last resort
       if (model) {
@@ -431,7 +398,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     console.log('[DRAFT EFFECT] Draft useEffect triggered with state:', {
       isThinkingDraft: state.matches('thinkingDraft'),
       isGeneratingDraft: state.matches('generatingDraft'),
-      isGeneratingFinal: state.matches('generatingFinal'),
       prompt: state.context.prompt.slice(0, 50) + (state.context.prompt.length > 50 ? '...' : ''),
       requestId: state.context.requestId,
       scriptId: state.context.scriptId,
@@ -562,321 +528,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     send,
   ])
 
-  // Effect for final generation streaming
-  useEffect(() => {
-    // Create a mounted flag for cleanup
-    let isMounted = true
-
-    // Create a counter for chunks received to track streaming progress
-    let chunksReceived = 0
-    let lastChunkTime = Date.now()
-    let lastChunkSize = 0
-    let currentDisplayedText = ''
-
-    // Debug the current state for better tracking
-    console.log('[FINAL_EFFECT_DEBUG] Effect triggered with state:', {
-      matches: {
-        generatingFinal: state.matches('generatingFinal'),
-        complete: state.matches('complete'),
-        thinkingDraft: state.matches('thinkingDraft'),
-        generatingDraft: state.matches('generatingDraft'),
-      },
-      scriptId: state.context.scriptId,
-      hasStarted: finalGenerationStartedRef.current,
-      isStreaming: isStreamingRef.current,
-      timestamp: new Date().toISOString(),
-    })
-
-    // Only proceed if we are in the generatingFinal state and the actual effect should run
-    if (!state.matches('generatingFinal') || !state.context.scriptId) {
-      console.log(
-        '[FINAL_EFFECT_DEBUG] Skipping final generation effect, not in final state or no scriptId',
-        {
-          inGeneratingFinal: state.matches('generatingFinal'),
-          hasScriptId: Boolean(state.context.scriptId),
-          timestamp: new Date().toISOString(),
-        }
-      )
-      return
-    }
-
-    // Also skip if we've already started the generation to prevent duplicate starts
-    if (finalGenerationStartedRef.current) {
-      console.log('[FINAL_EFFECT_DEBUG] Final generation already started, skipping', {
-        scriptId: state.context.scriptId,
-        timestamp: new Date().toISOString(),
-      })
-      return
-    }
-
-    // Set started flag immediately to prevent duplicate starts
-    finalGenerationStartedRef.current = true
-    isStreamingRef.current = true
-
-    // Create a new abort controller
-    const controller = new AbortController()
-    finalGenerationControllerRef.current = controller
-    const signal = controller.signal
-
-    // Log the start of this process
-    console.log('[FINAL_EFFECT_DEBUG] Starting final generation with controller', {
-      scriptId: state.context.scriptId,
-      timestamp: new Date().toISOString(),
-      signalAborted: signal.aborted,
-    })
-
-    if (state.context.interactionTimestamp) {
-      logInteraction(state.context.interactionTimestamp, 'client', 'Starting final generation', {
-        scriptId: state.context.scriptId,
-        timestamp: new Date().toISOString(),
-      }).catch(console.error)
-    }
-
-    // Define the streaming function
-    const startFinalGeneration = async () => {
-      try {
-        // Only clear the editor if we're actually starting a new stream
-        // and we haven't already started transitioning
-        if (!signal.aborted && !state.context.isTransitioningToFinal) {
-          console.log('[FINAL_EFFECT_DEBUG] Setting transitioning to final flag', {
-            scriptId: state.context.scriptId,
-            timestamp: new Date().toISOString(),
-          })
-
-          const editor = editorRef.current
-          const model = editor?.getModel()
-          if (model) {
-            model.setValue('')
-            setStreamedText('')
-            // Mark that we're transitioning to final
-            send({ type: 'SET_TRANSITIONING_TO_FINAL', value: true })
-          }
-        }
-
-        if (state.context.interactionTimestamp) {
-          logInteraction(
-            state.context.interactionTimestamp,
-            'client',
-            'About to call generateFinalWithStream',
-            {
-              scriptId: state.context.scriptId,
-              timestamp: new Date().toISOString(),
-            }
-          ).catch(console.error)
-        }
-
-        // Clear the editor initially - we'll show a spinner overlay instead of text
-        const editor = editorRef.current
-        const model = editor?.getModel()
-        if (model) {
-          model.setValue('')
-          currentDisplayedText = ''
-        }
-
-        const startTime = Date.now()
-        console.log(
-          '[FINAL_EFFECT_DEBUG] Starting generateFinalWithStream call at:',
-          new Date().toISOString()
-        )
-
-        await generateFinalWithStream(
-          {
-            prompt: state.context.prompt,
-            requestId: state.context.requestId,
-            luckyRequestId: state.context.luckyRequestId,
-            interactionTimestamp: state.context.interactionTimestamp || new Date().toISOString(),
-            scriptId: state.context.scriptId,
-            editableScript: state.context.editableScript || '',
-          },
-          {
-            signal,
-            onStartStreaming: () => {
-              if (!isMounted || signal.aborted) return
-
-              console.log('[FINAL_EFFECT_DEBUG] Final stream started callback', {
-                scriptId: state.context.scriptId,
-                timestamp: new Date().toISOString(),
-              })
-
-              if (state.context.interactionTimestamp) {
-                logInteraction(
-                  state.context.interactionTimestamp,
-                  'client',
-                  'Final stream started',
-                  {
-                    scriptId: state.context.scriptId,
-                    timestamp: new Date().toISOString(),
-                  }
-                ).catch(console.error)
-              }
-            },
-            onChunk: (text: string) => {
-              if (!isMounted || signal.aborted) return
-
-              // Increment our chunk counter
-              chunksReceived++
-
-              // Calculate time since last chunk
-              const now = Date.now()
-              const timeSinceLastChunk = now - lastChunkTime
-              const newContentSize = text.length - lastChunkSize
-              lastChunkTime = now
-              lastChunkSize = text.length
-
-              console.log('[FINAL_EFFECT_DEBUG] Final generation chunk received', {
-                chunkNumber: chunksReceived,
-                totalLength: text.length,
-                newContentSize: newContentSize,
-                timeSinceLastChunk: `${timeSinceLastChunk}ms`,
-                elapsedTime: `${now - startTime}ms`,
-                timestamp: new Date().toISOString(),
-              })
-
-              // Process the text and update editor
-              // Only update if the text has actually changed
-              if (text !== currentDisplayedText) {
-                currentDisplayedText = text
-                handleStreamedText(text)
-
-                // Also update the state context to keep everything in sync
-                send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
-              } else {
-                console.log('[FINAL_EFFECT_DEBUG] Skipping update - text unchanged')
-              }
-
-              // For debugging: If we received only one large chunk, that suggests
-              // the server sent everything at once rather than streaming
-              if (chunksReceived === 1 && text.length > 1000) {
-                console.warn(
-                  '[FINAL_EFFECT_DEBUG] Received a large first chunk, suggesting server sent everything at once',
-                  {
-                    chunkSize: text.length,
-                    timestamp: new Date().toISOString(),
-                  }
-                )
-              }
-            },
-            onError: (error: { message: string }) => {
-              if (!isMounted || signal.aborted) return
-
-              console.error('[FINAL_EFFECT_DEBUG] Final generation error:', error.message)
-              if (state.context.interactionTimestamp) {
-                logInteraction(state.context.interactionTimestamp, 'client', 'Final stream error', {
-                  error: error.message,
-                  scriptId: state.context.scriptId,
-                  timestamp: new Date().toISOString(),
-                }).catch(console.error)
-              }
-              send({ type: 'SET_ERROR', error: error.message })
-            },
-          }
-        )
-
-        // Only execute completion logic if still mounted and not aborted
-        if (isMounted && !signal.aborted) {
-          console.log('[FINAL_EFFECT_DEBUG] Final generation completed successfully', {
-            totalChunks: chunksReceived,
-            totalTime: `${Date.now() - startTime}ms`,
-            scriptId: state.context.scriptId,
-            timestamp: new Date().toISOString(),
-          })
-
-          if (state.context.interactionTimestamp) {
-            logInteraction(state.context.interactionTimestamp, 'client', 'Final stream completed', {
-              scriptId: state.context.scriptId,
-              timestamp: new Date().toISOString(),
-            }).catch(console.error)
-          }
-
-          // Transition to complete state
-          send({ type: 'START_STREAMING_FINAL' })
-        }
-      } catch (error) {
-        // Skip processing if we're not mounted or aborted
-        if (!isMounted || signal.aborted) {
-          console.log('[FINAL_EFFECT_DEBUG] Ignoring error after unmount/abort:', error)
-          return
-        }
-
-        // Check if it's an AbortError, which is expected during normal cleanup
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log('[FINAL_EFFECT_DEBUG] Final generation was aborted normally')
-        } else {
-          console.error('[FINAL_EFFECT_DEBUG] Final generation threw error:', error)
-          if (state.context.interactionTimestamp) {
-            logInteraction(state.context.interactionTimestamp, 'client', 'Final generation error', {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              scriptId: state.context.scriptId,
-              timestamp: new Date().toISOString(),
-            }).catch(console.error)
-          }
-
-          // Only send error if still in final state
-          if (state.matches('generatingFinal')) {
-            send({
-              type: 'SET_ERROR',
-              error: error instanceof Error ? error.message : 'Error generating final script',
-            })
-          }
-        }
-      } finally {
-        // Reset streaming state if we're still mounted
-        if (isMounted) {
-          isStreamingRef.current = false
-          console.log(
-            '[FINAL_EFFECT_DEBUG] Final streaming complete, received total chunks:',
-            chunksReceived
-          )
-        }
-      }
-    }
-
-    // Start the final generation process
-    startFinalGeneration()
-
-    // Clean up function
-    return () => {
-      console.log('[FINAL_EFFECT_DEBUG] Cleaning up final generation effect', {
-        totalChunks: chunksReceived,
-        scriptId: state.context.scriptId,
-        timestamp: new Date().toISOString(),
-      })
-
-      // Mark component as unmounted to prevent state updates
-      isMounted = false
-
-      // Only abort the controller if it hasn't been aborted yet
-      if (finalGenerationControllerRef.current === controller) {
-        console.log('[FINAL_EFFECT_DEBUG] Aborting controller during cleanup', {
-          scriptId: state.context.scriptId,
-          timestamp: new Date().toISOString(),
-        })
-        try {
-          // Check if not already aborted before attempting to abort
-          if (!controller.signal.aborted) {
-            controller.abort()
-          } else {
-            console.log('[FINAL_EFFECT_DEBUG] Controller already aborted, skipping abort call')
-          }
-        } catch (error) {
-          console.warn('[FINAL_EFFECT_DEBUG] Error aborting controller:', error)
-        } finally {
-          // Always clear the controller reference in cleanup
-          finalGenerationControllerRef.current = null
-        }
-      }
-    }
-  }, [
-    state.matches,
-    state.context.scriptId,
-    state.context.prompt,
-    state.context.editableScript,
-    state.context.interactionTimestamp,
-    state.context.isTransitioningToFinal,
-    handleStreamedText,
-    send,
-  ])
-
   // Fetch usage on mount and after each generation
   const fetchUsageData = async () => {
     if (!isAuthenticated) return
@@ -910,6 +561,19 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
     editorRef.current = editorWrapper
     console.log('[EDITOR] Editor mounted successfully')
+
+    // If there's any pending streamed text, update the editor
+    if (streamedText) {
+      const model = editorWrapper.getModel()
+      if (model && model.getValue() !== streamedText) {
+        console.log('[EDITOR] Applying pending streamed text from state')
+        model.setValue(streamedText)
+        const lineCount = model.getLineCount()
+        requestAnimationFrame(() => {
+          editorWrapper.revealLine(lineCount)
+        })
+      }
+    }
   }
 
   // Auto-scroll to bottom when new content is streamed
@@ -928,32 +592,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     })
 
     const editor = editorRef.current
-    if (editor && (state.matches('generatingDraft') || state.matches('generatingFinal'))) {
+    if (editor && state.matches('generatingDraft')) {
       const model = editor.getModel()
       if (model) {
         const lineCount = model.getLineCount()
-
-        // Use revealLineInCenter if available for better visibility
-        if (typeof editor.revealLineInCenter === 'function') {
-          editor.revealLineInCenter(lineCount)
-          console.log('[EDITOR_SCROLL] Revealed line in center:', lineCount)
-        } else {
+        if (lineCount > 0) {
           editor.revealLine(lineCount)
-          console.log('[EDITOR_SCROLL] Revealed line (fallback):', lineCount)
-        }
-
-        // Force a focus on the editor to ensure scrolling works properly
-        try {
-          // This is a hack to ensure the editor properly scrolls
-          setTimeout(() => {
-            if (editor && typeof editor.revealLineInCenter === 'function') {
-              editor.revealLineInCenter(lineCount)
-            } else if (editor) {
-              editor.revealLine(lineCount)
-            }
-          }, 10)
-        } catch (error) {
-          console.warn('[EDITOR_SCROLL] Error during scroll:', error)
         }
       }
     }
@@ -1032,16 +676,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
   }
 
-  const isGenerating = state.matches('generatingDraft') || state.matches('generatingFinal')
+  const isGenerating = state.matches('generatingDraft')
 
   const isThinking = state.matches('thinkingDraft')
   const generationPhase = state.matches('thinkingDraft')
     ? 'thinkingDraft'
     : state.matches('generatingDraft')
       ? 'generatingDraft'
-      : state.matches('generatingFinal')
-        ? 'generatingFinal'
-        : null
+      : null
 
   // Watch for suggestion selection and trigger generation
   useEffect(() => {
@@ -1049,10 +691,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       isFromSuggestion: state.context.isFromSuggestion,
       promptLength: state.context.prompt.trim().length,
       isAuthenticated,
-      isInGeneratingState:
-        state.matches('thinkingDraft') ||
-        state.matches('generatingDraft') ||
-        state.matches('generatingFinal'),
+      isInGeneratingState: state.matches('thinkingDraft') || state.matches('generatingDraft'),
       timestamp: new Date().toISOString(),
     })
 
@@ -1061,13 +700,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     // 2. Prompt is long enough to be valid
     // 3. User is authenticated
     // 4. We're not already in a generation state
+    // 5. NEW: Not a lucky request in progress
     if (
       state.context.isFromSuggestion &&
+      !state.context.luckyRequestId && // NEW: Only auto-trigger if not a lucky request
       state.context.prompt.trim().length >= 15 &&
       isAuthenticated &&
       !state.matches('thinkingDraft') &&
-      !state.matches('generatingDraft') &&
-      !state.matches('generatingFinal')
+      !state.matches('generatingDraft')
     ) {
       console.log('[SUGGESTION EFFECT] Auto-triggering generation from suggestion')
 
@@ -1076,9 +716,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         // Double-check we're still in a valid state before triggering
         if (
           state.context.isFromSuggestion &&
+          !state.context.luckyRequestId && // NEW: Double-check not a lucky request
           !state.matches('thinkingDraft') &&
-          !state.matches('generatingDraft') &&
-          !state.matches('generatingFinal')
+          !state.matches('generatingDraft')
         ) {
           console.log('[SUGGESTION EFFECT] Dispatching GENERATE_DRAFT after delay')
 
@@ -1099,7 +739,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       // Clean up timeout if component unmounts or dependencies change
       return () => clearTimeout(triggerTimeout)
     }
-  }, [state.context.isFromSuggestion, state.context.prompt, isAuthenticated, state.matches, send])
+  }, [
+    state.context.isFromSuggestion,
+    state.context.prompt,
+    state.context.luckyRequestId,
+    isAuthenticated,
+    state.matches,
+    send,
+  ])
 
   const handleFeelingLucky = async () => {
     console.log('=== handleFeelingLucky called ===')
@@ -1162,28 +809,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     }
   }
 
+  // Check for script to revise from localStorage
   useEffect(() => {
     const scriptToRevise = localStorage.getItem('scriptToRevise')
     const originalPrompt = localStorage.getItem('originalPrompt')
+    const manualRevision = localStorage.getItem('manualRevision')
 
     if (scriptToRevise && originalPrompt && !state.context.prompt) {
-      const enhancePrompt = `Revise this script with the following instructions:
-
-Original prompt that generated this script:
-${originalPrompt}
-
-The script to revise:
-\`\`\`typescript
-${scriptToRevise}
-\`\`\`
-
-Instructions:
-1. Make the code more efficient and performant
-2. Improve readability and maintainability
-3. Add better error handling where needed
-4. Ensure type safety and remove any potential type issues
-5. Keep the core functionality exactly the same
-6. Add helpful comments for complex logic`
+      const enhancePrompt = createEnhancePrompt(originalPrompt, scriptToRevise)
 
       send({ type: 'SET_PROMPT', prompt: enhancePrompt })
 
@@ -1191,11 +824,30 @@ Instructions:
       localStorage.removeItem('scriptToRevise')
       localStorage.removeItem('originalPrompt')
 
-      // Use existing timestamp if available
-      const interactionTimestamp =
-        state.context.interactionTimestamp ||
-        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+      // Only auto-generate if not manual revision
+      if (manualRevision !== 'true') {
+        // Use existing timestamp if available
+        const interactionTimestamp =
+          state.context.interactionTimestamp ||
+          new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+        send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+      } else {
+        // Clean up the manual revision flag
+        localStorage.removeItem('manualRevision')
+
+        // Focus and scroll the textarea to the bottom after a short delay
+        // to ensure the UI has updated
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+            textareaRef.current.focus()
+
+            // Place cursor at the end of the text
+            const length = textareaRef.current.value.length
+            textareaRef.current.setSelectionRange(length, length)
+          }
+        }, 100)
+      }
     }
   }, [state.context.prompt, send])
 
@@ -1215,7 +867,6 @@ Instructions:
     // Using string literals that match the actual state names in the machine
     if (
       state.matches('generatingDraft') ||
-      state.matches('generatingFinal') ||
       state.matches('complete') ||
       state.matches('idle') ||
       state.context.error !== null // Check for error in context instead of an error state
@@ -1236,9 +887,7 @@ Instructions:
               text={
                 generationPhase === 'thinkingDraft'
                   ? STRINGS.SCRIPT_GENERATION.headingThinkingDraft
-                  : generationPhase === 'generatingDraft'
-                    ? STRINGS.SCRIPT_GENERATION.headingWhileGenerating
-                    : STRINGS.SCRIPT_GENERATION.headingWhileRefining
+                  : STRINGS.SCRIPT_GENERATION.headingWhileGenerating
               }
             />
           ) : state.context.generatedScript ? (
@@ -1286,11 +935,11 @@ Instructions:
             <Button
               type="submit"
               size="icon"
-              disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
+              disabled={state.matches('generatingDraft')}
               className="absolute right-3 bottom-3"
               // className="flex items-center gap-2 bg-primary text-primary-foregorund px-6 py-2 rounded font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {state.matches('generatingDraft') || state.matches('generatingFinal') ? (
+              {state.matches('generatingDraft') ? (
                 <ArrowPathIcon className="w-5 h-5 animate-spin" />
               ) : (
                 <ArrowUp className="w-5 h-5" />
@@ -1347,7 +996,7 @@ Instructions:
             size="sm"
             className="rounded-full"
             onClick={handleFeelingLucky}
-            disabled={state.matches('generatingDraft') || state.matches('generatingFinal')}
+            disabled={state.matches('generatingDraft')}
             // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
           >
             <SparklesIcon className="w-5 h-5" />
@@ -1423,101 +1072,53 @@ Instructions:
                     beforeMount={initializeTheme}
                     theme="gruvboxTheme"
                   />
-
-                  {/* Show spinner overlay when in generatingFinal state and no content yet */}
-                  {state.matches('generatingFinal') &&
-                    (!state.context.editableScript ||
-                      state.context.editableScript.trim() === '') && (
-                      <div className="absolute inset-0 bg-zinc-900/80 flex items-center justify-center z-10">
-                        <Loader2 className="h-12 w-12 animate-spin text-amber-400" />
-                      </div>
-                    )}
                 </div>
               </div>
               {state.matches('complete') && (
-                <div className="absolute bottom-4 right-4 flex gap-2">
-                  {isAuthenticated && (
-                    <>
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                  <div className="flex-1 relative">
+                    <div className="absolute bottom-4 right-4 flex gap-2 pointer-events-auto">
                       <button
                         onClick={() => send({ type: 'SAVE_SCRIPT' })}
                         className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                       >
                         <DocumentCheckIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.saveScript}
+                        Save
                       </button>
                       <button
                         onClick={() => send({ type: 'SAVE_AND_INSTALL' })}
                         className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                       >
                         <ArrowDownTrayIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.saveAndInstall}
+                        Save & Install
                       </button>
                       <button
-                        onClick={() => send({ type: 'RESET' })}
+                        onClick={() => {
+                          send({ type: 'RESET' })
+                        }}
                         className="bg-gradient-to-tr from-gray-700 to-gray-800 text-slate-300 px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                       >
                         <ArrowPathIcon className="w-5 h-5" />
-                        {STRINGS.SCRIPT_GENERATION.startOver}
+                        Start Over
                       </button>
                       <button
-                        type="button"
                         onClick={() => {
-                          const scriptToRevise =
-                            state.context.editableScript || state.context.generatedScript
-                          if (!scriptToRevise) {
-                            toast.error('No script to enhance')
-                            return
-                          }
+                          // Store the current script and prompt in localStorage
+                          localStorage.setItem('scriptToRevise', state.context.editableScript || '')
+                          localStorage.setItem('originalPrompt', state.context.prompt)
+                          // Add a flag to indicate we want manual editing
+                          localStorage.setItem('manualRevision', 'true')
 
-                          // Store what we need before reset
-                          const currentScript = scriptToRevise
-                          const currentPrompt = state.context.prompt
-
-                          // First reset the state
+                          // Reset the state machine to return to the input form
                           send({ type: 'RESET' })
-
-                          // After a small delay to ensure reset is complete
-                          setTimeout(() => {
-                            const enhancePrompt = `Revise this script with the following instructions:
-
-Original prompt that generated this script:
-${currentPrompt}
-
-The script to revise:
-\`\`\`typescript
-${currentScript}
-\`\`\`
-
-Instructions:
-1. Make the code more efficient and performant
-2. Improve readability and maintainability
-3. Add better error handling where needed
-4. Ensure type safety and remove any potential type issues
-5. Keep the core functionality exactly the same
-6. Add helpful comments for complex logic
-
-Your revision instructions: `
-
-                            send({ type: 'SET_PROMPT', prompt: enhancePrompt })
-
-                            // Scroll textarea to bottom after setting prompt
-                            if (textareaRef.current) {
-                              requestAnimationFrame(() => {
-                                if (textareaRef.current) {
-                                  textareaRef.current.scrollTop = textareaRef.current.scrollHeight
-                                  textareaRef.current.focus()
-                                }
-                              })
-                            }
-                          }, 0)
                         }}
                         className="bg-gradient-to-tr from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                       >
                         <SparklesIcon className="w-5 h-5" />
-                        Enhance with AI
+                        Revise with AI
                       </button>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

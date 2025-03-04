@@ -8,22 +8,29 @@ import { monacoOptions, initializeTheme } from '@/lib/monaco'
 
 interface Props {
   initialContent: string
+  initialTitle: string
   username: string
   scriptId: string
 }
 
-export default function EditScriptClient({ initialContent, username, scriptId }: Props) {
+export default function EditScriptClient({
+  initialContent,
+  initialTitle,
+  username,
+  scriptId,
+}: Props) {
   const [content, setContent] = useState(initialContent)
+  const [title, setTitle] = useState(initialTitle)
   const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
 
   async function handleSave() {
     setIsSaving(true)
     try {
-      const response = await fetch(`/${username}/${scriptId}`, {
+      const response = await fetch(`/api/${username}/${scriptId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, title }),
       })
 
       if (!response.ok) {
@@ -43,6 +50,19 @@ export default function EditScriptClient({ initialContent, username, scriptId }:
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="mb-4">
+        <label htmlFor="title" className="block text-sm font-medium text-amber-300 mb-2">
+          Script Title
+        </label>
+        <input
+          type="text"
+          id="title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-amber-400/20 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+          placeholder="Enter script title"
+        />
+      </div>
       <div className="border border-amber-400/10 rounded bg-neutral-900/90">
         <Editor
           height="80vh"
