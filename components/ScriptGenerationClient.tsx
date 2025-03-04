@@ -562,12 +562,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     editorRef.current = editorWrapper
     console.log('[EDITOR] Editor mounted successfully')
 
-    // If there's any pending streamed text, update the editor
-    if (streamedText) {
+    // Update the editor with the complete script from state (if available)
+    if (state.context.editableScript) {
       const model = editorWrapper.getModel()
-      if (model && model.getValue() !== streamedText) {
-        console.log('[EDITOR] Applying pending streamed text from state')
-        model.setValue(streamedText)
+      if (model && model.getValue() !== state.context.editableScript) {
+        console.log('[EDITOR] Applying complete script from state')
+        model.setValue(state.context.editableScript)
         const lineCount = model.getLineCount()
         requestAnimationFrame(() => {
           editorWrapper.revealLine(lineCount)
@@ -592,16 +592,16 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
     })
 
     const editor = editorRef.current
-    if (editor && state.matches('generatingDraft')) {
+    if (editor) {
       const model = editor.getModel()
-      if (model) {
+      // Update the editor if its current value differs from the final script
+      if (model && state.context.editableScript !== model.getValue()) {
+        model.setValue(state.context.editableScript)
         const lineCount = model.getLineCount()
-        if (lineCount > 0) {
-          editor.revealLine(lineCount)
-        }
+        editor.revealLine(lineCount)
       }
     }
-  }, [state.context.editableScript, state.matches])
+  }, [state.context.editableScript])
 
   const [isSignInModalShowing, setShowSignInModal] = useState(false)
 

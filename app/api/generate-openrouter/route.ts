@@ -246,7 +246,7 @@ export async function POST(req: Request) {
         },
       },
       data: {
-        count: usage.count + 1,
+        count: { increment: 1 },
       },
     })
 

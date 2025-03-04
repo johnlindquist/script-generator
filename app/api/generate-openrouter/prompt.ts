@@ -12,13 +12,14 @@ Instructions:
 3. Do NOT add explanations, markdown fences, or extra text. Return only valid TypeScript code.
 
 <METADATA>
-By default, use the "global" metadata approach using the current logged in user's info: {userInfo}
+By default, start the script with the global metadata approach using the current logged in user's info: {userInfo}
 
 metadata = {
     name: "Name of the Script",
     author: "Author from above",
-    description: "Description of the script",
+    description: "Description of the script"
 }
+
 </METADATA>
 
 <DOCS>
