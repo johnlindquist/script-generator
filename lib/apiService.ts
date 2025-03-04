@@ -148,13 +148,23 @@ export async function generateDraftWithStream(
   callbacks: StreamCallbacks = {}
 ): Promise<void> {
   console.log('[API] Starting generateDraftWithStream:', {
-    prompt,
+    prompt: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
+    promptLength: prompt.length,
     luckyRequestId,
     timestamp,
     isAborted: signal.aborted,
+    environment: process.env.NODE_ENV,
   })
 
   try {
+    console.log('[API] Making fetch request to /api/generate-draft', {
+      method: 'POST',
+      hasTimestamp: !!timestamp,
+      hasPrompt: !!prompt,
+      promptLength: prompt.length,
+      timestamp: new Date().toISOString(),
+    })
+
     const res = await fetch('/api/generate-draft', {
       method: 'POST',
       headers: {
@@ -171,11 +181,17 @@ export async function generateDraftWithStream(
     console.log('[API] Fetch response received:', {
       status: res.status,
       ok: res.ok,
+      statusText: res.statusText,
+      headers: Object.fromEntries([...res.headers.entries()]),
       timestamp: new Date().toISOString(),
+      hasBody: !!res.body,
     })
 
     if (res.status === 401) {
-      console.error('[API] Unauthorized error')
+      console.error('[API] Unauthorized error', {
+        timestamp: new Date().toISOString(),
+        headers: Object.fromEntries([...res.headers.entries()]),
+      })
       throw new Error('UNAUTHORIZED')
     }
 
@@ -184,6 +200,8 @@ export async function generateDraftWithStream(
       console.error('[API] Response not OK:', {
         status: res.status,
         data,
+        statusText: res.statusText,
+        headers: Object.fromEntries([...res.headers.entries()]),
         timestamp: new Date().toISOString(),
       })
 
@@ -201,32 +219,56 @@ export async function generateDraftWithStream(
 
     const reader = res.body?.getReader()
     if (!reader) {
-      console.error('[API] No reader available')
+      console.error('[API] No reader available', {
+        timestamp: new Date().toISOString(),
+        responseType: res.type,
+        hasBody: !!res.body,
+      })
       throw new Error('No reader available')
     }
 
     try {
       let buffer = ''
-      console.log('[API] Starting stream reading')
+      console.log('[API] Starting stream reading', {
+        timestamp: new Date().toISOString(),
+        responseType: res.type,
+      })
       callbacks.onStartStreaming?.()
 
       while (true) {
         try {
+          console.log('[API] Reading chunk from stream', {
+            timestamp: new Date().toISOString(),
+            currentBufferLength: buffer.length,
+          })
+
           const { done, value } = await reader.read()
+
           if (done) {
-            console.log('[API] Stream reading complete')
+            console.log('[API] Stream reading complete', {
+              timestamp: new Date().toISOString(),
+              finalBufferLength: buffer.length,
+            })
             break
           }
 
           const text = new TextDecoder().decode(value)
           buffer += text
 
+          console.log('[API] Chunk decoded', {
+            chunkSize: text.length,
+            chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+          })
+
           // Only trim when checking for script ID
           const trimmedBuffer = buffer.trim()
           const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
           if (idMatch) {
             const scriptId = idMatch[1]
-            console.log('[API] Script ID received:', scriptId)
+            console.log('[API] Script ID received:', scriptId, {
+              timestamp: new Date().toISOString(),
+            })
             buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
             callbacks.onScriptId?.(scriptId)
           }
@@ -235,17 +277,29 @@ export async function generateDraftWithStream(
             chunkSize: text.length,
             totalBufferSize: buffer.length,
             timestamp: new Date().toISOString(),
+            chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
           })
           callbacks.onChunk?.(buffer)
         } catch (readError) {
-          console.error('[API] Error during stream read:', readError)
+          console.error('[API] Error during stream read:', readError, {
+            errorMessage: readError instanceof Error ? readError.message : String(readError),
+            errorStack: readError instanceof Error ? readError.stack : undefined,
+            timestamp: new Date().toISOString(),
+            isAborted: signal.aborted,
+            currentBufferLength: buffer.length,
+          })
           if (signal.aborted) {
-            console.log('[API] Stream aborted')
+            console.log('[API] Stream aborted', {
+              timestamp: new Date().toISOString(),
+            })
             return
           }
           // If we get a read error but have a buffer, we can still use it
           if (buffer) {
-            console.log('[API] Using existing buffer despite read error')
+            console.log('[API] Using existing buffer despite read error', {
+              bufferLength: buffer.length,
+              timestamp: new Date().toISOString(),
+            })
             callbacks.onChunk?.(buffer)
           }
           break
@@ -257,19 +311,30 @@ export async function generateDraftWithStream(
         console.log('[API] Final buffer delivery:', {
           bufferSize: buffer.length,
           timestamp: new Date().toISOString(),
+          bufferPreview: buffer.substring(0, 30) + (buffer.length > 30 ? '...' : ''),
         })
         callbacks.onChunk?.(buffer)
       }
     } finally {
       if (!signal.aborted) {
-        console.log('[API] Cancelling reader')
+        console.log('[API] Cancelling reader', {
+          timestamp: new Date().toISOString(),
+        })
         reader.cancel().catch(err => {
-          console.error('[API] Error cancelling reader:', err)
+          console.error('[API] Error cancelling reader:', err, {
+            errorMessage: err instanceof Error ? err.message : String(err),
+            timestamp: new Date().toISOString(),
+          })
         })
       }
     }
   } catch (error) {
-    console.error('[API] Error in generateDraftWithStream:', error)
+    console.error('[API] Error in generateDraftWithStream:', error, {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+      isAborted: signal.aborted,
+    })
     const err = error instanceof Error ? error : new Error('Generation failed')
     callbacks.onError?.(err)
     throw err

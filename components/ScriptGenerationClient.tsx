@@ -195,6 +195,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       textLength: text.length,
       firstChars: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
       timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
     })
 
     // Always store the latest streamed text in state
@@ -202,13 +203,22 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
     const editor = editorRef.current
     if (!editor) {
-      console.warn('[STREAMING_DEBUG] Editor not available, storing streamed text')
+      console.warn('[STREAMING_DEBUG] Editor not available, storing streamed text', {
+        editorState: 'null',
+        streamedTextLength: text.length,
+        timestamp: new Date().toISOString(),
+      })
       return
     }
 
     const model = editor.getModel()
     if (!model) {
-      console.warn('[STREAMING_DEBUG] Model not available, storing streamed text')
+      console.warn('[STREAMING_DEBUG] Model not available, storing streamed text', {
+        editorState: 'available',
+        modelState: 'null',
+        streamedTextLength: text.length,
+        timestamp: new Date().toISOString(),
+      })
       return
     }
 
@@ -221,11 +231,15 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         incomingTextLength: text.length,
         difference: text.length - currentContent.length,
         timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
       })
 
       // Edge case: If editor is completely empty, just set the entire content
       if (!currentContent.trim()) {
-        console.log('[STREAMING_DEBUG] Editor empty, setting entire content')
+        console.log('[STREAMING_DEBUG] Editor empty, setting entire content', {
+          newContentLength: text.length,
+          timestamp: new Date().toISOString(),
+        })
         model.setValue(text)
         return
       }
@@ -423,6 +437,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         prompt: state.context.prompt.slice(0, 50) + (state.context.prompt.length > 50 ? '...' : ''),
         timestamp: new Date().toISOString(),
         provider: scriptGenerationConfig.draftProvider,
+        environment: process.env.NODE_ENV,
+        stateValue: state.value,
       })
 
       try {
@@ -434,6 +450,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
         // Transition to generatingDraft state before starting the API call
         send({ type: 'START_STREAMING_DRAFT' })
 
+        console.log('[DRAFT EFFECT] State transition to generatingDraft sent', {
+          timestamp: new Date().toISOString(),
+          newStateValue: 'generatingDraft',
+          contextPromptLength: state.context.prompt.length,
+        })
+
         // Use the configured provider
         await generateDraftWithProvider(
           scriptGenerationConfig.draftProvider,
@@ -444,22 +466,42 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           {
             onStartStreaming: () => {
               if (!isMounted || signal.aborted) return
-              console.log('[DRAFT EFFECT] onStartStreaming callback invoked')
+              console.log('[DRAFT EFFECT] onStartStreaming callback invoked', {
+                timestamp: new Date().toISOString(),
+                isMounted,
+                isAborted: signal.aborted,
+                environment: process.env.NODE_ENV,
+              })
             },
             onScriptId: scriptId => {
               if (!isMounted || signal.aborted) return
-              console.log('[DRAFT EFFECT] onScriptId callback invoked with:', scriptId)
+              console.log('[DRAFT EFFECT] onScriptId callback invoked with:', scriptId, {
+                timestamp: new Date().toISOString(),
+                isMounted,
+                isAborted: signal.aborted,
+              })
               send({ type: 'SET_SCRIPT_ID', scriptId })
             },
             onChunk: text => {
               if (!isMounted || signal.aborted) return
-              console.log('[DRAFT EFFECT] onChunk callback with text length:', text.length)
+              console.log('[DRAFT EFFECT] onChunk callback with text length:', text.length, {
+                firstChars: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+                timestamp: new Date().toISOString(),
+                isMounted,
+                isAborted: signal.aborted,
+              })
               handleStreamedText(text)
               send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
             },
             onError: error => {
               if (!isMounted || signal.aborted) return
-              console.error('[DRAFT EFFECT] onError callback invoked:', error)
+              console.error('[DRAFT EFFECT] onError callback invoked:', error, {
+                errorMessage: error.message,
+                errorStack: error.stack,
+                timestamp: new Date().toISOString(),
+                isMounted,
+                isAborted: signal.aborted,
+              })
               if (error.message === 'UNAUTHORIZED') {
                 handleUnauthorized()
                 return
@@ -470,26 +512,51 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
           },
           { extractReasoning: scriptGenerationConfig.extractReasoning }
         )
-        console.log('[DRAFT EFFECT] Completed generateDraftWithProvider call successfully')
+        console.log('[DRAFT EFFECT] Completed generateDraftWithProvider call successfully', {
+          timestamp: new Date().toISOString(),
+          editableScriptLength: state.context.editableScript?.length || 0,
+          stateValue: state.value,
+        })
 
         // Signal completion to the state machine
         if (isMounted && !signal.aborted) {
+          console.log('[DRAFT EFFECT] Sending COMPLETE_GENERATION event', {
+            timestamp: new Date().toISOString(),
+            scriptLength: state.context.editableScript?.length || 0,
+          })
+
           send({
             type: 'COMPLETE_GENERATION',
             script: state.context.editableScript || '',
+          })
+
+          console.log('[DRAFT EFFECT] COMPLETE_GENERATION event sent', {
+            timestamp: new Date().toISOString(),
           })
         }
       } catch (err) {
         // Skip processing if component is unmounted or request was aborted
         if (!isMounted || signal.aborted) {
-          console.log('[DRAFT EFFECT] Ignoring error after unmount/abort:', err)
+          console.log('[DRAFT EFFECT] Ignoring error after unmount/abort:', err, {
+            timestamp: new Date().toISOString(),
+            isMounted,
+            isAborted: signal.aborted,
+            error: err instanceof Error ? err.message : String(err),
+          })
           return
         }
 
         if (err instanceof DOMException && err.name === 'AbortError') {
-          console.log('[DRAFT EFFECT] Draft generation was aborted normally')
+          console.log('[DRAFT EFFECT] Draft generation was aborted normally', {
+            timestamp: new Date().toISOString(),
+          })
         } else {
-          console.error('[DRAFT EFFECT] generateDraftWithProvider threw an exception:', err)
+          console.error('[DRAFT EFFECT] generateDraftWithProvider threw an exception:', err, {
+            timestamp: new Date().toISOString(),
+            errorMessage: err instanceof Error ? err.message : String(err),
+            errorStack: err instanceof Error ? err.stack : undefined,
+            stateValue: state.value,
+          })
           send({
             type: 'SET_ERROR',
             error: err instanceof Error ? err.message : 'An error occurred during draft generation',
@@ -582,6 +649,24 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       }
     }
   }
+
+  // Log state transitions
+  useEffect(() => {
+    // Log state transitions in detail
+    console.log('[STATE_TRANSITION] State changed:', {
+      previousState: previousStateRef.current,
+      currentState: state.value,
+      timestamp: new Date().toISOString(),
+      editableScriptLength: state.context.editableScript?.length || 0,
+      hasStreamedText: !!streamedText && streamedText.length > 0,
+      streamedTextLength: streamedText?.length || 0,
+      promptLength: state.context.prompt?.length || 0,
+      environment: process.env.NODE_ENV,
+    })
+
+    // Store current state for next transition comparison
+    previousStateRef.current = state.value
+  }, [state.value, state.context.editableScript, streamedText, state.context.prompt])
 
   // Auto-scroll to bottom when new content is streamed
   useEffect(() => {
@@ -881,6 +966,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       setIsSubmitting(false)
     }
   }, [state])
+
+  // Add this at the top with other refs
+  const previousStateRef = useRef<string>('')
 
   return (
     <div className="px-5 w-full">
