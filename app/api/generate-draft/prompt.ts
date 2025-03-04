@@ -7,15 +7,22 @@ Keep it minimal: focus on core functionality without adding elaborate error hand
 Use ESM syntax. Always import, never "require"
 
 Instructions:
-1. Use the user info in <USER_INFO> for the metadata: // Author: username.
-2. Refer to <DOCS> for relevant documentation and <EXAMPLES> for sample scripts.
-3. Read the user’s prompt in <USER_PROMPT> and generate a draft TypeScript script that addresses it.
-4. Do NOT add explanations, markdown fences, or extra text. Return only valid TypeScript code.
-5. Carefully follow the <REMOVE> and <GLOBALS> sections. They are where most mistakes are made.
+1. Refer to <DOCS> for relevant documentation and <EXAMPLES> for sample scripts.
+2. Read the user’s prompt in <USER_PROMPT> and generate a draft TypeScript script that addresses it.
+3. Do NOT add explanations, markdown fences, or extra text. Return only valid TypeScript code.
 
-<USER_INFO>
-{userInfo}
-</USER_INFO>
+<METADATA>
+By default, use the "global" metadata approach using the current logged in user's info: {userInfo}
+
+~~~ts
+metadata = {
+    name: "Name of the Script",
+    author: "Author from above",
+    description: "Description of the script",
+}
+~~~
+</METADATA>
+
 
 <DOCS>
 ${getDocsContent()}
