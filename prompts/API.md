@@ -116,11 +116,10 @@ The `metadata` object can include:
 #### metadata example
 
 ```ts
-metadata = {
-  name: 'Metadata Example',
-  description: 'This is an example of how to use metadata in a script',
-  author: 'John Lindquist',
-}
+name: "Metadata Example",
+  description: "This is an example of how to use metadata in a script",
+  author: "John Lindquist",
+};
 ```
 
 ## Prompts
@@ -598,7 +597,15 @@ await editor(projectPath)
 #### select example
 
 ```ts
-let multipleChoice = await select('Select one or more developer', ['John', 'Nghia', 'Mindy', 'Joy'])
+// Return an array of selected items
+const multipleChoice = await select('Select one or more developer', [
+  'John',
+  'Nghia',
+  'Mindy',
+  'Joy',
+])
+
+await editor(JSON.stringify(multipleChoice, null, 2))
 ```
 
 #### select a choice with a single keystroke
@@ -750,6 +757,30 @@ await writeFile(tmpMicPath, buffer)
 await playAudioFile(tmpMicPath)
 ```
 
+### eyeDropper
+
+Grab a color from your desktop
+
+> Note: Behaves best on Mac. Windows _might_ be locked to only the Script Kit app prompt.
+
+```
+{
+    "sRGBHex": "#e092d9",
+    "rgb": "rgb(224, 146, 217)",
+    "rgba": "rgba(224, 146, 217, 1)",
+    "hsl": "hsl(305, 56%, 73%)",
+    "hsla": "hsla(305, 56%, 73%, 1)",
+    "cmyk": "cmyk(0%, 35%, 3%, 12%)"
+  }
+```
+
+#### eyeDropper example
+
+```ts
+const result = await eyeDropper()
+await editor(JSON.stringify(result, null, 2))
+```
+
 ## Choices
 
 ### formatChoices
@@ -772,6 +803,141 @@ Returns the formatted array of choices.
 
 ## Advanced
 
+### Actions (cmd+k)
+
+Actions are available on all prompts. Actions allow you to insert custom behaviors outside of the normal flow of the script:
+
+#### arg actions example
+
+```ts
+const result = await arg(
+  'What is your name?',
+  ['John', 'Mindy', 'Ben'],
+  //   Define an Array of Actions
+  [
+    {
+      name: 'Submit Joy',
+      shortcut: `${cmd}+j`,
+      onAction: () => {
+        submit('Joy')
+      },
+    },
+  ]
+)
+
+await editor(JSON.stringify(result, null, 2))
+```
+
+#### div actions example
+
+```ts
+const html = md(`# Hello World`)
+await div(html, [
+  {
+    name: 'Goodbye',
+    onAction: () => {
+      setDiv('Goodbye')
+    },
+  },
+])
+```
+
+#### editor actions example
+
+```ts
+await editor('Hello World', [
+  {
+    name: 'Exclaim',
+    shortcut: `${cmd}+2`,
+    visible: true, // show the action in the shortcuts bar
+    onAction: () => {
+      editor.append('!')
+    },
+  },
+  {
+    name: 'Clear',
+    shortcut: `${cmd}+`,
+    visible: true, // show the action in the shortcuts bar
+    onAction: () => {
+      editor.setText('')
+    },
+  },
+])
+```
+
+### flag
+
+A flag is almost exclusively used for the CLI, rarely with a prompt. When using a CLI script:
+
+```bash
+my-script --debug --exclude "*.md"
+```
+
+The flags in your script will be set as:
+
+```ts
+flag.debug = true
+flag.exclude = '*.md'
+```
+
+#### flag example
+
+```ts
+// This concept is replaced by "Actions", but you will see it in older/legacy scripts
+const result = await arg({
+  placeholder: 'What is your name?',
+  flags: {
+    post: {
+      // This will submit the prompt with the "post" flag
+      shortcut: `${cmd}+p`,
+    },
+    put: {
+      // This will submit the prompt with the "put" flag
+      shortcut: `${cmd}+u`,
+    },
+    delete: {
+      // This will submit the prompt with the "delete" flag
+      shortcut: `${cmd}+d`,
+    },
+  },
+})
+
+await editor(
+  JSON.stringify(
+    {
+      result,
+      flag: global.flag, // Inspect which flag was used when submitting
+    },
+    null,
+    2
+  )
+)
+```
+
+### css
+
+You can inject css into any prompt to override styles
+
+#### div css example
+
+```ts
+await div({
+  html: md(`# Hello World
+    
+<p style="color: red;">This is a note</p>
+    `),
+  css: `
+  body{
+    background-color: white !important;
+  }
+
+  h1{
+    color: blue !important;
+  }
+    `,
+})
+```
+
 ### onTab
 
 onTab allows you to build a menu where prompts are organized under a tab. Press Tab/Shift+Tab to navigate between prompts.
@@ -791,28 +957,6 @@ onTab('Animals', async event => {
 ### openActions
 
 Manually open the actions menu
-
-#### openActions example
-
-```ts
-await arg(
-  {
-    onInit: async () => {
-      // Automatically open the actions menu
-      openActions()
-    },
-  },
-  ['John', 'Mindy'],
-  [
-    {
-      name: 'Submit Ben Instead',
-      onAction: async name => {
-        submit('Ben')
-      },
-    },
-  ]
-)
-```
 
 ## Alerts
 
@@ -881,6 +1025,118 @@ Send a system notification
 
 ```ts
 await notify('Attention!')
+```
+
+#### notify example body
+
+```ts
+await notify({
+  title: 'Title text goes here',
+  body: 'Body text goes here',
+})
+```
+
+## System
+
+### setSelectedText
+
+Paste text into the focused app. Literally triggers a "cmd/ctrl+v", so expect a similar behavior.
+
+#### setSelectedText example
+
+```ts
+await setSelectedText('Hello from Script Kit!')
+```
+
+## getSelectedText
+
+Grab text from the focused app. Literally triggers a "cmd?ctrl+c", so expect a similar behavior.
+
+### clipboard
+
+Read and write to the system clipboard
+
+#### clipboard example
+
+```ts
+// Write and read text to the clipboard
+await clipboard.writeText('Hello from Script Kit!')
+const result = await clipboard.readText()
+await editor(result)
+```
+
+#### clipboard example image
+
+```ts
+const iconPath = kitPath('images', 'icon.png')
+const imageBuffer = await readFile(iconPath)
+
+// Write and read image buffers to the clipboard
+await clipboard.writeImage(imageBuffer)
+const resultBuffer = await clipboard.readImage()
+
+const outputPath = home('Downloads', 'icon-copy.png')
+await writeFile(outputPath, resultBuffer)
+await revealFile(outputPath)
+```
+
+### copy
+
+Copy a string to the clipboard. A simple alias for "clipboard.writeText()"
+
+### paste
+
+Grab a string from the clipboard into the script. A simple alias for "clipboard.readText()"
+
+> Note: This is often confused with `setSelectedText` which pastes a string where your text cursor is.
+
+### mouse
+
+> Note: Please use with caution
+
+move and click the system mouse
+
+#### mouse example
+
+```ts
+await mouse.move([
+  { x: 100, y: 100 },
+  { x: 200, y: 200 },
+])
+await mouse.leftClick()
+await wait(100)
+await mouse.rightClick()
+await wait(100)
+await mouse.setPosition({ x: 1000, y: 1000 })
+```
+
+### keyboard
+
+> Note: Please use with caution
+
+Type and/or tap keys on your keyboard
+
+#### keyboard example
+
+```ts
+prompt: false, // 99% of the time you'll want to hide the prompt
+};
+await keyboard.type("Hello, world!");
+```
+
+#### keyboard example keys
+
+```ts
+prompt: false,
+};
+
+await keyboard.tap(Key.LeftSuper, Key.A);
+await wait(100);
+await keyboard.tap(Key.LeftSuper, Key.C);
+await wait(100);
+await keyboard.tap(Key.LeftSuper, Key.N);
+await wait(100);
+await keyboard.tap(Key.LeftSuper, Key.V);
 ```
 
 ## Widget
@@ -957,6 +1213,41 @@ w.onMoved(({ x, y }) => {
 w.onResized(({ width, height }) => {
   // e.g., save size
 })
+```
+
+## Vite
+
+### vite
+
+A `vite` generates a vite project and opens it in its own window.
+
+1. The first argument is the name of the folder you want generated in ~/.kenv/vite/your-folder
+2. Optional: the second argument is ["Browser Window Options"](https://www.electronjs.org/docs/latest/api/browser-window#new-browserwindowoptions)
+
+#### vite example
+
+```ts
+const { workArea } = await getActiveScreen()
+
+// Generates/opens a vite project in ~/.kenv/vite/project-path
+const viteWidget = await vite('project-path', {
+  x: workArea.x + 100,
+  y: workArea.y + 100,
+  width: 640,
+  height: 480,
+})
+
+// In your ~/.kenv/vite/project-path/src/App.tsx (if you picked React)
+// use the "send" api to send messages. "send" is injected on the window object
+// <input type="text" onInput={(e) => send("input", e.target.value)} />
+
+const filePath = home('vite-example.txt')
+viteWidget.on(
+  'input',
+  debounce(async input => {
+    await writeFile(filePath, input)
+  }, 1000)
+)
 ```
 
 ## Commands
@@ -2090,7 +2381,15 @@ Prompts the user to select one or more options.
 #### select example
 
 ```ts
-let multipleChoice = await select('Select one or more developer', ['John', 'Nghia', 'Mindy', 'Joy'])
+// Return an array of selected items
+const multipleChoice = await select('Select one or more developer', [
+  'John',
+  'Nghia',
+  'Mindy',
+  'Joy',
+])
+
+await editor(JSON.stringify(multipleChoice, null, 2))
 ```
 
 #### select a choice with a single keystroke
@@ -2284,12 +2583,6 @@ await arg('I will exit in 1 second')
 ### kitPath
 
 Create a path relative to the kit directory.
-
-#### kitPath example
-
-```ts
-const kitLogs = kitPath('logs') //~/.kit/logs
-```
 
 ### kenvPath
 

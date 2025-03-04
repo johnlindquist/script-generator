@@ -1,5 +1,5 @@
 import { execaCommand as exec } from 'execa'
-import type { editor as editorApi } from './editor.api.d.ts'
+import type { editor as editorApi } from './editor.api'
 
 import {
   type Key as CoreKeyEnum,
@@ -813,14 +813,14 @@ export type App = {
 }
 
 export interface Keyboard {
-  type: (...text: (string | Key)[]) => Promise<void>
+  type: (...text: (string | typeof CoreKeyEnum)[]) => Promise<void>
   /**
    * Types text or keys with a delay between each keystroke.
    * @param config Configuration object for typing.
    * @param config.rate The delay in milliseconds between keystrokes. Note: values less than 700 can give weird results.
    * @param config.textOrKeys The text or keys to type.
    */
-  typeDelayed: (config: { rate?: number; textOrKeys: string | Key[] }) => Promise<void>
+  typeDelayed: (config: { rate: number; textOrKeys: string | Key[] }) => Promise<void>
   /**
    * Presses a key.
    * @param keys The keys to press.
@@ -972,7 +972,7 @@ export interface AppApi {
   mainScript: (input?: string, tab?: string) => Promise<void>
 
   appKeystroke: SendKeystroke
-  Key: Key
+  Key: typeof CoreKeyEnum
 
   log: typeof console.log
   warn: typeof console.warn
@@ -1006,6 +1006,7 @@ export interface Schedule extends Choice {
 export interface HideOptions {
   preloadScript?: string
 }
+
 declare global {
   var textarea: TextArea
   /**
@@ -1032,6 +1033,36 @@ declare global {
    * ```ts
    * await div(md(`
    * # example!
+   *
+   * #### div actions example
+   * ```ts
+   * const html = md(`# Hello World`);
+   * await div(html, [
+   *   {
+   *     name: "Goodbye",
+   *     onAction: () => {
+   *       setDiv("Goodbye");
+   *     },
+   *   },
+   * ]);
+   * ```
+   *
+   * #### div css example
+   * ```ts
+   * await div({
+   *   html: md(`# Hello World
+   * <p style="color: red;">This is a note</p>
+   *     `),
+   *   css: `
+   *   body{
+   *     background-color: white !important;
+   *   }
+   * h1{
+   *     color: blue !important;
+   *   }
+   *     `,
+   * });
+   * ```
    *
    * [Examples](https://scriptkit.com?query=div) | [Docs](https://johnlindquist.github.io/kit-docs/#div) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=div)
    */
@@ -1124,6 +1155,27 @@ declare global {
    * #### editor with initial content
    * ```ts
    * let content = await editor("Hello world!")
+   * ```
+   * #### editor actions example
+   * ```ts
+   * await editor("Hello World", [
+   *   {
+   *     name: "Exclaim",
+   *     shortcut: `${cmd}+2`,
+   *     visible: true, // show the action in the shortcuts bar
+   *     onAction: () => {
+   *       editor.append("!");
+   *     },
+   *   },
+   *   {
+   *     name: "Clear",
+   *     shortcut: `${cmd}+`,
+   *     visible: true, // show the action in the shortcuts bar
+   *     onAction: () => {
+   *       editor.setText("");
+   *     },
+   *   },
+   * ]);
    * ```
    * [Examples](https://scriptkit.com?query=editor) | [Docs](https://johnlindquist.github.io/kit-docs/#editor) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=editor)
    */

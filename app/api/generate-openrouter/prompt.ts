@@ -41,10 +41,6 @@ ${getExampleScripts()}
 ${getKitTypes()}
 </TYPES>
 
-<USER_PROMPT>
-{prompt}
-</USER_PROMPT>
-
 <LEGACY>
 The "npm" function is deprecated. Please use standard ES Module imports.
 </LEGACY>
@@ -65,6 +61,10 @@ Never create a "main" or "run" function. Always favor "top-level" code and patte
 - Use async/await for better readability.
 - Keep functions small and focused (single responsibility).
 </BEST_PRACTICES>
+
+<USER_PROMPT>
+{prompt}
+</USER_PROMPT>
 
 Generate ONLY the script content below this line:
 `

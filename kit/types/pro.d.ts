@@ -1,6 +1,6 @@
 import type { ForkOptions } from 'node:child_process'
 import type { Channel } from '../core/enum.js'
-import type { PromptConfig } from './core.js'
+import type { Action, PromptConfig } from './core.js'
 import type { BrowserWindowConstructorOptions, Display, Rectangle } from './electron.js'
 
 export type BaseWidgetOptions = BrowserWindowConstructorOptions & {
@@ -14,7 +14,7 @@ export type BaseWidgetOptions = BrowserWindowConstructorOptions & {
   ignoreMouse?: boolean
   ttl?: number
   center?: boolean
-  preventEscape?: boolea
+  preventEscape?: boolean
   css?: string
   body?: string
 }

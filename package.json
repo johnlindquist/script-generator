@@ -27,6 +27,7 @@
     "write-course-data": "kit write-course-data",
     "write-discussion-data": "kit write-discussion-data",
     "write-repo-scripts-data": "kit write-repo-scripts-data",
+    "move-types": "kit move-types",
     "db": "prisma studio"
   },
   "lint-staged": {
