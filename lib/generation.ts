@@ -150,7 +150,7 @@ export function getGuideContent() {
 }
 
 export function getAPIDocsContent() {
-  const apiPath = path.join(process.cwd(), 'prompts', 'API.md')
+  const apiPath = path.join(process.cwd(), 'prompts', 'API-GENERATED.md')
   const apiContent = fs.readFileSync(apiPath, 'utf-8')
   return apiContent
 }

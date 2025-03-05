@@ -23,10 +23,6 @@ export const DRAFT_PASS_PROMPT = `
 ${getSystemContent()}
 </SYSTEM>
 
-<METADATA>
-${getMetadataContent()}
-</METADATA>
-
 <GUIDE>
 ${getGuideContent()}
 </GUIDE>
@@ -46,6 +42,10 @@ ${getKitTypes()}
 <EXAMPLES>
 ${getExampleScripts()}
 </EXAMPLES>
+
+<METADATA>
+${getMetadataContent()}
+</METADATA>
 
 <PROMPT>
 ${getPromptContent()}
