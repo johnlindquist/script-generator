@@ -156,31 +156,141 @@ export async function saveScript(prompt: string, editableScript: string): Promis
   }
 }
 
+// Extract shared install logic
+export async function installScript(
+  scriptId: string,
+  dashedName: string | null | undefined
+): Promise<void> {
+  console.log('[INSTALL] Starting script installation process', {
+    scriptId,
+    dashedName,
+    timestamp: new Date().toISOString(),
+  })
+
+  try {
+    // Track the install
+    console.log('[INSTALL] Sending install tracking request to API')
+    const installResponse = await fetch('/api/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scriptId }),
+    })
+
+    console.log('[INSTALL] Install tracking API response received', {
+      status: installResponse.status,
+      ok: installResponse.ok,
+      timestamp: new Date().toISOString(),
+    })
+
+    if (!installResponse.ok) {
+      const errorText = await installResponse.text().catch(() => 'Unknown error')
+      console.error('[INSTALL] Failed to track install', {
+        status: installResponse.status,
+        error: errorText,
+        scriptId,
+      })
+      throw new Error('Failed to track install')
+    }
+
+    // Use the working URL format that redirects to Script Kit
+    if (dashedName) {
+      const baseUrl =
+        typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
+      const installUrl = `/api/new?name=${encodeURIComponent(
+        dashedName || 'script-name-not-found'
+      )}&url=${encodeURIComponent(`${baseUrl}/scripts/${scriptId}/raw/${dashedName || 'script'}.ts`)}`
+
+      console.log('[INSTALL] Redirecting to Script Kit install URL', {
+        url: installUrl,
+        scriptId,
+        dashedName,
+        timestamp: new Date().toISOString(),
+      })
+
+      window.location.href = installUrl
+    } else {
+      console.warn('[INSTALL] No dashedName provided, skipping redirect', {
+        scriptId,
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    console.log('[INSTALL] Installation process completed successfully', {
+      scriptId,
+      dashedName,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('[INSTALL] Error during installation process', {
+      scriptId,
+      dashedName,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    })
+    throw error
+  }
+}
+
 export async function saveAndInstallScript(prompt: string, editableScript: string): Promise<void> {
-  const scriptResponse = await fetch('/api/scripts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, code: editableScript, saved: true }),
+  console.log('[SAVE_AND_INSTALL] Starting save and install process', {
+    promptLength: prompt.length,
+    scriptLength: editableScript.length,
+    timestamp: new Date().toISOString(),
   })
-  if (!scriptResponse.ok) {
-    throw new Error('Failed to save script before install')
+
+  try {
+    console.log('[SAVE_AND_INSTALL] Saving script to API')
+    const scriptResponse = await fetch('/api/scripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, code: editableScript, saved: true }),
+    })
+
+    console.log('[SAVE_AND_INSTALL] Script save API response received', {
+      status: scriptResponse.status,
+      ok: scriptResponse.ok,
+      timestamp: new Date().toISOString(),
+    })
+
+    if (!scriptResponse.ok) {
+      const errorText = await scriptResponse.text().catch(() => 'Unknown error')
+      console.error('[SAVE_AND_INSTALL] Failed to save script', {
+        status: scriptResponse.status,
+        error: errorText,
+      })
+      throw new Error('Failed to save script before install')
+    }
+
+    const responseData = await scriptResponse.json()
+    const { id, dashedName } = responseData
+
+    console.log('[SAVE_AND_INSTALL] Script saved successfully', {
+      scriptId: id,
+      dashedName,
+      timestamp: new Date().toISOString(),
+    })
+
+    // Use the shared install logic
+    console.log('[SAVE_AND_INSTALL] Proceeding to install script', {
+      scriptId: id,
+      dashedName,
+    })
+    await installScript(id, dashedName)
+
+    console.log('[SAVE_AND_INSTALL] Save and install process completed', {
+      scriptId: id,
+      dashedName,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('[SAVE_AND_INSTALL] Error during save and install process', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    })
+    throw error
   }
-
-  const { id, dashedName } = await scriptResponse.json()
-
-  const installResponse = await fetch('/api/install', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scriptId: id }),
-  })
-  if (!installResponse.ok) {
-    throw new Error('Failed to track install')
-  }
-
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://scriptkit.com'
-  window.location.href = `/api/new?name=${encodeURIComponent(
-    dashedName || 'script-name-not-found'
-  )}&url=${encodeURIComponent(`${baseUrl}/scripts/${id}/raw/${dashedName || 'script'}.ts`)}`
 }
 
 interface UsageResponse {

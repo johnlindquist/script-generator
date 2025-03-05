@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
 import { STRINGS } from '@/lib/strings'
+import { installScript } from '@/lib/openrouterService'
 
 interface InstallButtonClientProps {
   scriptId: string
@@ -18,28 +19,50 @@ export default function InstallButtonClient({
   const [isInstalling, setIsInstalling] = useState(false)
 
   const handleInstall = async () => {
+    console.log('[INSTALL_BUTTON] Install button clicked', {
+      scriptId,
+      dashedName,
+      currentInstallCount: installCount,
+      timestamp: new Date().toISOString(),
+    })
+
     setIsInstalling(true)
+
     try {
-      const response = await fetch('/api/install', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ scriptId }),
+      console.log('[INSTALL_BUTTON] Calling shared installScript function', {
+        scriptId,
+        dashedName,
+        timestamp: new Date().toISOString(),
       })
 
-      if (!response.ok) {
-        throw new Error(STRINGS.INSTALL_BUTTON.error)
-      }
+      // Use the shared install logic
+      await installScript(scriptId, dashedName)
+
+      console.log('[INSTALL_BUTTON] Installation successful, updating install count', {
+        scriptId,
+        dashedName,
+        previousCount: installCount,
+        newCount: installCount + 1,
+        timestamp: new Date().toISOString(),
+      })
 
       setInstallCount(installCount + 1)
-
-      if (dashedName) {
-        window.location.href = `kit://script/install/${dashedName}`
-      }
     } catch (error) {
-      console.error('Error installing script:', error)
+      console.error('[INSTALL_BUTTON] Error installing script', {
+        scriptId,
+        dashedName,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      })
     } finally {
+      console.log('[INSTALL_BUTTON] Installation process completed', {
+        scriptId,
+        dashedName,
+        successful: !isInstalling,
+        timestamp: new Date().toISOString(),
+      })
+
       setIsInstalling(false)
     }
   }
