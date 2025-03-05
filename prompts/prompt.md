@@ -31,4 +31,5 @@ Never create a "main" or "run" function. Always favor "top-level" code and patte
 - Never create a "main" or "run" function.
 - Use async/await for better readability.
 - Keep functions small and focused (single responsibility).
-  </BEST_PRACTICES>
+
+</BEST_PRACTICES>

@@ -75,8 +75,14 @@ export async function POST(request: Request) {
 
     return response
   } catch (error) {
+    const response = NextResponse.json({ success: true })
+
+    response.headers.set('Access-Control-Allow-Origin', origin)
+    response.headers.set('Access-Control-Allow-Methods', 'POST')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+
     console.error('Error logging interaction:', error)
-    return NextResponse.json({ error: 'Failed to log interaction' }, { status: 500 })
+    return response
   }
 }
 

@@ -292,7 +292,7 @@ export const authOptions: AuthOptions = {
         token.id = user.id
         token.username = user.username
       }
-      console.log('jwt: returning token:', token)
+      // console.log('jwt: returning token:', token)
       return token
     },
     async session({ session, token }) {
@@ -316,7 +316,7 @@ export const authOptions: AuthOptions = {
         console.log('session: found sponsor:', sponsor)
         session.user.isSponsor = !!sponsor
       }
-      console.log('session: returning session:', session)
+      // console.log('session: returning session:', session)
       return session
     },
   },

@@ -346,7 +346,7 @@ export async function POST(req: Request) {
 
       console.log('[OpenRouter API] Stream result object created successfully:', {
         requestId,
-        hasTextStream: !!result?.textStream,
+        hasFullStream: !!result?.fullStream,
         timestamp: new Date().toISOString(),
       })
     } catch (modelError) {
@@ -365,6 +365,9 @@ export async function POST(req: Request) {
     // Create a new stream response
     const stream = new ReadableStream({
       async start(controller) {
+        // Declare diagnostic timer at the outer scope so it can be cleared in any finally block
+        let diagnosticTimer: NodeJS.Timeout | null = null
+
         try {
           console.log('[OpenRouter API] Starting stream:', {
             requestId,
@@ -384,14 +387,219 @@ export async function POST(req: Request) {
             timestamp: new Date().toISOString(),
           })
 
+          // Wrap the rest of the processing in a try/catch to prevent errors from bubbling up
           try {
-            // Debug the result object
+            console.log('[OpenRouter API] Starting debug section 1:', {
+              requestId,
+              scriptId,
+              timestamp: new Date().toISOString(),
+            })
+
+            // Check if result exists before using it
+            if (!result) {
+              throw new Error('Stream result object is undefined')
+            }
+
+            // Checking if fullStream exists without accessing other properties first
+            const hasFullStream = !!result.fullStream
+
+            console.log('[OpenRouter API] Starting debug section 2:', {
+              requestId,
+              scriptId,
+              hasFullStream,
+              timestamp: new Date().toISOString(),
+            })
+
+            // Avoid accessing Symbol.asyncIterator directly as it might cause issues
+            let isAsyncIterable = false
+            if (hasFullStream) {
+              try {
+                // First check if Symbol.asyncIterator exists
+                if (Symbol.asyncIterator) {
+                  console.log('[OpenRouter API] AsyncIterator symbol exists:', {
+                    requestId,
+                    scriptId,
+                    timestamp: new Date().toISOString(),
+                  })
+
+                  // Check if the result.fullStream object has the property
+                  const hasSymbol = result.fullStream[Symbol.asyncIterator] !== undefined
+
+                  console.log('[OpenRouter API] fullStream has AsyncIterator symbol:', {
+                    requestId,
+                    scriptId,
+                    hasSymbol,
+                    timestamp: new Date().toISOString(),
+                  })
+
+                  if (hasSymbol) {
+                    // Finally check if it's a function
+                    isAsyncIterable = typeof result.fullStream[Symbol.asyncIterator] === 'function'
+
+                    console.log('[OpenRouter API] AsyncIterator is a function:', {
+                      requestId,
+                      scriptId,
+                      isAsyncIterable,
+                      timestamp: new Date().toISOString(),
+                    })
+                  }
+                } else {
+                  console.log('[OpenRouter API] AsyncIterator symbol not supported:', {
+                    requestId,
+                    scriptId,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+              } catch (asyncIterableError) {
+                console.error('[OpenRouter API] Error checking asyncIterator:', {
+                  requestId,
+                  scriptId,
+                  error:
+                    asyncIterableError instanceof Error
+                      ? asyncIterableError.message
+                      : String(asyncIterableError),
+                  timestamp: new Date().toISOString(),
+                })
+              }
+            }
+
+            console.log('[OpenRouter API] Starting debug section 3:', {
+              requestId,
+              scriptId,
+              hasFullStream,
+              isAsyncIterable,
+              timestamp: new Date().toISOString(),
+            })
+
+            console.log('[OpenRouter API] Before reasoning check:', {
+              requestId,
+              scriptId,
+              extractReasoningFlag: !!extractReasoning,
+              timestamp: new Date().toISOString(),
+            })
+
+            // Safe check for reasoning property - only if explicitly requested
+            let hasReasoning = false
+
+            // Skip the reasoning check entirely if not requested
+            if (!extractReasoning) {
+              console.log('[OpenRouter API] Skipping reasoning check - not requested:', {
+                requestId,
+                scriptId,
+                timestamp: new Date().toISOString(),
+              })
+            } else {
+              try {
+                // Check if reasoning exists using hasOwnProperty to avoid accessing the property directly
+                const hasReasoningProperty = Object.prototype.hasOwnProperty.call(
+                  result,
+                  'reasoning'
+                )
+
+                console.log('[OpenRouter API] Reasoning property check:', {
+                  requestId,
+                  scriptId,
+                  hasReasoningProperty,
+                  timestamp: new Date().toISOString(),
+                })
+
+                if (hasReasoningProperty) {
+                  // Extremely cautious approach to check reasoning
+                  try {
+                    // First just check if it's truthy without awaiting
+                    const reasoningExists = Boolean(result.reasoning)
+
+                    console.log('[OpenRouter API] Reasoning exists check:', {
+                      requestId,
+                      scriptId,
+                      reasoningExists,
+                      timestamp: new Date().toISOString(),
+                    })
+
+                    if (reasoningExists) {
+                      // Now try to await it
+                      console.log('[OpenRouter API] Before awaiting reasoning:', {
+                        requestId,
+                        scriptId,
+                        timestamp: new Date().toISOString(),
+                      })
+
+                      // Use a timeout promise to prevent hanging
+                      const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Reasoning promise timed out')), 5000)
+                      })
+
+                      try {
+                        // Race the reasoning promise against a timeout
+                        const resolvedReasoning = await Promise.race([
+                          Promise.resolve(result.reasoning).catch(() => null),
+                          timeoutPromise,
+                        ])
+
+                        hasReasoning = !!resolvedReasoning
+
+                        console.log('[OpenRouter API] After awaiting reasoning:', {
+                          requestId,
+                          scriptId,
+                          hasReasoning,
+                          timestamp: new Date().toISOString(),
+                        })
+                      } catch (timeoutError) {
+                        console.error('[OpenRouter API] Timeout awaiting reasoning:', {
+                          requestId,
+                          scriptId,
+                          error:
+                            timeoutError instanceof Error
+                              ? timeoutError.message
+                              : String(timeoutError),
+                          timestamp: new Date().toISOString(),
+                        })
+                      }
+                    }
+                  } catch (reasoningCheckError) {
+                    console.error('[OpenRouter API] Error checking if reasoning exists:', {
+                      requestId,
+                      scriptId,
+                      error:
+                        reasoningCheckError instanceof Error
+                          ? reasoningCheckError.message
+                          : String(reasoningCheckError),
+                      timestamp: new Date().toISOString(),
+                    })
+                  }
+                } else {
+                  console.log('[OpenRouter API] No reasoning property found:', {
+                    requestId,
+                    scriptId,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+              } catch (reasoningError) {
+                console.error('[OpenRouter API] Error in reasoning property check:', {
+                  requestId,
+                  scriptId,
+                  error:
+                    reasoningError instanceof Error
+                      ? reasoningError.message
+                      : String(reasoningError),
+                  timestamp: new Date().toISOString(),
+                })
+              }
+            }
+
+            console.log('[OpenRouter API] After reasoning check:', {
+              requestId,
+              scriptId,
+              hasReasoning,
+              timestamp: new Date().toISOString(),
+            })
+
+            // Debug the result object with safer property access
             console.log('[OpenRouter API] Result object structure:', {
               requestId,
-              hasTextStream: result?.textStream ? true : false,
-              isAsyncIterable:
-                result?.textStream && typeof result.textStream[Symbol.asyncIterator] === 'function',
-              hasReasoning: (await result?.reasoning) ? true : false,
+              hasFullStream,
+              isAsyncIterable,
+              hasReasoning,
               timestamp: new Date().toISOString(),
             })
 
@@ -401,152 +609,456 @@ export async function POST(req: Request) {
             // Variable to accumulate raw content for debugging
             let rawScriptContent = ''
 
-            // Use textStream property which is the correct way to access the stream
-            if (!result?.textStream) {
-              throw new Error('No text stream available from model result')
-            }
+            // Keep track of the last chunk to check for missing newlines
+            let lastChunk = ''
 
-            for await (const chunk of result.textStream) {
-              chunkCount++
+            // Add diagnostic logging before entering the stream loop
+            console.log('[OpenRouter API] About to enter streaming loop:', {
+              requestId,
+              scriptId,
+              timestamp: new Date().toISOString(),
+            })
 
-              // Skip empty chunks
-              if (!chunk) {
-                console.log('[OpenRouter API] Empty chunk received, skipping', {
-                  requestId,
-                  scriptId,
-                  chunkNumber: chunkCount,
-                  timestamp: new Date().toISOString(),
-                })
-                continue
-              }
-
-              // Preserve whitespace chunks (including newlines)
-              // Check if chunk is just whitespace (spaces, tabs, newlines)
-              const isWhitespaceOnly = /^[\s\n\r]+$/.test(chunk)
-
-              // Apply cleanCodeFences to non-whitespace chunks only
-              const text = isWhitespaceOnly ? chunk : cleanCodeFences(chunk || '')
-
-              // Skip truly empty chunks after processing
-              if (!text) {
-                console.log('[OpenRouter API] Chunk became empty after processing, skipping', {
-                  requestId,
-                  scriptId,
-                  chunkNumber: chunkCount,
-                  originalChunkLength: chunk.length,
-                  timestamp: new Date().toISOString(),
-                })
-                continue
-              }
-
-              const encodedChunk = new TextEncoder().encode(text)
-              totalSentBytes += encodedChunk.byteLength
-
-              console.log('[OpenRouter API] Streaming chunk:', {
+            // Set up a diagnostic timer to log if we're waiting too long for chunks
+            diagnosticTimer = setInterval(() => {
+              console.log('[OpenRouter API] Still waiting for chunks:', {
                 requestId,
                 scriptId,
-                chunkNumber: chunkCount,
-                chunkSize: text.length,
+                chunkCount,
                 totalSentBytes,
-                isWhitespace: isWhitespaceOnly,
-                preview: text.substring(0, 50).replace(/\n/g, '\\n'),
+                timestamp: new Date().toISOString(),
+              })
+            }, 5000) // Log every 5 seconds
+
+            // Check for stream availability before entering the loop
+            if (!hasFullStream || !isAsyncIterable) {
+              throw new Error(
+                `No valid stream available: hasFullStream=${hasFullStream}, isAsyncIterable=${isAsyncIterable}`
+              )
+            }
+
+            try {
+              console.log('[OpenRouter API] Getting async iterator:', {
+                requestId,
+                scriptId,
                 timestamp: new Date().toISOString(),
               })
 
-              // Send the chunk to the client
-              controller.enqueue(encodedChunk)
+              // First get the iterator explicitly to diagnose any issues
+              let iterator
+              try {
+                iterator = result.fullStream[Symbol.asyncIterator]()
 
-              // Accumulate the raw script content for debugging
-              rawScriptContent += text
-
-              // Add a small delay to ensure browser can process chunks (helps with some streaming issues)
-              await new Promise(resolve => setTimeout(resolve, 5))
-            }
-
-            console.log('[OpenRouter API] Stream iteration completed:', {
-              requestId,
-              scriptId,
-              totalChunks: chunkCount,
-              totalSentBytes,
-              timestamp: new Date().toISOString(),
-            })
-
-            // If reasoning was extracted, log it
-            if (extractReasoning && result?.reasoning) {
-              // Await the reasoning Promise to get the actual string value
-              const reasoningText = await result.reasoning
-
-              if (reasoningText) {
-                console.log('[OpenRouter API] Extracted reasoning:', {
+                console.log('[OpenRouter API] Successfully got iterator:', {
                   requestId,
                   scriptId,
-                  reasoningLength: reasoningText.length,
-                  reasoningPreview: reasoningText.substring(0, 100) + '...',
+                  hasIterator: !!iterator,
+                  timestamp: new Date().toISOString(),
+                })
+              } catch (iteratorError) {
+                console.error('[OpenRouter API] Error getting iterator:', {
+                  requestId,
+                  scriptId,
+                  error:
+                    iteratorError instanceof Error ? iteratorError.message : String(iteratorError),
+                  timestamp: new Date().toISOString(),
+                })
+                throw iteratorError
+              }
+
+              console.log('[OpenRouter API] Starting manual iteration:', {
+                requestId,
+                scriptId,
+                timestamp: new Date().toISOString(),
+              })
+
+              // Try to get the first value manually instead of using for-await
+              try {
+                console.log('[OpenRouter API] Awaiting first next() call:', {
+                  requestId,
+                  scriptId,
                   timestamp: new Date().toISOString(),
                 })
 
-                // Store the reasoning in the database using an available field
-                await prisma.script.update({
-                  where: { id: scriptId },
-                  data: {
-                    summary: `Reasoning: ${reasoningText.substring(0, 200)}...`,
-                  },
+                // Use a timeout to prevent hanging
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                  setTimeout(() => reject(new Error('Iterator next() timed out')), 10000)
+                })
+
+                const firstResult = await Promise.race([iterator.next(), timeoutPromise])
+
+                console.log('[OpenRouter API] First iteration result:', {
+                  requestId,
+                  scriptId,
+                  isDone: firstResult.done,
+                  hasValue: firstResult.value !== undefined,
+                  timestamp: new Date().toISOString(),
+                })
+
+                // Process the first value if it exists
+                if (!firstResult.done && firstResult.value) {
+                  console.log('[OpenRouter API] Processing first chunk:', {
+                    requestId,
+                    scriptId,
+                    chunkType: firstResult.value.type,
+                    timestamp: new Date().toISOString(),
+                  })
+
+                  // Clear the diagnostic timer on first chunk
+                  if (diagnosticTimer) {
+                    clearInterval(diagnosticTimer)
+                    diagnosticTimer = null
+                    console.log('[OpenRouter API] Received first chunk:', {
+                      requestId,
+                      scriptId,
+                      timestamp: new Date().toISOString(),
+                    })
+                  }
+
+                  // Process this chunk like we would in the for-await loop
+                  const chunk = firstResult.value
+                  chunkCount++
+
+                  // Now process the chunk as normal...
+                  if (!chunk) {
+                    console.log('[OpenRouter API] Empty chunk received, skipping', {
+                      requestId,
+                      scriptId,
+                      chunkNumber: chunkCount,
+                      timestamp: new Date().toISOString(),
+                    })
+                  } else if (chunk.type === 'error') {
+                    console.error('[OpenRouter API] Error in stream:', {
+                      requestId,
+                      error: chunk.error,
+                    })
+                  } else if (chunk.type === 'finish' || chunk.type === 'step-finish') {
+                    console.log(
+                      `[OpenRouter API] ${chunk.type === 'finish' ? 'Finish' : 'Step finished'}:`,
+                      {
+                        requestId,
+                        result: chunk.finishReason,
+                      }
+                    )
+                  } else if (chunk.type === 'reasoning') {
+                    console.log('[OpenRouter API] Reasoning:', {
+                      requestId,
+                      result: chunk.textDelta,
+                    })
+                  } else if (chunk.type === 'text-delta') {
+                    // Process the text chunk as usual...
+                    const isWhitespaceOnly = /^[\s\n\r]+$/.test(chunk.textDelta)
+                    const text = isWhitespaceOnly
+                      ? chunk.textDelta
+                      : cleanCodeFences(chunk.textDelta || '')
+
+                    if (!text) {
+                      console.log(
+                        '[OpenRouter API] Chunk became empty after processing, skipping',
+                        {
+                          requestId,
+                          scriptId,
+                          chunkNumber: chunkCount,
+                          originalChunkLength: chunk.textDelta.length,
+                          timestamp: new Date().toISOString(),
+                        }
+                      )
+                    } else {
+                      // Process and send the text as usual
+                      let processedText = text
+                      if (
+                        (text.startsWith('const ') || text.startsWith('// ')) &&
+                        lastChunk &&
+                        !lastChunk.endsWith('\n')
+                      ) {
+                        processedText = '\n' + text
+                      }
+
+                      lastChunk = text
+                      const encodedChunk = new TextEncoder().encode(processedText)
+                      totalSentBytes += encodedChunk.byteLength
+
+                      console.log('[OpenRouter API] Streaming chunk:', {
+                        requestId,
+                        scriptId,
+                        chunkNumber: chunkCount,
+                        chunkSize: processedText.length,
+                        totalSentBytes,
+                        isWhitespace: isWhitespaceOnly,
+                        preview: processedText.substring(0, 50).replace(/\n/g, '\\n'),
+                        timestamp: new Date().toISOString(),
+                      })
+
+                      controller.enqueue(encodedChunk)
+                      rawScriptContent += processedText
+                    }
+                  }
+
+                  console.log('[OpenRouter API] First chunk processed successfully:', {
+                    requestId,
+                    scriptId,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+              } catch (iterationError) {
+                console.error('[OpenRouter API] Error in first iteration:', {
+                  requestId,
+                  scriptId,
+                  error:
+                    iterationError instanceof Error
+                      ? iterationError.message
+                      : String(iterationError),
+                  stack: iterationError instanceof Error ? iterationError.stack : undefined,
+                  timestamp: new Date().toISOString(),
+                })
+                throw iterationError
+              }
+
+              // Now continue with the normal for-await loop for remaining chunks
+              console.log(
+                '[OpenRouter API] Switching to standard for-await loop for remaining chunks:',
+                {
+                  requestId,
+                  scriptId,
+                  timestamp: new Date().toISOString(),
+                }
+              )
+
+              for await (const chunk of result.fullStream) {
+                // Clear the diagnostic timer on first chunk
+                if (chunkCount === 0 && diagnosticTimer) {
+                  clearInterval(diagnosticTimer)
+                  diagnosticTimer = null
+                  console.log('[OpenRouter API] Received first chunk:', {
+                    requestId,
+                    scriptId,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+
+                chunkCount++
+
+                // Skip empty chunks
+                if (!chunk) {
+                  console.log('[OpenRouter API] Empty chunk received, skipping', {
+                    requestId,
+                    scriptId,
+                    chunkNumber: chunkCount,
+                    timestamp: new Date().toISOString(),
+                  })
+                  continue
+                }
+
+                if (chunk.type === 'error') {
+                  console.error('[OpenRouter API] Error in stream:', {
+                    requestId,
+                    error: chunk.error,
+                  })
+                  continue
+                }
+
+                if (chunk.type === 'finish') {
+                  console.log('[OpenRouter API] Finish:', {
+                    requestId,
+                    result: chunk.finishReason,
+                  })
+                  continue
+                }
+
+                if (chunk.type === 'step-finish') {
+                  console.log('[OpenRouter API] Step finished:', {
+                    requestId,
+                    result: chunk.finishReason,
+                  })
+                  continue
+                }
+
+                if (chunk.type === 'reasoning') {
+                  console.log('[OpenRouter API] Reasoning:', {
+                    requestId,
+                    result: chunk.textDelta,
+                  })
+                  continue
+                }
+
+                if (chunk.type === 'text-delta') {
+                  // Preserve whitespace chunks (including newlines)
+                  // Check if chunk is just whitespace (spaces, tabs, newlines)
+                  const isWhitespaceOnly = /^[\s\n\r]+$/.test(chunk.textDelta)
+
+                  // Apply cleanCodeFences to non-whitespace chunks only
+                  const text = isWhitespaceOnly
+                    ? chunk.textDelta
+                    : cleanCodeFences(chunk.textDelta || '')
+
+                  // Skip truly empty chunks after processing
+                  if (!text) {
+                    console.log('[OpenRouter API] Chunk became empty after processing, skipping', {
+                      requestId,
+                      scriptId,
+                      chunkNumber: chunkCount,
+                      originalChunkLength: chunk.textDelta.length,
+                      timestamp: new Date().toISOString(),
+                    })
+                    continue
+                  }
+
+                  // Check if the current chunk starts with code pattern indicators
+                  // and ensure a preceding newline if needed
+                  let processedText = text
+                  if (
+                    (text.startsWith('const ') || text.startsWith('// ')) &&
+                    lastChunk &&
+                    !lastChunk.endsWith('\n')
+                  ) {
+                    console.log('[OpenRouter API] Adding missing newline before code pattern', {
+                      requestId,
+                      scriptId,
+                      chunkNumber: chunkCount,
+                      patternDetected: text.substring(0, 10),
+                      timestamp: new Date().toISOString(),
+                    })
+                    processedText = '\n' + text
+                  }
+
+                  // Update lastChunk for next iteration
+                  lastChunk = text
+
+                  const encodedChunk = new TextEncoder().encode(processedText)
+                  totalSentBytes += encodedChunk.byteLength
+
+                  console.log('[OpenRouter API] Streaming chunk:', {
+                    requestId,
+                    scriptId,
+                    chunkNumber: chunkCount,
+                    chunkSize: processedText.length,
+                    totalSentBytes,
+                    isWhitespace: isWhitespaceOnly,
+                    preview: processedText.substring(0, 50).replace(/\n/g, '\\n'),
+                    timestamp: new Date().toISOString(),
+                  })
+
+                  // Send the chunk to the client
+                  controller.enqueue(encodedChunk)
+
+                  // Accumulate the raw script content for debugging
+                  rawScriptContent += processedText
+
+                  // Add a small delay to ensure browser can process chunks (helps with some streaming issues)
+                  await new Promise(resolve => setTimeout(resolve, 100))
+                }
+
+                console.log('[OpenRouter API] Stream iteration completed:', {
+                  requestId,
+                  scriptId,
+                  totalChunks: chunkCount,
+                  totalSentBytes,
+                  timestamp: new Date().toISOString(),
+                })
+              }
+
+              // Save the raw generated script content to file for debugging
+              if (rawScriptContent) {
+                const rawScriptPath = saveRawGeneratedScript(scriptId, rawScriptContent)
+                if (rawScriptPath) {
+                  console.log('[OpenRouter API] Raw script saved to:', {
+                    requestId,
+                    scriptId,
+                    rawScriptPath,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+              }
+
+              console.log('[OpenRouter API] Stream completed successfully:', {
+                requestId,
+                scriptId,
+                timestamp: new Date().toISOString(),
+              })
+            } catch (streamError) {
+              // Log the error but don't rethrow - this prevents the outer catch from executing
+              console.error('[OpenRouter API] Error in stream processing:', {
+                requestId,
+                scriptId,
+                errorMessage:
+                  streamError instanceof Error ? streamError.message : String(streamError),
+                errorStack: streamError instanceof Error ? streamError.stack : undefined,
+                timestamp: new Date().toISOString(),
+              })
+
+              // Send an error message to the client if we have a connection
+              try {
+                const errorMessage = `Error during generation: ${streamError instanceof Error ? streamError.message : String(streamError)}`
+                controller.enqueue(new TextEncoder().encode(`\n\nERROR: ${errorMessage}`))
+              } catch (sendError) {
+                console.error('[OpenRouter API] Failed to send error message to client:', {
+                  requestId,
+                  scriptId,
+                  error: sendError instanceof Error ? sendError.message : String(sendError),
+                  timestamp: new Date().toISOString(),
                 })
               }
             }
-
-            // Save the raw generated script content to file for debugging
-            const rawScriptPath = saveRawGeneratedScript(scriptId, rawScriptContent)
-
-            if (rawScriptPath) {
-              console.log('[OpenRouter API] Raw script saved to:', {
-                requestId,
-                scriptId,
-                rawScriptPath,
-                timestamp: new Date().toISOString(),
-              })
-            }
-
-            console.log('[OpenRouter API] Stream completed successfully:', {
+          } catch (prepError) {
+            // This handles errors in the preparation phase (before streaming starts)
+            console.error('[OpenRouter API] Error in stream preparation:', {
               requestId,
               scriptId,
-              timestamp: new Date().toISOString(),
-            })
-          } catch (error) {
-            console.error('[OpenRouter API] Error in stream processing:', {
-              requestId,
-              scriptId,
-              errorMessage: error instanceof Error ? error.message : String(error),
-              errorStack: error instanceof Error ? error.stack : undefined,
+              errorMessage: prepError instanceof Error ? prepError.message : String(prepError),
+              errorStack: prepError instanceof Error ? prepError.stack : undefined,
               timestamp: new Date().toISOString(),
             })
 
-            // Don't throw the error here - just log it and continue
-            // This prevents the stream from aborting if we can recover
-
-            // Send an error message to the client if we have a connection
+            // Try to send an error message to the client
             try {
-              const errorMessage = `Error during generation: ${error instanceof Error ? error.message : String(error)}`
-              controller.enqueue(new TextEncoder().encode(`\n\nERROR: ${errorMessage}`))
+              const errorMessage = `Preparation error: ${prepError instanceof Error ? prepError.message : String(prepError)}`
+              controller.enqueue(new TextEncoder().encode(`\n\nPREP ERROR: ${errorMessage}`))
             } catch (sendError) {
-              console.error('[OpenRouter API] Failed to send error message to client:', {
+              // Just log if we can't send
+              console.error('[OpenRouter API] Failed to send prep error message:', {
                 requestId,
                 scriptId,
                 error: sendError instanceof Error ? sendError.message : String(sendError),
-                timestamp: new Date().toISOString(),
               })
             }
+          } finally {
+            // Clear any remaining timer
+            if (diagnosticTimer) {
+              clearInterval(diagnosticTimer)
+              diagnosticTimer = null
+            }
           }
-        } catch (error) {
+        } catch (fatalError) {
+          // This is for truly fatal errors that should abort the stream
           console.error('[OpenRouter API] Fatal error in stream start:', {
             requestId,
             scriptId,
-            errorMessage: error instanceof Error ? error.message : String(error),
-            errorStack: error instanceof Error ? error.stack : undefined,
+            errorMessage: fatalError instanceof Error ? fatalError.message : String(fatalError),
+            errorStack: fatalError instanceof Error ? fatalError.stack : undefined,
             timestamp: new Date().toISOString(),
           })
-          controller.error(error)
+
+          // Try to send an error message to the client
+          try {
+            const errorMessage = `Fatal error: ${fatalError instanceof Error ? fatalError.message : String(fatalError)}`
+            controller.enqueue(new TextEncoder().encode(`\n\nFATAL ERROR: ${errorMessage}`))
+          } catch (sendError) {
+            // Just log if we can't send
+            console.error('[OpenRouter API] Failed to send fatal error message:', {
+              requestId,
+              scriptId,
+              error: sendError instanceof Error ? sendError.message : String(sendError),
+            })
+          }
+
+          controller.error(fatalError)
         } finally {
+          // Clear any remaining timer
+          if (diagnosticTimer) {
+            clearInterval(diagnosticTimer)
+          }
+
+          // Always close the controller in the outer finally block
           try {
             console.log('[OpenRouter API] Closing controller in finally block:', {
               requestId,
