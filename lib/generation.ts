@@ -131,33 +131,41 @@ export function getExampleScripts() {
   }
 }
 
-// Function to read docs-mini.md
-export function getDocsContent() {
+export function getMetadataContent() {
+  const metadataPath = path.join(process.cwd(), 'prompts', 'METADATA.md')
+  const metadataContent = fs.readFileSync(metadataPath, 'utf-8')
+  return metadataContent
+}
+
+export function getSystemContent() {
+  const systemPath = path.join(process.cwd(), 'prompts', 'SYSTEM.md')
+  const systemContent = fs.readFileSync(systemPath, 'utf-8')
+  return systemContent
+}
+
+export function getGuideContent() {
+  const guidePath = path.join(process.cwd(), 'prompts', 'GUIDE.md')
+  const guideContent = fs.readFileSync(guidePath, 'utf-8')
+  return guideContent
+}
+
+export function getAPIDocsContent() {
   const apiPath = path.join(process.cwd(), 'prompts', 'API.md')
+  const apiContent = fs.readFileSync(apiPath, 'utf-8')
+  return apiContent
+}
+
+export function getDocsMini() {
   const docsPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
+  const docsContent = fs.readFileSync(docsPath, 'utf-8')
+  return docsContent
+}
+
+// Function to read docs-mini.md
+export function getPromptContent() {
   const promptPath = path.join(process.cwd(), 'prompts', 'prompt.md')
-  try {
-    if (!fs.existsSync(docsPath)) {
-      console.warn(`Docs file not found at ${docsPath}`)
-      return ''
-    }
-
-    const apiContent = fs.readFileSync(apiPath, 'utf-8')
-    const docsContent = fs.readFileSync(docsPath, 'utf-8')
-
-    let content = `${apiContent}\n\n${docsContent}`
-
-    // Append prompt.md content if it exists
-    if (fs.existsSync(promptPath)) {
-      const promptContent = fs.readFileSync(promptPath, 'utf-8')
-      content += `\n\n${promptContent}`
-    }
-
-    return content
-  } catch (error) {
-    console.error('Error reading docs content:', error)
-    return '' // Return empty string on error, allowing generation to continue
-  }
+  const promptContent = fs.readFileSync(promptPath, 'utf-8')
+  return promptContent
 }
 
 // Simple code fence cleaner for script generation
@@ -178,8 +186,13 @@ export function cleanCodeFences(text: string): string {
   cleaned = cleaned.replace(/^\s*\n/, '')
 
   // Ensure proper line breaks around metadata comments
-  cleaned = cleaned.replace(/^(\/\/ Name:.*?)(\n?)(\n?)(\/\/ Description:)/gm, '$1\n$4')
-  cleaned = cleaned.replace(/^(\/\/ Description:.*?)(\n?)(\n?)(\/\/ Author:)/gm, '$1\n$4')
+  // cleaned = cleaned.replace(/^(\/\/ Name:.*?)$/m, '$1\n')
+  // cleaned = cleaned.replace(/^(\/\/ Description:.*?)$/m, '$1\n')
+  // cleaned = cleaned.replace(/^(\/\/ Author:.*?)$/m, '$1\n')
+
+  // // Also ensure no double newlines between metadata
+  // cleaned = cleaned.replace(/^(\/\/ Name:.*?\n\n)(\/\/ Description:)/gm, '$1$2')
+  // cleaned = cleaned.replace(/^(\/\/ Description:.*?\n\n)(\/\/ Author:)/gm, '$1$2')
 
   // Return without trimming to preserve whitespace
   return cleaned

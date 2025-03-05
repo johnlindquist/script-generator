@@ -1,6 +1,5 @@
 import { ScriptGenerationEvent } from '@/types/scriptGeneration'
 import { logInteraction } from '@/lib/interaction-logger'
-import { generateDraft } from '@/lib/apiService'
 import { generateDraft as generateOpenRouterDraft } from '@/lib/openrouterService'
 
 interface StreamingServiceInput {
@@ -32,29 +31,15 @@ export const generateScript = async (
     })
   }
 
-  if (url.includes('generate-draft')) {
-    const result = await generateDraft(
-      input.prompt,
-      input.requestId,
-      input.luckyRequestId,
-      input.interactionTimestamp
-    )
-    emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
-    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
-    return { script: result.script, scriptId: result.scriptId }
-  } else if (url.includes('generate-openrouter')) {
-    const result = await generateOpenRouterDraft(
-      input.prompt,
-      input.requestId,
-      input.luckyRequestId,
-      input.interactionTimestamp
-    )
-    emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
-    emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
-    return { script: result.script, scriptId: result.scriptId }
-  } else {
-    throw new Error('Unknown endpoint')
-  }
+  const result = await generateOpenRouterDraft(
+    input.prompt,
+    input.requestId,
+    input.luckyRequestId,
+    input.interactionTimestamp
+  )
+  emit({ type: 'SET_SCRIPT_ID', scriptId: result.scriptId })
+  emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: result.script })
+  return { script: result.script, scriptId: result.scriptId }
 }
 
 export const generateDraftWithStream = async (

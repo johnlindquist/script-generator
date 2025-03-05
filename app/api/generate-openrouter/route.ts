@@ -1,5 +1,7 @@
 export const maxDuration = 180
 
+import fs from 'node:fs'
+import path from 'node:path'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
@@ -9,10 +11,7 @@ import { logInteraction } from '@/lib/interaction-logger'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { streamText } from 'ai'
 import { DRAFT_PASS_PROMPT } from './prompt'
-import {
-  createOpenRouterWithReasoning,
-  enhancePromptWithReasoningRequest,
-} from '@/lib/reasoning-extractor'
+import { enhancePromptWithReasoningRequest } from '@/lib/reasoning-extractor'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -21,11 +20,48 @@ const DAILY_LIMIT = 24
 const CLI_API_KEY = process.env.CLI_API_KEY
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL
+const FALLBACK_MODEL = process.env.OPENROUTER_FALLBACK_MODEL
+
+// Define path for storing raw generated scripts
+const GENERATED_DIR = path.join(process.cwd(), 'generated')
+
+// Ensure the generated directory exists
+function ensureGeneratedDir() {
+  if (!fs.existsSync(GENERATED_DIR)) {
+    fs.mkdirSync(GENERATED_DIR, { recursive: true })
+  }
+}
+
+// Function to write raw script to file with timestamp
+function saveRawGeneratedScript(scriptId: string, content: string) {
+  try {
+    ensureGeneratedDir()
+
+    // Create a timestamp for the filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const filename = `${timestamp}__${scriptId}.ts`
+    const filepath = path.join(GENERATED_DIR, filename)
+
+    // Write content to file
+    fs.writeFileSync(filepath, content, 'utf-8')
+
+    console.log(`[OpenRouter API] Saved raw generated script to: ${filepath}`)
+
+    return filepath
+  } catch (error) {
+    console.error('[OpenRouter API] Failed to save raw generated script:', {
+      error: error instanceof Error ? error.message : String(error),
+      scriptId,
+    })
+    return null
+  }
+}
 
 // Log environment variables for debugging
 console.log('[OpenRouter API] Environment configuration:', {
   OPENROUTER_API_KEY_SET: !!OPENROUTER_API_KEY,
   OPENROUTER_DEFAULT_MODEL: DEFAULT_MODEL, // Intentionally exposing model for debugging
+  OPENROUTER_FALLBACK_MODEL: FALLBACK_MODEL,
   environment: process.env.NODE_ENV,
   timestamp: new Date().toISOString(),
 })
@@ -286,44 +322,27 @@ export async function POST(req: Request) {
     })
 
     // Initialize the model based on whether reasoning extraction is requested
-    let result
+    let result: ReturnType<typeof streamText> | undefined
     try {
-      if (extractReasoning && OPENROUTER_API_KEY) {
-        // Use the utility function to create a model with reasoning extraction
-        console.log('[OpenRouter API] Creating OpenRouter instance with reasoning extraction:', {
-          requestId,
-          model: DEFAULT_MODEL,
-          timestamp: new Date().toISOString(),
-        })
+      console.log('[OpenRouter API] Creating standard OpenRouter instance:', {
+        requestId,
+        model: DEFAULT_MODEL,
+        timestamp: new Date().toISOString(),
+      })
 
-        const modelWithReasoning = createOpenRouterWithReasoning(OPENROUTER_API_KEY, DEFAULT_MODEL)
+      const openrouter = createOpenRouter({
+        apiKey: OPENROUTER_API_KEY || '',
+      })
 
-        result = await streamText({
-          model: modelWithReasoning,
-          prompt: draftPrompt,
-        })
-      } else {
-        // Create standard OpenRouter instance without reasoning extraction
-        console.log('[OpenRouter API] Creating standard OpenRouter instance:', {
-          requestId,
-          model: DEFAULT_MODEL,
-          timestamp: new Date().toISOString(),
-        })
-
-        const openrouter = createOpenRouter({
-          apiKey: OPENROUTER_API_KEY || '',
-        })
-
-        // Verify the model value before using it
-        if (!DEFAULT_MODEL) {
-          throw new Error('OpenRouter model not properly configured')
-        }
-
-        result = await streamText({
-          model: openrouter(DEFAULT_MODEL),
-          prompt: draftPrompt,
-        })
+      // Verify the model value before using it
+      if (!DEFAULT_MODEL) {
+        throw new Error('OpenRouter model not properly configured')
       }
+
+      result = streamText({
+        model: openrouter(DEFAULT_MODEL),
+        prompt: draftPrompt,
+      })
 
       console.log('[OpenRouter API] Stream result object created successfully:', {
         requestId,
@@ -369,17 +388,24 @@ export async function POST(req: Request) {
             // Debug the result object
             console.log('[OpenRouter API] Result object structure:', {
               requestId,
-              hasTextStream: !!result.textStream,
+              hasTextStream: result?.textStream ? true : false,
               isAsyncIterable:
-                result.textStream && typeof result.textStream[Symbol.asyncIterator] === 'function',
-              hasReasoning: extractReasoning && !!result.reasoning,
+                result?.textStream && typeof result.textStream[Symbol.asyncIterator] === 'function',
+              hasReasoning: (await result?.reasoning) ? true : false,
               timestamp: new Date().toISOString(),
             })
 
             let chunkCount = 0
             let totalSentBytes = 0
 
+            // Variable to accumulate raw content for debugging
+            let rawScriptContent = ''
+
             // Use textStream property which is the correct way to access the stream
+            if (!result?.textStream) {
+              throw new Error('No text stream available from model result')
+            }
+
             for await (const chunk of result.textStream) {
               chunkCount++
 
@@ -430,6 +456,9 @@ export async function POST(req: Request) {
               // Send the chunk to the client
               controller.enqueue(encodedChunk)
 
+              // Accumulate the raw script content for debugging
+              rawScriptContent += text
+
               // Add a small delay to ensure browser can process chunks (helps with some streaming issues)
               await new Promise(resolve => setTimeout(resolve, 5))
             }
@@ -443,7 +472,7 @@ export async function POST(req: Request) {
             })
 
             // If reasoning was extracted, log it
-            if (extractReasoning && result.reasoning) {
+            if (extractReasoning && result?.reasoning) {
               // Await the reasoning Promise to get the actual string value
               const reasoningText = await result.reasoning
 
@@ -464,6 +493,18 @@ export async function POST(req: Request) {
                   },
                 })
               }
+            }
+
+            // Save the raw generated script content to file for debugging
+            const rawScriptPath = saveRawGeneratedScript(scriptId, rawScriptContent)
+
+            if (rawScriptPath) {
+              console.log('[OpenRouter API] Raw script saved to:', {
+                requestId,
+                scriptId,
+                rawScriptPath,
+                timestamp: new Date().toISOString(),
+              })
             }
 
             console.log('[OpenRouter API] Stream completed successfully:', {
