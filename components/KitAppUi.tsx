@@ -1,10 +1,9 @@
 'use client'
+
 import React from 'react'
 import classNames from 'classnames'
-import Link from 'next/link'
 import useSWR from 'swr'
 import type { ScriptsResponse } from '@/types'
-import { ArrowDownLeft } from 'lucide-react'
 
 const KitAppUI: React.FC<React.PropsWithChildren<any>> = ({}) => {
   const [activeScript, setActiveScript] = React.useState<ScriptsResponse['scripts'][0] | null>(null)
