@@ -2,6 +2,7 @@ export const STRINGS = {
   SOCIAL: {
     DISCORD_URL: 'https://discord.gg/qnUX4XqJQd',
     GITHUB_DISCUSSIONS_URL: 'https://github.com/johnlindquist/kit/discussions',
+    DOCS_URL: 'https://johnlindquist.github.io/kit-docs/',
   },
   NAVBAR: {
     homeLinkLabel: 'Script Kit',

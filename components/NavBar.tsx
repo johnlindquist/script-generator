@@ -3,7 +3,7 @@
 import { signOut, useSession, signIn } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
+import { ArrowLeftOnRectangleIcon, BookOpenIcon } from '@heroicons/react/24/solid'
 import { FaGithub, FaDiscord } from 'react-icons/fa'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { STRINGS } from '@/lib/strings'
@@ -36,9 +36,13 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
         </div>
       </Link>
       <div className="flex gap-4 items-center">
+        <Link href={STRINGS.SOCIAL.DOCS_URL} target="_blank" rel="noopener noreferrer">
+          <BookOpenIcon className="w-5 h-5 hover:text-amber-400 transition-colors" />
+        </Link>
         <Link href={STRINGS.SOCIAL.DISCORD_URL} target="_blank" rel="noopener noreferrer">
           <FaDiscord className="w-5 h-5 hover:text-amber-400 transition-colors" />
         </Link>
+
         <Link
           href={STRINGS.SOCIAL.GITHUB_DISCUSSIONS_URL}
           target="_blank"
