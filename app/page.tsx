@@ -55,7 +55,7 @@ export default async function Home() {
         <div className="container grid lg:grid-cols-2 grid-cols-1 gap-5 lg:gap-10 mx-auto px-5">
           <div className="relative rounded border border-white/5 overflow-hidden flex items-center justify-center lg:p-10 xl:p-16 p-2">
             <Image
-              src={require('../public/assets/wallpaper.jpg')}
+              src="/assets/wallpaper.jpg"
               alt="wallpaper"
               className="object-cover"
               quality={100}
@@ -71,6 +71,8 @@ export default async function Home() {
           <article className="prose prose-lg prose-invert py-8 px-2">
             <ReactMarkdown>{`
 # What is Script Kit?
+
+### An open-source, cross-platform, desktop app for creating and running scripts!
 
 How often do you avoid scripting something because it takes too much effort?
 
