@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
 
   // Parse out metadata including "// Name:" from code
   const { name } = parseScriptFromMarkdown(code)
-  const shortName = name || prompt.split(' ').slice(0, 9).join(' ')
+  const shortName = name || 'unnamed'
   const dashedName = generateDashedName(shortName)
 
   const script = await prisma.script.create({

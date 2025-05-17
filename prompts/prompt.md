@@ -25,11 +25,4 @@ import { ensureDir } from 'fs-extra';
 Never create a "main" or "run" function. Always favor "top-level" code and patterns.
 </AVOID>
 
-<BEST_PRACTICES>
-
-- Use top-level code and patterns.
-- Never create a "main" or "run" function.
-- Use async/await for better readability.
-- Keep functions small and focused (single responsibility).
-
-</BEST_PRACTICES>
+#include "prompts/BEST_PRACTICES.md"
