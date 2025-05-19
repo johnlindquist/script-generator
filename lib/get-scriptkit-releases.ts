@@ -211,32 +211,6 @@ const getCachedLinuxarm64 = unstable_cache(
   }
 )
 
-const getCachedBetaRelease = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const betaRelease = releases.find(
-      release =>
-        release.prerelease ||
-        release.name?.toLowerCase().includes('beta') ||
-        release.name?.toLowerCase().includes('alpha')
-    )
-
-    if (betaRelease) {
-      return {
-        html_url: betaRelease.html_url,
-        tag_name: betaRelease.tag_name,
-      }
-    }
-
-    return null
-  },
-  ['beta-release'],
-  {
-    revalidate: false,
-    tags: ['beta-release'],
-  }
-)
-
 function findStableRelease(releases: GitHubRelease[]) {
   return releases.find(
     release =>
@@ -278,5 +252,20 @@ export type BetaRelease = {
 }
 
 export async function getBetaRelease(): Promise<BetaRelease | null> {
-  return getCachedBetaRelease()
+  const releases = await fetchAllReleases()
+  const betaReleaseData = releases.find(
+    release =>
+      release.prerelease ||
+      release.name?.toLowerCase().includes('beta') ||
+      release.name?.toLowerCase().includes('alpha')
+  )
+
+  if (betaReleaseData) {
+    return {
+      html_url: betaReleaseData.html_url,
+      tag_name: betaReleaseData.tag_name,
+    }
+  }
+
+  return null
 }
