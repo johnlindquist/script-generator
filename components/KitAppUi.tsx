@@ -5,6 +5,7 @@ import classNames from 'classnames'
 import useSWR from 'swr'
 import type { ScriptsResponse } from '@/types'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const KitAppUI: React.FC<React.PropsWithChildren<any>> = ({}) => {
   const [activeScript, setActiveScript] = React.useState<ScriptsResponse['scripts'][0] | null>(null)
   const { data: scripts, isLoading: isLoadingScripts } = useSWR<ScriptsResponse>(
@@ -84,6 +85,7 @@ const KitAppUI: React.FC<React.PropsWithChildren<any>> = ({}) => {
                 <div className="bg-white/5 flex h-5 rounded-[5px] w-full animate-pulse" />
               </li>
             ))}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {scripts?.scripts?.map((script: any) => {
             const isActive = activeScript?.id === script.id
             return (

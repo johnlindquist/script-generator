@@ -20,7 +20,6 @@ import {
 } from '@/lib/get-scriptkit-releases'
 import React from 'react'
 import ScrollToContent from '@/components/ScrollToContent'
-import KitAppUI from '@/components/KitAppUi'
 import Image from 'next/image'
 
 export const dynamic = 'force-dynamic'
@@ -53,10 +52,10 @@ export default async function Home() {
       </div>
       <div className="flex justify-center items-center w-full relative bg-gray-950 border-t lg:py-16 py-8">
         <div className="container grid lg:grid-cols-2 grid-cols-1 gap-5 lg:gap-10 mx-auto px-5">
-          <div className="relative rounded border border-white/5 overflow-hidden flex items-center justify-center lg:p-10 xl:p-16 p-2">
+          <div className="relative rounded border border-white/5 overflow-hidden flex items-center justify-center lg:p-10 xl:p-16 p-2 min-w-full">
             <Image
-              src="/assets/wallpaper.jpg"
-              alt="wallpaper"
+              src="/assets/desktop_cropped.png"
+              alt="desktop"
               className="object-cover"
               quality={100}
               fill
@@ -66,7 +65,6 @@ export default async function Home() {
               <div className="bg-yellow-400 w-2 h-2 rounded-full" />
               <div className="bg-green-400 w-2 h-2 rounded-full" />
             </div>
-            <KitAppUI />
           </div>
           <article className="prose prose-lg prose-invert py-8 px-2">
             <ReactMarkdown>{`
@@ -84,8 +82,8 @@ Simply put, Script Kit helps you script away the friction of your day.
 
 ### Key Features
 
-- Launch the prompt from anywhere as part of your flow
-- // TODO: Add more
+- Launch scripts from anywhere
+- Friendly TypeScript SDK with built-in UIs and helpers
 - [Documentation](https://johnlindquist.github.io/kit-docs/)
 - [Script Kit GitHub Discussions](https://github.com/johnlindquist/kit/discussions)
             `}</ReactMarkdown>
