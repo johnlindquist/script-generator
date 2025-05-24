@@ -1,4 +1,5 @@
 import { toast } from 'react-hot-toast'
+import { logInteraction } from './interaction-logger'
 
 export async function generateDraft(
   prompt: string,
@@ -15,6 +16,7 @@ export async function generateDraft(
     method: 'POST',
     headers,
     body: JSON.stringify({ prompt, requestId, luckyRequestId }),
+    credentials: 'include',
   })
 
   if (response.status === 401) {
@@ -56,6 +58,7 @@ export async function saveScript(prompt: string, editableScript: string): Promis
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, code: editableScript, saved: true }),
+    credentials: 'include',
   })
   if (!response.ok) {
     throw new Error('Failed to save script')
@@ -67,6 +70,7 @@ export async function saveAndInstallScript(prompt: string, editableScript: strin
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, code: editableScript, saved: true }),
+    credentials: 'include',
   })
   if (!scriptResponse.ok) {
     throw new Error('Failed to save script before install')
@@ -78,6 +82,7 @@ export async function saveAndInstallScript(prompt: string, editableScript: strin
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scriptId: id }),
+    credentials: 'include',
   })
   if (!installResponse.ok) {
     throw new Error('Failed to track install')
@@ -95,7 +100,9 @@ interface UsageResponse {
 }
 
 export async function fetchUsage(): Promise<UsageResponse> {
-  const response = await fetch('/api/usage')
+  const response = await fetch('/api/usage', {
+    credentials: 'include',
+  })
   if (!response.ok) {
     throw new Error('Failed to fetch usage')
   }
@@ -112,6 +119,7 @@ export async function generateLucky(timestamp: string): Promise<LuckyResponse> {
     headers: {
       'Interaction-Timestamp': timestamp,
     },
+    credentials: 'include',
   })
 
   if (response.status === 401) {
@@ -137,6 +145,7 @@ interface StreamCallbacks {
   onStartStreaming?: () => void
   onScriptId?: (scriptId: string) => void
   onChunk?: (text: string) => void
+  onComplete?: () => void
   onError?: (error: Error) => void
 }
 
@@ -176,6 +185,7 @@ export async function generateDraftWithStream(
         luckyRequestId,
       }),
       signal,
+      credentials: 'include',
     })
 
     console.log('[API] Fetch response received:', {
@@ -347,7 +357,7 @@ export async function generateOpenRouterDraftWithStream(
   timestamp: string,
   signal: AbortSignal,
   callbacks: StreamCallbacks = {},
-  extractReasoning: boolean = false
+  extractReasoning = false
 ): Promise<void> {
   console.log('[API] Starting generateOpenRouterDraftWithStream:', {
     prompt: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
@@ -381,6 +391,7 @@ export async function generateOpenRouterDraftWithStream(
         extractReasoning,
       }),
       signal,
+      credentials: 'include',
     })
 
     console.log('[API] OpenRouter fetch response received:', {
@@ -567,9 +578,241 @@ export async function generateOpenRouterDraftWithStream(
   }
 }
 
+export async function generateAIGatewayDraftWithStream(
+  prompt: string,
+  luckyRequestId: string | null,
+  timestamp: string,
+  signal: AbortSignal,
+  callbacks: StreamCallbacks = {},
+  extractReasoning = false
+): Promise<void> {
+  await logInteraction(timestamp, 'client', 'Starting generateAIGatewayDraftWithStream', {
+    prompt: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
+    promptLength: prompt.length,
+    luckyRequestId,
+    isAborted: signal.aborted,
+    extractReasoning,
+    environment: process.env.NODE_ENV,
+    fix: 'Using accumulated content instead of individual chunks',
+  })
+
+  try {
+    await logInteraction(timestamp, 'client', 'Making fetch request to /api/generate-ai-gateway', {
+      method: 'POST',
+      hasTimestamp: !!timestamp,
+      hasPrompt: !!prompt,
+      promptLength: prompt.length,
+    })
+
+    const res = await fetch('/api/generate-ai-gateway', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Interaction-Timestamp': timestamp,
+      },
+      body: JSON.stringify({
+        prompt,
+        luckyRequestId,
+        extractReasoning,
+      }),
+      signal,
+      credentials: 'include',
+    })
+
+    await logInteraction(timestamp, 'client', 'AI Gateway fetch response received', {
+      status: res.status,
+      ok: res.ok,
+      statusText: res.statusText,
+      headers: Object.fromEntries([...res.headers.entries()]),
+      hasBody: !!res.body,
+    })
+
+    if (res.status === 401) {
+      await logInteraction(timestamp, 'client', 'Unauthorized error in AI Gateway', {
+        headers: Object.fromEntries([...res.headers.entries()]),
+      })
+      throw new Error('UNAUTHORIZED')
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      await logInteraction(timestamp, 'client', 'AI Gateway response not OK', {
+        status: res.status,
+        data,
+        statusText: res.statusText,
+        headers: Object.fromEntries([...res.headers.entries()]),
+      })
+
+      // Add toast notifications for different error cases
+      if (res.status === 429) {
+        toast.error('Daily generation limit reached. Try again tomorrow!')
+      } else if (res.status === 401) {
+        toast.error('Session expired. Please sign in again.')
+      } else {
+        toast.error(data.error || 'Failed to generate draft')
+      }
+
+      throw new Error(data.error || 'Failed to generate draft')
+    }
+
+    const reader = res.body?.getReader()
+    if (!reader) {
+      await logInteraction(timestamp, 'client', 'No reader available for AI Gateway', {
+        responseType: res.type,
+        hasBody: !!res.body,
+      })
+      throw new Error('No reader available')
+    }
+
+    await logInteraction(timestamp, 'client', 'Starting to read AI Gateway stream', {
+      hasCallbacks: {
+        onStartStreaming: !!callbacks.onStartStreaming,
+        onScriptId: !!callbacks.onScriptId,
+        onChunk: !!callbacks.onChunk,
+        onComplete: !!callbacks.onComplete,
+        onError: !!callbacks.onError,
+      },
+    })
+
+    // Signal that streaming has started
+    callbacks.onStartStreaming?.()
+
+    let buffer = ''
+    let scriptId = ''
+    let isFirstChunk = true
+    let chunkCount = 0
+    let accumulatedContent = ''
+
+    try {
+      while (true) {
+        if (signal.aborted) {
+          await logInteraction(timestamp, 'client', 'AI Gateway stream aborted by signal', {
+            chunkCount,
+            bufferLength: buffer.length,
+          })
+          break
+        }
+
+        const { done, value } = await reader.read()
+
+        if (done) {
+          await logInteraction(timestamp, 'client', 'AI Gateway stream completed', {
+            totalChunks: chunkCount,
+            finalBufferLength: buffer.length,
+            hasScriptId: !!scriptId,
+          })
+          break
+        }
+
+        chunkCount++
+
+        const chunkText = new TextDecoder().decode(value)
+        buffer += chunkText
+
+        await logInteraction(timestamp, 'client', 'AI Gateway chunk received', {
+          chunkNumber: chunkCount,
+          chunkLength: chunkText.length,
+          bufferLength: buffer.length,
+          isFirstChunk,
+          preview: chunkText.substring(0, 50).replace(/\n/g, '\\n'),
+        })
+
+        // Extract script ID if present (only check once)
+        if (isFirstChunk) {
+          const match = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+          if (match) {
+            scriptId = match[1]
+            buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+            await logInteraction(timestamp, 'client', 'AI Gateway script ID extracted', {
+              scriptId,
+              bufferLengthAfterRemoval: buffer.length,
+            })
+            callbacks.onScriptId?.(scriptId)
+          }
+          isFirstChunk = false
+        }
+
+        // Process this chunk and add it to accumulated content
+        if (chunkText && callbacks.onChunk) {
+          // For AI Gateway, we process the chunk text directly
+          let processedChunk = chunkText
+
+          // Remove script ID from the chunk if it's still there
+          if (processedChunk.includes('__SCRIPT_ID__')) {
+            processedChunk = processedChunk.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '')
+          }
+
+          if (processedChunk) {
+            // Add to accumulated content
+            accumulatedContent += processedChunk
+
+            await logInteraction(
+              timestamp,
+              'client',
+              'AI Gateway sending accumulated content to callback',
+              {
+                chunkNumber: chunkCount,
+                processedChunkLength: processedChunk.length,
+                accumulatedLength: accumulatedContent.length,
+                preview: accumulatedContent.substring(0, 30).replace(/\n/g, '\\n'),
+              }
+            )
+
+            // Send the accumulated content, not just the chunk
+            callbacks.onChunk(accumulatedContent)
+          }
+        }
+
+        // Small delay to prevent overwhelming the UI
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+
+      // Signal completion
+      await logInteraction(timestamp, 'client', 'AI Gateway calling onComplete callback', {
+        finalBufferLength: buffer.length,
+        finalAccumulatedLength: accumulatedContent.length,
+        scriptId,
+        totalChunks: chunkCount,
+        accumulatedPreview: accumulatedContent.substring(0, 100).replace(/\n/g, '\\n'),
+      })
+
+      callbacks.onComplete?.()
+    } catch (readerError) {
+      await logInteraction(timestamp, 'client', 'Error reading AI Gateway stream', {
+        error: readerError instanceof Error ? readerError.message : String(readerError),
+        chunkCount,
+        bufferLength: buffer.length,
+      })
+      callbacks.onError?.(
+        readerError instanceof Error ? readerError : new Error(String(readerError))
+      )
+      throw readerError
+    } finally {
+      // Ensure reader is properly closed
+      try {
+        reader.releaseLock()
+        await logInteraction(timestamp, 'client', 'AI Gateway reader lock released', {})
+      } catch (releaseError) {
+        await logInteraction(timestamp, 'client', 'Error releasing AI Gateway reader lock', {
+          error: releaseError instanceof Error ? releaseError.message : String(releaseError),
+        })
+      }
+    }
+  } catch (error) {
+    await logInteraction(timestamp, 'client', 'Error in generateAIGatewayDraftWithStream', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      environment: process.env.NODE_ENV,
+    })
+
+    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)))
+    throw error
+  }
+}
+
 // Function to choose between implementations
 export async function generateDraftWithProvider(
-  provider: 'default' | 'openrouter',
+  provider: 'default' | 'openrouter' | 'ai-gateway',
   prompt: string,
   luckyRequestId: string | null,
   timestamp: string,
@@ -586,7 +829,18 @@ export async function generateDraftWithProvider(
       callbacks,
       options.extractReasoning
     )
-  } else {
-    return generateDraftWithStream(prompt, luckyRequestId, timestamp, signal, callbacks)
   }
+
+  if (provider === 'ai-gateway') {
+    return generateAIGatewayDraftWithStream(
+      prompt,
+      luckyRequestId,
+      timestamp,
+      signal,
+      callbacks,
+      options.extractReasoning
+    )
+  }
+
+  return generateDraftWithStream(prompt, luckyRequestId, timestamp, signal, callbacks)
 }

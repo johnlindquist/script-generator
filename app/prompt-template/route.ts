@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { DRAFT_PASS_PROMPT } from '../api/generate-openrouter/prompt'
+import { DRAFT_PASS_PROMPT } from '../api/generate-ai-gateway/prompt'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'

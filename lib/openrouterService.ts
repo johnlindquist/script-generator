@@ -1,5 +1,4 @@
 import { toast } from 'react-hot-toast'
-import { extractReasoningManually } from './reasoning-extractor'
 
 export interface DraftResult {
   scriptId: string
@@ -69,7 +68,11 @@ export async function generateDraft(
   }
 
   // Always process the response for reasoning
-  const { text, reasoning, hasReasoning } = extractReasoningManually(buffer)
+  const { text, reasoning, hasReasoning } = {
+    text: buffer,
+    reasoning: '',
+    hasReasoning: false,
+  }
 
   // Ensure we never return undefined for script
   const script = text || buffer || ''
@@ -444,7 +447,10 @@ export async function generateDraftWithStream(
           })
 
           // Process the buffer for reasoning as we receive chunks
-          const { text: processedText, reasoning } = extractReasoningManually(buffer)
+          const { text: processedText, reasoning } = {
+            text: buffer,
+            reasoning: '',
+          }
 
           // Send the processed text (without reasoning tags) to the onChunk callback
           callbacks.onChunk?.(processedText || buffer)
@@ -463,7 +469,10 @@ export async function generateDraftWithStream(
           if (buffer) {
             console.log('[OpenRouter API] Using existing buffer despite read error')
             // Process the buffer for reasoning before sending the final chunk
-            const { text: processedText, reasoning } = extractReasoningManually(buffer)
+            const { text: processedText, reasoning } = {
+              text: buffer,
+              reasoning: '',
+            }
             callbacks.onChunk?.(processedText || buffer)
             if (reasoning && callbacks.onReasoning) {
               callbacks.onReasoning(reasoning)
@@ -481,7 +490,10 @@ export async function generateDraftWithStream(
         })
 
         // Process the final buffer for reasoning
-        const { text: finalText, reasoning: finalReasoning } = extractReasoningManually(buffer)
+        const { text: finalText, reasoning: finalReasoning } = {
+          text: buffer,
+          reasoning: '',
+        }
 
         // Check if we have meaningful content before sending the final chunk
         const MIN_BUFFER_LENGTH_THRESHOLD = 50

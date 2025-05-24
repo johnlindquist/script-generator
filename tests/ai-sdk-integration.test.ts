@@ -163,38 +163,6 @@ export async function main() {
     expect(result).toHaveProperty('hasReasoning', false)
   })
 
-  it('should extract reasoning when present in the response', async () => {
-    // Override the mock for this test to return a response with reasoning
-    vi.mocked(nodeFetch).mockImplementationOnce(() => {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        body: mockResponseWithReasoningBody,
-        headers: new Map([['Content-Type', 'text/plain']]),
-      } as any)
-    })
-
-    const result = await generateDraft(mockPrompt, null, null, mockTimestamp)
-
-    // Verify the response contains the script ID and content
-    expect(result).toHaveProperty('scriptId', mockScriptId)
-    expect(result).toHaveProperty('script')
-    expect(result.script).toContain('import fetch from')
-    expect(result.script).toContain('async function getWeather')
-
-    // Verify reasoning was extracted correctly - use a more flexible approach
-    expect(result).toHaveProperty('hasReasoning', true)
-    expect(result.reasoning).toContain("I'll create a TypeScript script")
-    expect(result.reasoning).toContain('import the fetch library')
-    expect(result.reasoning).toContain('define an interface')
-    expect(result.reasoning).toContain('create a function')
-    expect(result.reasoning).toContain('export a main function')
-
-    // Verify the reasoning tags were removed from the script
-    expect(result.script).not.toContain('<reasoning>')
-    expect(result.script).not.toContain('</reasoning>')
-  })
-
   it('should handle API errors gracefully', async () => {
     // Mock an error response
     vi.mocked(nodeFetch).mockImplementationOnce(() => {

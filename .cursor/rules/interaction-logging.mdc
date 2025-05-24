@@ -1,0 +1,72 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Interaction Logging for Debugging
+
+## AGGRESSIVE USE OF INTERACTION LOGGER
+
+When adding new features, debugging issues, or troubleshooting code, **ALWAYS** prioritize using the [interaction-logger.ts](mdc:lib/interaction-logger.ts) as the primary debugging tool.
+
+## WHEN TO USE INTERACTION LOGGING
+
+- **New Feature Development**: Log key interaction points as you build
+- **Debugging Issues**: Add logging before diving into complex debugging
+- **State Machine Changes**: Log state transitions and actions in XState machines
+- **API Route Development**: Log request/response cycles
+- **Client-Side Interactions**: Log user actions and component state changes
+- **Performance Investigation**: Log timing and data flow
+
+## HOW TO USE THE LOGGER
+
+The `logInteraction` function signature:
+```typescript
+logInteraction(
+  interactionTimestamp: string,    // Unique identifier for this interaction session
+  stage: 'client' | 'stateMachine' | 'serverRoute',
+  message: string,                 // Descriptive message
+  data?: Record<string, unknown>   // Optional structured data
+)
+```
+
+## LOGGING STAGES
+
+- **`client`**: Use for React components, user interactions, browser-side logic
+- **`stateMachine`**: Use for XState machine actions, guards, services, state transitions  
+- **`serverRoute`**: Use for API routes, server-side logic, database operations
+
+## BEST PRACTICES
+
+1. **Generate unique `interactionTimestamp`** at the start of each user interaction/session
+2. **Log entry and exit points** of functions and components
+3. **Log state changes** in React components and XState machines
+4. **Log API calls** with request/response data
+5. **Use descriptive messages** that explain the context
+6. **Include relevant data** in the optional data parameter
+7. **Group related logs** with the same `interactionTimestamp`
+
+## EXAMPLE USAGE PATTERNS
+
+```typescript
+// At start of user interaction
+const interactionId = `user-action-${Date.now()}`
+
+// In React components
+await logInteraction(interactionId, 'client', 'Button clicked', { buttonId: 'submit' })
+
+// In XState machines  
+await logInteraction(interactionId, 'stateMachine', 'State transition', { from: 'idle', to: 'loading' })
+
+// In API routes
+await logInteraction(interactionId, 'serverRoute', 'Processing request', { endpoint: '/api/data' })
+```
+
+## DEBUGGING WORKFLOW
+
+1. **Before investigating**: Add interaction logging to suspected problem areas
+2. **Trace the flow**: Use consistent `interactionTimestamp` to follow execution path
+3. **Log assumptions**: Verify your assumptions about data flow and state
+4. **Remove or keep**: After debugging, decide if logs should remain for monitoring
+
+Remember: The logger automatically handles development vs production environments, so use it liberally during development!

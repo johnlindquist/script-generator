@@ -20,6 +20,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Skip middleware authentication for AI Gateway route (it handles auth internally)
+  if (request.nextUrl.pathname === '/api/generate-ai-gateway') {
+    return NextResponse.next()
+  }
+
   // Only apply rate limiting to the generate endpoint
   if (!request.nextUrl.pathname.startsWith('/api/generate')) {
     return NextResponse.next()

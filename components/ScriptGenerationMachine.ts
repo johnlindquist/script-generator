@@ -1,12 +1,8 @@
 import { setup, assign, fromPromise } from 'xstate'
 import { toast } from 'react-hot-toast'
 import { logInteraction } from '@/lib/interaction-logger'
-import { saveScript, saveAndInstallScript } from '@/lib/apiService'
-import {
-  generateDraftWithStream,
-  generateOpenRouterDraftWithStream,
-} from '@/lib/apiStreamingServices'
-import { ScriptGenerationEvent } from '@/types/scriptGeneration'
+import { saveScript, saveAndInstallScript, generateDraftWithProvider } from '@/lib/apiService'
+import type { ScriptGenerationEvent } from '@/types/scriptGeneration'
 import { scriptGenerationConfig } from '@/lib/config'
 
 /**
@@ -97,12 +93,28 @@ export const scriptGenerationMachine = setup({
       }
 
       try {
-        // Use the appropriate function based on the configuration
-        if (scriptGenerationConfig.draftProvider === 'openrouter') {
-          return generateOpenRouterDraftWithStream(typedInput, emit)
-        } else {
-          return generateDraftWithStream(typedInput, emit)
-        }
+        // Use the provider routing function that handles all providers
+        return await generateDraftWithProvider(
+          scriptGenerationConfig.draftProvider,
+          typedInput.prompt,
+          typedInput.luckyRequestId,
+          typedInput.interactionTimestamp || new Date().toISOString(),
+          new AbortController().signal,
+          {
+            onStartStreaming: () =>
+              emit({ type: 'START_STREAMING_DRAFT' } as ScriptGenerationEvent),
+            onScriptId: (scriptId: string) =>
+              emit({ type: 'SET_SCRIPT_ID', scriptId } as ScriptGenerationEvent),
+            onChunk: (text: string) =>
+              emit({ type: 'UPDATE_EDITABLE_SCRIPT', script: text } as ScriptGenerationEvent),
+            onComplete: () => emit({ type: 'COMPLETE_GENERATION' } as ScriptGenerationEvent),
+            onError: (error: Error) => {
+              console.error('Streaming error in state machine:', error)
+              emit({ type: 'SET_ERROR', error: error.message } as ScriptGenerationEvent)
+            },
+          },
+          { extractReasoning: scriptGenerationConfig.extractReasoning }
+        )
       } catch (error) {
         console.error('Error generating draft script:', error)
 

@@ -57,3 +57,5 @@ drafts/
 dist/
 generated/
 database-backups
+# SpecStory explanation file
+.specstory/.what-is-this.md
