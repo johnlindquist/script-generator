@@ -31,10 +31,27 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           />
         </div>
         <div className="pl-2">
-          <div className="text-lg font-semibold leading-none">Script Kit</div>
-          <div className="text-sm opacity-80 leading-none hidden sm:block">by John Lindquist</div>
+          <div>
+            <div className="text-lg font-semibold leading-none">Script Kit</div>
+            <div className="text-sm opacity-80 leading-none hidden sm:block">by John Lindquist</div>
+          </div>
         </div>
       </Link>
+      <div className="flex-grow flex justify-center items-center">
+        <a
+          href="https://vercel.com/oss"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden md:flex items-center transition-opacity hover:opacity-80"
+        >
+          <Image
+            src="https://vercel.com/oss/program-badge.svg"
+            alt="Vercel OSS Program"
+            width={256}
+            height={72}
+          />
+        </a>
+      </div>
       <div className="flex gap-4 items-center">
         <Link href={STRINGS.SOCIAL.DOCS_URL} target="_blank" rel="noopener noreferrer">
           <BookOpenIcon className="w-5 h-5 hover:text-amber-400 transition-colors" />
@@ -163,6 +180,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
                   <Menu.Item>
                     {({ active }) => (
                       <button
+                        type="button"
                         onClick={() => signOut()}
                         className={`w-full text-left px-4 py-2 text-sm text-amber-300 hover:bg-neutral-700 rounded-b-lg transition-colors flex items-center gap-2 ${
                           active ? 'bg-neutral-700' : ''
