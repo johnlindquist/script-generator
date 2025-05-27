@@ -1203,6 +1203,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
             }}
             isAuthenticated={isAuthenticated}
             maxDepth={5}
+            showSignInModal={showSignInModal}
           />
         </div>
       )}

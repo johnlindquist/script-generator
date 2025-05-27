@@ -13,10 +13,11 @@ interface Props {
   onGenerate?: () => void
   isAuthenticated: boolean
   maxDepth?: number
+  showSignInModal: () => void
 }
 
 export default function AIPromptBuilder(props: Props) {
-  const { prompt, setPrompt, onGenerate, isAuthenticated, maxDepth = 5 } = props // Default maxDepth to 5 as per mock
+  const { prompt, setPrompt, onGenerate, isAuthenticated, maxDepth = 5, showSignInModal } = props // Default maxDepth to 5 as per mock
   const [breadcrumb, setBreadcrumb] = useState<string>('')
   const [tier, setTier] = useState(1)
   const [refreshVersion, setRefreshVersion] = useState(0)
@@ -40,6 +41,11 @@ export default function AIPromptBuilder(props: Props) {
 
   const handleSelectSuggestion = (suggestion: string): void => {
     if (!sessionInteractionId) return
+
+    if (!isAuthenticated) {
+      showSignInModal()
+      return
+    }
 
     logInteraction(sessionInteractionId, 'client', 'AIPromptBuilder: handleChoose called', {
       btnText: suggestion,
