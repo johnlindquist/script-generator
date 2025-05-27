@@ -6,19 +6,13 @@ import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
 
-import {
-  DocumentCheckIcon,
-  ArrowPathIcon,
-  ArrowDownTrayIcon,
-  SparklesIcon,
-} from '@heroicons/react/24/solid'
+import { DocumentCheckIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 import { motion } from 'framer-motion'
 import { STRINGS } from '@/lib/strings'
-import ScriptSuggestions from '@/components/ScriptSuggestions'
+import AIPromptBuilder from '@/components/AIPromptBuilder'
 import { scriptGenerationMachine } from './ScriptGenerationMachine'
 import { useMachine } from '@xstate/react'
 import toast from 'react-hot-toast'
-import type { Suggestion } from '@/lib/getRandomSuggestions'
 import { fetchUsage, generateLucky, generateDraftWithProvider } from '@/lib/apiService'
 import { scriptGenerationConfig } from '@/lib/config'
 import { Button } from './ui/button'
@@ -38,6 +32,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Loader2 } from 'lucide-react'
 import ScriptDebugPanel from '@/components/ScriptDebugPanel'
 import { createEnhancePrompt } from '@/lib/scriptUtils'
+import { Sparkles } from 'lucide-react'
 
 interface EditorRef {
   getModel: () => {
@@ -71,7 +66,6 @@ interface EditorRef {
 interface Props {
   isAuthenticated: boolean
   heading: string
-  suggestions: Suggestion[]
 }
 
 const AnimatedText = ({ text }: { text: string }) => {
@@ -113,7 +107,7 @@ const handleUnauthorized = () => {
   }, 2500)
 }
 
-export default function ScriptGenerationClient({ isAuthenticated, heading, suggestions }: Props) {
+export default function ScriptGenerationClient({ isAuthenticated, heading }: Props) {
   const [state, send, service] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -770,7 +764,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
 
   const isGenerating = state.matches('generatingDraft')
 
-  const isThinking = state.matches('thinkingDraft')
+  const isThinking = state.context.isFromSuggestion
   const generationPhase = state.matches('thinkingDraft')
     ? 'thinkingDraft'
     : state.matches('generatingDraft')
@@ -1174,49 +1168,41 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
       )}
 
       {!state.context.generatedScript && !isGenerating && !isThinking && (
-        <div className="justify-center mt-4 max-w-3xl mx-auto flex items-center gap-2">
-          {/* <h2 className="text-muted-foreground mb-4 mt-8 text-sm text-center">
-            {STRINGS.SCRIPT_GENERATION.scriptSuggestionsHeading}
-          </h2> */}
-          <Button
-            variant="outline"
-            type="button"
-            size="sm"
-            className="rounded-full"
-            onClick={handleFeelingLucky}
-            disabled={state.matches('generatingDraft')}
-            // className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-black font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
-          >
-            <SparklesIcon className="w-5 h-5" />
-            I'm Feeling Lucky
-          </Button>
-          <ScriptSuggestions
-            suggestions={suggestions}
-            setPrompt={prompt => {
-              send({ type: 'SET_PROMPT', prompt })
+        <div className="max-w-3xl mx-auto mt-6 space-y-6">
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              type="button"
+              size="sm"
+              className="h-8 px-4 text-xs rounded-full border-white/10  text-white bg-white/10 hover:bg-purple-600 transition-all duration-200"
+              onClick={handleFeelingLucky}
+              disabled={state.matches('generatingDraft')}
+            >
+              <Sparkles className="w-4 h-4 mr-2 text-white/50 hover:text-primary" />
+              I'm Feeling Lucky
+            </Button>
+          </div>
+
+          <AIPromptBuilder
+            prompt={state.context.prompt}
+            setPrompt={p => {
+              send({ type: 'SET_PROMPT', prompt: p })
             }}
-            setIsFromSuggestion={value => {
-              send({ type: 'FROM_SUGGESTION', value })
-            }}
-            onSelect={() => {
-              // Only proceed if user is authenticated
+            onGenerate={() => {
               if (!isAuthenticated) {
                 showSignInModal()
                 return
               }
 
-              // Generate a timestamp for the interaction
               const interactionTimestamp = new Date()
                 .toISOString()
                 .replace(/[:.]/g, '-')
                 .replace('Z', '')
 
-              // Trigger generation immediately
               send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
-
-              // Reset isFromSuggestion to prevent duplicate generation from the useEffect
-              send({ type: 'FROM_SUGGESTION', value: false })
             }}
+            isAuthenticated={isAuthenticated}
+            maxDepth={5}
           />
         </div>
       )}
@@ -1302,7 +1288,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading, sugge
                         }}
                         className="bg-gradient-to-tr from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
                       >
-                        <SparklesIcon className="w-5 h-5" />
+                        <Sparkles className="w-5 h-5" />
                         Revise with AI
                       </button>
                     </div>

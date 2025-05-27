@@ -21,7 +21,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Skip middleware authentication for AI Gateway route (it handles auth internally)
-  if (request.nextUrl.pathname === '/api/generate-ai-gateway') {
+  if (
+    request.nextUrl.pathname === '/api/generate-ai-gateway' ||
+    request.nextUrl.pathname === '/api/next-suggestions'
+  ) {
     return NextResponse.next()
   }
 

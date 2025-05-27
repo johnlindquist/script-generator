@@ -55,6 +55,11 @@ function getBaseUrl() {
     return `https://${process.env.VERCEL_URL}`
   }
 
-  // Assume localhost
+  // For development server-side, use localhost:3000 or NEXT_PUBLIC_APP_URL
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  }
+
+  // Fallback for other environments (e.g., production server-side if not Vercel)
   return 'http://localhost:3000'
 }

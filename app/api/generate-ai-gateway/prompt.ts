@@ -47,6 +47,10 @@ ${getExampleScripts()}
 ${getMetadataContent()}
 </METADATA>
 
+<STRUCTURED_SCRIPT_KIT_DOCS>
+{structured_script_kit_docs}
+</STRUCTURED_SCRIPT_KIT_DOCS>
+
 <PROMPT>
 ${getPromptContent()}
 </PROMPT>

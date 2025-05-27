@@ -15,27 +15,6 @@ function ensureLogDir() {
 }
 
 /**
- * Clean up old interaction logs (older than 24 hours)
- */
-function cleanupOldLogs() {
-  if (process.env.NODE_ENV !== 'development') return
-
-  if (!fs.existsSync(LOG_DIR)) return
-
-  const files = fs.readdirSync(LOG_DIR)
-  const now = Date.now()
-  const oneDayAgo = now - 24 * 60 * 60 * 1000
-
-  files.forEach(file => {
-    const filePath = path.join(LOG_DIR, file)
-    const stats = fs.statSync(filePath)
-    if (stats.mtimeMs < oneDayAgo) {
-      fs.unlinkSync(filePath)
-    }
-  })
-}
-
-/**
  * API route to handle interaction logging
  */
 export async function POST(request: Request) {
@@ -48,7 +27,12 @@ export async function POST(request: Request) {
   const origin = headersList.get('origin') || ''
   const allowedOrigins = ['http://localhost:3000', process.env.VERCEL_URL].filter(Boolean)
 
-  if (!allowedOrigins.includes(origin) && origin !== '') {
+  // Allow all origins in development if NEXT_PUBLIC_APP_URL is not set, or if it matches
+  // This is a simplified check for development; refine for production if needed
+  const isAllowedOrigin = process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)
+
+  if (!isAllowedOrigin && origin !== '') {
+    console.warn(`log-interaction: Forbidden origin: ${origin}`)
     return new NextResponse(null, {
       status: 403,
       statusText: 'Forbidden',
@@ -57,9 +41,12 @@ export async function POST(request: Request) {
 
   try {
     const { interactionTimestamp, logEntry } = await request.json()
+    // Console log to verify received data
+    console.log(
+      `[log-interaction API] Received log for ${interactionTimestamp}: "${logEntry?.message}"`
+    )
 
     ensureLogDir()
-    cleanupOldLogs() // Clean up old logs on each request
 
     const filename = `${interactionTimestamp}__interaction.log`
     const filePath = path.join(LOG_DIR, filename)
@@ -69,20 +56,32 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ success: true })
 
     // Set CORS headers
-    response.headers.set('Access-Control-Allow-Origin', origin)
+    if (origin) {
+      // Only set if origin is present
+      response.headers.set('Access-Control-Allow-Origin', origin)
+    }
     response.headers.set('Access-Control-Allow-Methods', 'POST')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
 
     return response
   } catch (error) {
-    const response = NextResponse.json({ success: true })
-
-    response.headers.set('Access-Control-Allow-Origin', origin)
-    response.headers.set('Access-Control-Allow-Methods', 'POST')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
-
-    console.error('Error logging interaction:', error)
-    return response
+    let errorMessage = 'Unknown error'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error('[log-interaction API] Error logging interaction:', error)
+    // Return a 500 error status
+    const errorResponse = NextResponse.json(
+      { success: false, error: 'Failed to log interaction', details: errorMessage },
+      { status: 500 }
+    )
+    if (origin) {
+      // Also set CORS for error responses
+      errorResponse.headers.set('Access-Control-Allow-Origin', origin)
+    }
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'POST')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+    return errorResponse
   }
 }
 
@@ -93,8 +92,9 @@ export async function OPTIONS() {
   const headersList = await headers()
   const origin = headersList.get('origin') || ''
   const allowedOrigins = ['http://localhost:3000', process.env.VERCEL_URL].filter(Boolean)
+  const isAllowedOrigin = process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)
 
-  if (!allowedOrigins.includes(origin) && origin !== '') {
+  if (!isAllowedOrigin && origin !== '') {
     return new NextResponse(null, {
       status: 403,
       statusText: 'Forbidden',
@@ -105,8 +105,11 @@ export async function OPTIONS() {
     status: 204,
   })
 
-  response.headers.set('Access-Control-Allow-Origin', origin)
-  response.headers.set('Access-Control-Allow-Methods', 'POST')
+  if (origin) {
+    // Only set if origin is present
+    response.headers.set('Access-Control-Allow-Origin', origin)
+  }
+  response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS') // Add OPTIONS
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
   response.headers.set('Access-Control-Max-Age', '86400')
 

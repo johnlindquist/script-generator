@@ -7,7 +7,6 @@ import ScriptKitDownload from '@/components/ScriptKitDownload'
 import SponsorBackground from '@/components/SponsorBackground'
 import Testimonials from '@/components/Testimonials'
 import { getRandomHeading } from '@/lib/getRandomHeading'
-import { getRandomSuggestions } from '@/lib/getRandomSuggestions'
 import { getTestimonials } from '@/lib/get-testimonials'
 import {
   getMacIntelRelease,
@@ -21,13 +20,11 @@ import {
 import React from 'react'
 import ScrollToContent from '@/components/ScrollToContent'
 import Image from 'next/image'
-
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
-  const suggestions = getRandomSuggestions()
   const testimonials = getTestimonials()
 
   const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
@@ -44,11 +41,7 @@ export default async function Home() {
     <div id="layout" className="relative min-h-screen">
       <div className="border-t relative bg-gradient-to-b from-gray-900 to-background lg:py-20 py-10 md:min-h-[80vh] flex items-center justify-center flex-col">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] w-full h-full from-gray-800/50 via-background/80 to-background pointer-events-none" />
-        <ScriptGenerationClient
-          isAuthenticated={!!session}
-          heading={heading}
-          suggestions={suggestions}
-        />
+        <ScriptGenerationClient isAuthenticated={!!session} heading={heading} />
       </div>
       <div className="flex justify-center items-center w-full relative bg-gray-950 border-t lg:py-16 py-8">
         <div className="container grid lg:grid-cols-2 grid-cols-1 gap-5 lg:gap-10 mx-auto px-5">

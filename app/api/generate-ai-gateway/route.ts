@@ -235,6 +235,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
 
+    // Fetch structured script kit docs
+    let structuredScriptKitDocsContent = ''
+    try {
+      const origin = new URL(req.url).origin
+      const scriptKitDocsUrl = new URL('/api/script-kit-docs', origin)
+      const scriptKitDocsRes = await fetch(scriptKitDocsUrl.toString())
+      if (scriptKitDocsRes.ok) {
+        const docsData = await scriptKitDocsRes.json()
+        structuredScriptKitDocsContent = JSON.stringify(docsData, null, 2)
+      } else {
+        await logInteraction(
+          interactionTimestamp,
+          'serverRoute',
+          'Failed to fetch script kit docs',
+          {
+            requestId,
+            status: scriptKitDocsRes.status,
+            statusText: scriptKitDocsRes.statusText,
+          }
+        )
+        // Decide if this is a critical failure or if we can proceed without these docs
+        // For now, proceeding with empty content
+      }
+    } catch (error: unknown) {
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Error fetching script kit docs', {
+        requestId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
+      // Proceeding with empty content
+    }
+
     // Create a new script record and store the ID for later use
     await logInteraction(interactionTimestamp, 'serverRoute', 'Creating script record', {
       requestId,
@@ -355,22 +386,22 @@ export async function POST(req: Request) {
         : { type: 'web', id: userId, username: session?.user?.username || 'Unknown' }
 
     // Generate draft script using Vercel AI Gateway
-    const draftPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
-      '{userInfo}',
-      JSON.stringify(userInfo)
+    const draftFinalPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
+      '{structured_script_kit_docs}',
+      structuredScriptKitDocsContent
     )
 
     await logInteraction(interactionTimestamp, 'serverRoute', 'Starting draft generation', {
       requestId,
       model: DEFAULT_MODEL,
       scriptId,
-      promptLength: draftPrompt.length,
+      promptLength: draftFinalPrompt.length,
       userInfo,
     })
 
     // Convert to messages format for AI Gateway
     const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
-      { role: 'user', content: draftPrompt },
+      { role: 'user', content: draftFinalPrompt },
     ]
 
     await logInteraction(
@@ -384,10 +415,11 @@ export async function POST(req: Request) {
       }
     )
 
-    const result = streamText({
-      model: gateway(DEFAULT_MODEL),
+    const result = await streamText({
+      model: gateway.languageModel(DEFAULT_MODEL),
       system: 'You are an expert TypeScript developer that creates clean, well-documented scripts.',
       messages: messages,
+      temperature: 0.4,
       onError: (errorData: { error: unknown }) => {
         const error = errorData.error as Error
         logInteraction(interactionTimestamp, 'serverRoute', 'Error while streaming', {
@@ -407,54 +439,32 @@ export async function POST(req: Request) {
       }
     )
 
-    // Create a custom streaming response that includes script ID
-    const stream = new ReadableStream({
+    const responseStream = new ReadableStream({
       async start(controller) {
+        await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream started', {
+          requestId,
+          luckyRequestId,
+          scriptId,
+          promptLength: draftFinalPrompt.length,
+          userId,
+        })
+
+        let accumulatedCompletion = ''
         try {
-          await logInteraction(interactionTimestamp, 'serverRoute', 'Starting stream controller', {
-            requestId,
-            scriptId,
-          })
-
-          // First, send the script ID
-          const scriptIdText = `__SCRIPT_ID__${scriptId}__SCRIPT_ID__`
-          controller.enqueue(new TextEncoder().encode(scriptIdText))
-
-          await logInteraction(interactionTimestamp, 'serverRoute', 'Script ID sent in stream', {
-            requestId,
-            scriptId,
-          })
-
-          let chunkCount = 0
-
-          // Stream the AI response
           for await (const chunk of result.textStream) {
-            chunkCount++
-            await logInteraction(interactionTimestamp, 'serverRoute', 'Streaming chunk', {
-              requestId,
-              chunkNumber: chunkCount,
-              chunkLength: chunk.length,
-              preview: chunk.substring(0, 30).replace(/\n/g, '\\n'),
-            })
             controller.enqueue(new TextEncoder().encode(chunk))
+            accumulatedCompletion += chunk
           }
-
-          await logInteraction(
-            interactionTimestamp,
-            'serverRoute',
-            'Stream completed successfully',
-            {
-              requestId,
-              totalChunks: chunkCount,
-            }
-          )
-
+          await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream completed', {
+            requestId,
+            completion: accumulatedCompletion.trim(),
+          })
           controller.close()
-        } catch (error) {
+        } catch (error: unknown) {
           await logInteraction(
             interactionTimestamp,
             'serverRoute',
-            'Streaming error in controller',
+            'Error during AI stream processing',
             {
               requestId,
               error: error instanceof Error ? error.message : String(error),
@@ -470,7 +480,7 @@ export async function POST(req: Request) {
       requestId,
     })
 
-    return new Response(stream, {
+    return new Response(responseStream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',
