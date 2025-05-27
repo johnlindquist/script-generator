@@ -205,7 +205,7 @@ export default function AIPromptBuilder(props: Props) {
         <div className="flex items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full bg-primary/50" title={`Current Step: ${tier}`} />
           <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-            Step {tier} of {maxDepth}
+            Step {tier} of {maxDepth - 1}
           </span>
         </div>
       </div>

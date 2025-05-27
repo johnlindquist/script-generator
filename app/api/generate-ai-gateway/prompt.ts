@@ -51,13 +51,11 @@ ${getMetadataContent()}
 {structured_script_kit_docs}
 </STRUCTURED_SCRIPT_KIT_DOCS>
 
+<USER_INFO>
+{userInfo}
+</USER_INFO>
+
 <PROMPT>
 ${getPromptContent()}
 </PROMPT>
-
-<USER_PROMPT>
-{prompt}
-</USER_PROMPT>
-
-Generate ONLY the script content below this line:
 `

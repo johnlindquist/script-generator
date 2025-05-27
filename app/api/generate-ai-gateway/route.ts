@@ -8,6 +8,7 @@ import { logInteraction } from '@/lib/interaction-logger'
 import { streamText } from 'ai'
 import { gateway } from '@/lib/ai-gateway'
 import { DRAFT_PASS_PROMPT } from './prompt'
+import { extractUserInfo } from '@/lib/generation'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
@@ -348,6 +349,15 @@ export async function POST(req: Request) {
       })
     }
 
+    // Fetch database user info for extractUserInfo
+    const dbUser =
+      userId === 'cli-user'
+        ? null
+        : await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, username: true },
+          })
+
     // Check daily limit
     if (usage.count >= DAILY_LIMIT) {
       await logInteraction(interactionTimestamp, 'serverRoute', 'Daily limit exceeded', {
@@ -379,17 +389,22 @@ export async function POST(req: Request) {
       },
     })
 
-    // Get user info for prompt
+    // Get user info for prompt using extractUserInfo
     const userInfo =
       userId === 'cli-user'
-        ? { type: 'cli', id: userId, username: 'CLI Tool' }
-        : { type: 'web', id: userId, username: session?.user?.username || 'Unknown' }
+        ? {
+            name: 'CLI Tool',
+            username: 'CLI Tool',
+            fullName: 'CLI Tool',
+            image: null,
+          }
+        : extractUserInfo(session!, dbUser)
 
     // Generate draft script using Vercel AI Gateway
-    const draftFinalPrompt = DRAFT_PASS_PROMPT.replace('{prompt}', prompt).replace(
+    const draftFinalPrompt = DRAFT_PASS_PROMPT.replace(
       '{structured_script_kit_docs}',
       structuredScriptKitDocsContent
-    )
+    ).replace('{userInfo}', JSON.stringify(userInfo))
 
     await logInteraction(interactionTimestamp, 'serverRoute', 'Starting draft generation', {
       requestId,
@@ -401,7 +416,8 @@ export async function POST(req: Request) {
 
     // Convert to messages format for AI Gateway
     const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
-      { role: 'user', content: draftFinalPrompt },
+      { role: 'system', content: draftFinalPrompt },
+      { role: 'user', content: prompt + ` Generate _ONLY_ the script content below this line.` },
     ]
 
     await logInteraction(
@@ -417,7 +433,6 @@ export async function POST(req: Request) {
 
     const result = await streamText({
       model: gateway.languageModel(DEFAULT_MODEL),
-      system: 'You are an expert TypeScript developer that creates clean, well-documented scripts.',
       messages: messages,
       temperature: 0.4,
       onError: (errorData: { error: unknown }) => {
