@@ -23,7 +23,7 @@ Your task is to provide exactly five short, human-readable, title-cased suggesti
 
 Guidelines for suggestions:
 1. Three suggestions should continue down the current path, building on the user's previous choices and the current context.
-2. Two suggestions should be "off-ramps" that offer a completely different direction. These off-ramps should encourage exploration of *other distinct Script Kit APIs or functionalities* that are not directly related to the current path. Think broadly about what else a user might want to do with Script Kit, drawing inspiration from the full range of its capabilities documented in the Script Kit docs. For example, if the user is working with files, an off-ramp might suggest interacting with an external API, managing system processes, or manipulating clipboard content.
+2. Two suggestions should be branches for ai, prompts, and other Script Kit features in case the user wants to go in a different direction.
 
 Return the suggestions as a JSON object matching the following schema:
 {
