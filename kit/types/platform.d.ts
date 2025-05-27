@@ -185,6 +185,69 @@ export interface Prompt {
 
 type GetPrompts = () => Promise<Prompt[]>
 type AttemptScriptFocus = () => Promise<boolean>
+
+type GetPromptStatus = () => Promise<{
+  status: Array<{
+    windowId: number
+    pid: number
+    boundToProcess: boolean
+    scriptPath: string
+    isVisible: boolean
+    isFocused: boolean
+    isDestroyed: boolean
+    isIdle: boolean
+  }>
+  summary: {
+    total: number
+    visible: number
+    bound: number
+    orphaned: number
+    idle: number
+  }
+}>
+
+type CleanupPrompts = () => Promise<{
+  cleaned: number
+  status: Array<{
+    windowId: number
+    pid: number
+    boundToProcess: boolean
+    scriptPath: string
+    isVisible: boolean
+    isFocused: boolean
+    isDestroyed: boolean
+    isIdle: boolean
+  }>
+  summary: {
+    total: number
+    visible: number
+    bound: number
+    orphaned: number
+    idle: number
+  }
+}>
+
+type ForcePromptCleanup = () => Promise<{
+  cleaned: number
+  status: Array<{
+    windowId: number
+    pid: number
+    boundToProcess: boolean
+    scriptPath: string
+    isVisible: boolean
+    isFocused: boolean
+    isDestroyed: boolean
+    isIdle: boolean
+  }>
+  summary: {
+    total: number
+    visible: number
+    bound: number
+    orphaned: number
+    idle: number
+  }
+}>
+
 interface KitWindow {
   name: string
   id: string
@@ -419,19 +482,25 @@ declare global {
   var getSelectedFile: GetSelectedFile
   var revealInFinder: RevealInFinder
   /**
-   * Prompt the user to select a file using the Finder dialog:
+   * Prompt the user to select a file using the Finder dialog. You can pass a string as a customized message:
    * #### selectFile example
    * ```ts
-   * let filePath = await selectFile()
+   * let filePromptMessage = "Select a file to upload"
+   * let filePath = await selectFile(filePromptMessage)
+   * let text = await readFile(filePath, "utf8")
+   * let gist = await createGist(text)
    * ```
    * [Examples](https://scriptkit.com?query=selectFile) | [Docs](https://johnlindquist.github.io/kit-docs/#selectFile) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=selectFile)
    */
   var selectFile: SelectFile
   /**
-   * Prompt the user to select a folder using the Finder dialog:
+   * Prompt the user to select a folder using the Finder dialog. You can pass a string as a customized message:
    * #### selectFolder example
    * ```ts
-   * let folderPath = await selectFolder()
+   * let promptMessage = "Select a folder for your project"
+   * let folderPath = await selectFolder(promptMessage)
+   * let files = await readdir(folderPath)
+   * await editor(files.join("\n"))
    * ```
    * [Examples](https://scriptkit.com?query=selectFolder) | [Docs](https://johnlindquist.github.io/kit-docs/#selectFolder) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=selectFolder)
    */
@@ -643,4 +712,34 @@ declare global {
    * [Examples](https://scriptkit.com?query=tileWindow) | [Docs](https://johnlindquist.github.io/kit-docs/#tileWindow) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=tileWindow)
    */
   var tileWindow: TileWindow
+  /**
+   * Gets detailed status information about all prompts for debugging purposes.
+   * #### getPromptStatus example
+   * ```ts
+   * let { status, summary } = await getPromptStatus()
+   * console.log(`Total prompts: ${summary.total}, Visible: ${summary.visible}`)
+   * ```
+   * [Examples](https://scriptkit.com?query=getPromptStatus) | [Docs](https://johnlindquist.github.io/kit-docs/#getPromptStatus) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=getPromptStatus)
+   */
+  var getPromptStatus: GetPromptStatus
+  /**
+   * Cleans up orphaned prompts that are no longer attached to running processes.
+   * #### cleanupPrompts example
+   * ```ts
+   * let { cleaned, summary } = await cleanupPrompts()
+   * console.log(`Cleaned up ${cleaned} orphaned prompts`)
+   * ```
+   * [Examples](https://scriptkit.com?query=cleanupPrompts) | [Docs](https://johnlindquist.github.io/kit-docs/#cleanupPrompts) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=cleanupPrompts)
+   */
+  var cleanupPrompts: CleanupPrompts
+  /**
+   * Force cleanup of all orphaned prompts, similar to cleanupPrompts but more aggressive.
+   * #### forcePromptCleanup example
+   * ```ts
+   * let { cleaned, summary } = await forcePromptCleanup()
+   * console.log(`Force cleaned ${cleaned} orphaned prompts`)
+   * ```
+   * [Examples](https://scriptkit.com?query=forcePromptCleanup) | [Docs](https://johnlindquist.github.io/kit-docs/#forcePromptCleanup) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=forcePromptCleanup)
+   */
+  var forcePromptCleanup: ForcePromptCleanup
 }

@@ -127,7 +127,7 @@ export interface ScriptMetadata extends Metadata {
   enter?: string
   recent?: boolean
   img?: string
-  postfix?: string
+  postfix?: boolean
 }
 
 export type Script = ScriptMetadata & ScriptPathInfo & Choice
@@ -149,7 +149,7 @@ export type Snippet = Script & {
   group: 'Snippets'
   text: string
   snippetKey?: string
-  postfix?: string
+  postfix?: boolean
 }
 
 export type PromptBounds = {
@@ -539,7 +539,9 @@ export interface Metadata {
     | 'shutdown'
     | 'lock-screen'
     | 'unlock-screen'
+    /** macOS only */
     | 'user-did-become-active'
+    /** macOS only */
     | 'user-did-resign-active'
 
   /** Specifies a cron expression for scheduling the script to run at specific times or intervals. */
@@ -554,6 +556,8 @@ export interface Metadata {
   log?: boolean
   /** Optimization: if this script won't require a prompt, set this to false */
   prompt?: boolean
+  /** Indicates the tag of the script */
+  tag?: string
 }
 
 export interface ProcessInfo {

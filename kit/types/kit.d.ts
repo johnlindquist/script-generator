@@ -17,6 +17,10 @@ import type {
 } from './core.js'
 import { ChannelHandler } from './core.js'
 import type { ConfigOptions, Options } from 'quick-score'
+// Import AI SDK specific types for global declaration
+import type { CoreMessage, Tool, ToolCall, FinishReason, LanguageModel, LanguageModelV1 } from 'ai'
+import type { AssistantOutcome, AssistantLastInteraction, ToolCallPart } from '../lib/ai.js' // Import our custom result types
+import type { ZodTypeAny } from 'zod' // Import Zod types for global declaration
 
 export interface Arg {
   [key: string]: any
@@ -1078,6 +1082,168 @@ declare global {
   type Metadata = import('./core.js').Metadata
 
   /**
+   * Simple wrapper around AI SDK for text generation with system prompts.
+   * Returns a function that takes user input and resolves to the AI's text response.
+   * #### ai example
+   * ```ts
+   * const translate = ai("Translate to French")
+   * const result = await translate("Hello world!")
+   * // Returns: "Bonjour le monde!"
+   * ```
+   * To generate structured objects, use `ai.object()`.
+   * [Examples](https://scriptkit.com?query=ai) | [Docs](https://johnlindquist.github.io/kit-docs/#ai) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=ai)
+   */
+  var ai: {
+    (
+      systemPrompt: string,
+      options?: {
+        model?: string | LanguageModelV1
+        temperature?: number
+        maxTokens?: number
+      }
+    ): (input: string) => Promise<string>
+
+    /**
+     * Generates a structured JavaScript object based on a Zod schema and a prompt.
+     * #### ai.object example
+     * ```ts
+     * import { z } from 'zod';
+     * const sentimentSchema = z.object({
+     *   sentiment: z.enum(['positive', 'neutral', 'negative']),
+     *   confidence: z.number().min(0).max(1)
+     * });
+     *
+     * const result = await ai.object(
+     *   "Analyze the sentiment of this text: 'I love programming!'",
+     *   sentimentSchema
+     * );
+     * // result will be { sentiment: 'positive', confidence: ... }
+     * ```
+     * [Examples](https://scriptkit.com?query=ai.object) | [Docs](https://johnlindquist.github.io/kit-docs/#ai.object) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=ai.object)
+     */
+    object: <Schema extends ZodTypeAny>(
+      promptOrMessages: string | CoreMessage[],
+      schema: Schema,
+      options?: {
+        model?: string | LanguageModelV1
+        temperature?: number
+        maxTokens?: number
+        // Other generateObject-specific options could be added here
+      }
+    ) => Promise<z.infer<Schema>>
+  }
+
+  /**
+   * Create an AI assistant that maintains conversation context and history,
+   * supports tool calling, and provides detailed interaction results.
+   * #### assistant example
+   * ```ts
+   * const chatbot = assistant("You are a helpful assistant", {
+   *   tools: {
+   *     getCurrentWeather: {
+   *       description: "Get the current weather for a location",
+   *       parameters: z.object({ location: z.string() }),
+   *       execute: async ({ location }) => ({ temperature: "..." })
+   *     }
+   *   }
+   * })
+   *
+   * chatbot.addUserMessage("What's the weather in London?")
+   *
+   * // Using generate for full response including tool calls
+   * const result = await chatbot.generate()
+   * if (result.toolCalls && result.toolCalls.length > 0) {
+   *   // ... handle tool calls ...
+   *   for (const toolCall of result.toolCalls) {
+   *      // ... execute tool ...
+   *      chatbot.addMessage({
+   *          role: 'tool',
+   *          toolCallId: toolCall.toolCallId,
+   *          toolName: toolCall.toolName,
+   *          content: JSON.stringify({temperature: "15C"})
+   *      });
+   *   }
+   *   const finalResult = await chatbot.generate(); // Get response after tool execution
+   *   console.log(finalResult.text);
+   * }
+   *
+   * // Or stream text and check lastInteraction for tool calls
+   * for await (const chunk of chatbot.textStream) {
+   *   process.stdout.write(chunk)
+   * }
+   * if (chatbot.lastInteraction?.toolCalls) {
+   *   // ... handle tool calls as above ...
+   *   chatbot.addMessage(...); // add tool results
+   *   for await (const chunk of chatbot.textStream) { // stream again
+   *      process.stdout.write(chunk)
+   *   }
+   * }
+   *
+   * // Access conversation history (now CoreMessage[])
+   * for (const message of chatbot.messages) {
+   *   console.log(`${message.role}: ${JSON.stringify(message.content)}`)
+   * }
+   * ```
+   */
+  var assistant: (
+    systemPrompt: string,
+    options?: {
+      model?: string | LanguageModelV1
+      temperature?: number
+      maxTokens?: number
+      tools?: Record<string, Tool<any, any>>
+      maxSteps?: number
+      autoExecuteTools?: boolean
+      maxHistory?: number
+    }
+  ) => {
+    addUserMessage: (content: string | any[]) => void
+    addSystemMessage: (content: string) => void
+    addAssistantMessage: (
+      text?: string,
+      options?: { toolCalls?: ToolCallPart[]; parts?: CoreMessage['content'] }
+    ) => void
+    addMessage: (message: CoreMessage) => void
+    textStream: AsyncGenerator<string, void, unknown>
+    stop: () => void
+    generate: (abortSignal?: AbortSignal) => Promise<AssistantOutcome>
+    messages: CoreMessage[]
+    lastInteraction?: AssistantLastInteraction | null
+    get autoExecuteTools(): boolean
+    set autoExecuteTools(value: boolean)
+    get maxHistory(): number
+  }
+
+  /**
+   * Generates a structured JavaScript object based on a Zod schema and a prompt.
+   * This is the standalone version of ai.object() available as a global function.
+   * #### generate example
+   * ```ts
+   * import { z } from 'zod';
+   * const sentimentSchema = z.object({
+   *   sentiment: z.enum(['positive', 'neutral', 'negative']),
+   *   confidence: z.number().min(0).max(1)
+   * });
+   *
+   * const result = await generate(
+   *   "Analyze the sentiment of this text: 'I love programming!'",
+   *   sentimentSchema
+   * );
+   * // result will be { sentiment: 'positive', confidence: ... }
+   * ```
+   * [Examples](https://scriptkit.com?query=generate) | [Docs](https://johnlindquist.github.io/kit-docs/#generate) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=generate)
+   */
+  var generate: <Schema extends ZodTypeAny>(
+    promptOrMessages: string | CoreMessage[],
+    schema: Schema,
+    options?: {
+      model?: string | LanguageModelV1
+      temperature?: number
+      maxTokens?: number
+    }
+  ) => Promise<z.infer<Schema>>
+
+  /**
    * The `metadata` object can include:
    * - `name`: Display name in Script Kit UI (defaults to filename)
    * - `author`: Creator's name
@@ -1100,7 +1266,7 @@ declare global {
    * - `schedule`: Cron expression for timing
    * - `access`: REST API access level (public/key/private)
    * - `response`: Allow REST API response
-   * - `index`: Order within group### Metadata
+   * - `index`: Order within group
    * #### metadata example
    * ```ts
    *   name: "Metadata Example",
@@ -1111,4 +1277,19 @@ declare global {
    * [Examples](https://scriptkit.com?query=metadata) | [Docs](https://johnlindquist.github.io/kit-docs/#metadata) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=metadata)
    */
   var metadata: Metadata
+
+  /**
+   * Zod schema validation library. Create and validate data schemas.
+   * #### z example
+   * ```ts
+   * const UserSchema = z.object({
+   *   name: z.string(),
+   *   age: z.number().min(18)
+   * });
+   *
+   * const user = UserSchema.parse({ name: "John", age: 25 });
+   * ```
+   * [Examples](https://scriptkit.com?query=z) | [Docs](https://johnlindquist.github.io/kit-docs/#z) | [Discussions](https://github.com/johnlindquist/kit/discussions?discussions_q=z)
+   */
+  var z: typeof import('zod').z
 }

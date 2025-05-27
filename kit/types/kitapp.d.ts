@@ -6,7 +6,7 @@ import {
   Channel,
   Mode,
   type statuses,
-  type PROMPT as PROMPT_OBJECT,
+  type PROMPT as CORE_PROMPT,
 } from '../core/enum.js'
 
 import type { AppDb } from '../core/db.js'
@@ -54,14 +54,15 @@ export interface Config {
   deleteSnippet: boolean
 }
 
-export interface BaseMessage {
+export interface ChatMessage {
+  index: number
   text: string
   position: string
   type: string
 }
 
 // Todo: Implement more methods and fix types accordingly
-export interface IMessage extends BaseMessage {
+export interface IMessage extends ChatMessage {
   id: string | number
   title: string
   focus: boolean
@@ -84,11 +85,11 @@ export type Message = string | Partial<IMessage>
 export type Notify = (bodyOrOptions: NotificationConstructorOptions | string) => Promise<void>
 
 export type Chat = ((config?: PromptConfig, actions?: Action[]) => Promise<Message[]>) & {
-  addMessage: (message: Message) => void
-  setMessage: (index: number, message: Message) => void
-  getMessages: () => Promise<BaseMessage[]>
+  addMessage: (message: Message) => Promise<ChatMessage>
+  setMessage: (index: number, message: Message) => Promise<ChatMessage>
+  getMessages: () => Promise<ChatMessage[]>
   setMessages: (messages: Message[]) => Promise<void>
-  pushToken: (token: string) => Promise<void>
+  pushToken: (token: string) => Promise<ChatMessage>
 }
 
 interface ToastOptions {
@@ -152,6 +153,18 @@ export type WebCam = (config?: PromptConfig) => Promise<string>
 export type Speech = (config?: PromptConfig) => Promise<string>
 
 export type Screenshot = (displayId?: number, bounds?: Rectangle) => Promise<Buffer>
+
+export type clipboardBufferType =
+  | 'public.item'
+  | 'public.content'
+  | 'public.text'
+  | 'public.plain-text'
+  | 'public.html'
+  | 'public.jpeg'
+  | 'public.png'
+  | 'public.file-url'
+  | 'public.url'
+  | (string & {}) // This allows any string while still providing hints
 
 export type ScreenshotConfig = {
   displayId?: Parameters<Screenshot>[0]
@@ -868,6 +881,17 @@ export interface KitClipboard {
   writeRTF: (rtf: string) => Promise<void>
   writeBookmark: (bookmark: Bookmark) => Promise<void>
   writeFindText: (text: string) => Promise<void>
+
+  /**
+   * Write a buffer to the clipboard for a custom type (e.g., file URLs, Finder file references).
+   * @param type The clipboard type (e.g., 'public.file-url', 'NSFilenamesPboardType').
+   * @param buffer The buffer to write.
+   * #### Example
+   * ```ts
+   * await clipboard.writeBuffer('public.file-url', Buffer.from(`file://${encodeURI(filePath)}`, 'utf8'))
+   * ```
+   */
+  writeBuffer: (type: clipboardBufferType, buffer: Buffer) => Promise<void>
 
   clear: () => Promise<void>
 }

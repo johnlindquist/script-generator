@@ -125,6 +125,508 @@ name: "Metadata Example",
 };
 ```
 
+## AI
+
+Script Kit provides several AI-related global helpers to make it easy to integrate AI and LLM-powered features into your scripts. These helpers allow you to generate text, interact with assistants, and work with structured outputs using schemas.
+
+### Setup
+
+Script Kit automatically loads AI-related environment variables from your `~/.kenv/.env` file. To configure your default AI provider, model, and other options, add the following variables to your `~/.kenv/.env`:
+
+- `AI_DEFAULT_PROVIDER` — Default AI provider (e.g. `openai`, `anthropic`, `google`, `xai`, `openrouter`)
+- `AI_DEFAULT_MODEL` — Default model for the provider (e.g. `gpt-4o`, `claude-3-opus-20240229`)
+- `AI_DEFAULT_TEMPERATURE` — Default temperature for completions (e.g. `0.7`)
+- `AI_DEFAULT_MAX_TOKENS` — Default max tokens for completions (e.g. `1000`)
+
+Example `~/.kenv/.env`:
+
+```env
+AI_DEFAULT_PROVIDER=anthropic
+AI_DEFAULT_MODEL=claude-3-opus-20240229
+AI_DEFAULT_TEMPERATURE=0.7
+AI_DEFAULT_MAX_TOKENS=1000
+```
+
+These values are used as defaults for all AI helpers (`ai`, `assistant`, `generate`). You can override them per-call by passing options to the helpers.
+
+### ai
+
+The `ai` helper creates a text generation function using a prompt. Use it to generate text completions based on user input or other data.
+
+
+#### ai example
+
+```ts
+const emojiStoryGenerator = ai('Generate a story using only emoji, no text.')
+const story = await emojiStoryGenerator('Epic Fantasy')
+await editor(story)
+```
+
+
+#### ai convert selected text
+
+```ts
+const text = await getSelectedText()
+
+const rewriter = ai(`
+You are an expert at cleaning up text for clarity and readability. 
+- Only improve the text. 
+- Do not include any other text in your response. 
+- Avoid using markdown formatting.
+`)
+
+const cleanedText = await rewriter(text)
+
+await setSelectedText(cleanedText)
+```
+
+
+#### ai prompt improver
+
+```ts
+const prompt = `
+# Improve the User's Prompt Following the Patterns Below
+
+> Practical prompt patterns to help anyone get clearer, more reliable answers from an AI agent.
+
+| # | Pattern                       | Why It Matters                                                          | Template                                                                 | Example Prompt                                                                                             |
+|---|-------------------------------|-------------------------------------------------------------------------|--------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| 1 | Lead with the ask             | The model reads top-down; putting the goal first stops it wandering.    | \`Do X.[context]\`                                                        | "Summarize this PDF in 5 bullet points. The text is below: ..."                                            |
+| 2 | Repeat the key ask at the end | Long contexts sometimes truncate; an end-cap protects you.              | \`...[detail]...REMEMBER: Do X.\`                                         | "List pros & cons, keep it balanced. REMEMBER: 5 pros, 5 cons."                                             |
+| 3 | Specify output shape          | Dictating format cuts revision loops.                                   | \`Return as: 1) short title, 2) table(CSV).\`                             | "Give 3 holiday ideas. Format: destination, flight-time-hrs, avg cost."                                    |
+| 4 | Use clear delimiters          | Backticks/headings/XML keep sections from blending.                     | \`TEXT TO ANALYSE\`                                                        | "Rate the style of the text between the fences."                                                            |
+| 5 | Induce step-by-step thinking  | Planning first boosts multi-step accuracy.                              | \`Think step - by - step then answer.\`                                        | "Solve this puzzle. Think step-by-step before giving the final move."                                      |
+| 6 | Ask it to plan its workflow   | For big jobs, AI outlines tasks before doing them.                      | \`First draft a plan, wait, then execute.\`                                | "We're writing an e-book. ❶ Outline chapters. ❷ Wait. ❸ When I say 'go', draft chapter 1."              |
+| 7 | Limit or widen knowledge sources | Controls hallucination.                                               | \`Use only the info below. / Combine basic knowledge + this context.\`     | "Using only the product sheet below, write FAQs."                                                          |
+| 8 | Guide information retrieval   | Helps AI pick the right docs before answering.                          | \`List which docs look relevant, then answer.\`                            | "30 sales memos attached. 1) Name the 5 most relevant. 2) Summarise their common points."                 |
+| 9 | Show a style/example          | Anchors tone, length, vocabulary.                                       | \`Match the style of: <example>\`                                          | "Review this gadget in the style of the sample below: 'Short, witty, 3 key facts...'"                      |
+| 10| Set correction handles        | One-line fixes let you steer quickly.                                   | \`If length > 150 words, shorten.\`                                        | "Describe blockchain to a child. If your answer is >150 words, cut it in half."                            |
+| 11| Tell it when to stop or loop  | Prevents half-finished lists or runaway essays.                         | \`Keep going until you list 20 ideas, then stop.\`                         | "Brainstorm webinar titles. Give exactly 12, then finish."                                                  |
+| 12| Request the hidden reasoning  | Good for audits; otherwise omit to keep it short.                       | \`After the answer, include a brief reasoning section.\`                   | "Which of these stocks looks over-valued? Answer first; add a 2-sentence rationale below a divider."        |
+`
+
+
+const text = await getSelectedText()
+
+const promptImprover = ai(prompt)
+menu('Improving Prompt') // Changes the script kit icon in the system tray
+const improvedPrompt = await promptImprover(text)
+menu('') // Resets the script kit icon in the system tray
+
+await setSelectedText(improvedPrompt)
+```
+
+
+#### ai summarize
+
+```ts
+const summarize = ai(
+    "Summarize the following text in one sentence"
+)
+
+const summary = await summarize(
+    "The quick brown fox jumps over the lazy dog. The lazy dog was not impressed. The fox, feeling dejected, went home."
+)
+
+await div(md(`
+## AI Text Summarization
+**Input:** The quick brown fox jumps over the lazy dog. The lazy dog was not impressed. The fox, feeling dejected, went home.
+
+**Summary:** ${summary}
+`))
+```
+
+
+#### ai translate
+
+```ts
+const translateToFrench = ai("Translate to French")
+
+const frenchText = await translateToFrench("Hello, how are you today?")
+
+await div(md(`
+## AI Translation
+**English:** Hello, how are you today?
+
+**French:** ${frenchText}
+`))
+```
+
+### assistant
+
+The `assistant` helper creates an AI assistant that can maintain context and handle multi-turn conversations. You can add user and system messages, and stream responses to the UI.
+
+
+#### assistant example
+
+```ts
+const downloadsPath = home("Downloads")
+const files = await readdir(downloadsPath)
+
+const jester = assistant("Tell a joke about these file names.")
+jester.addUserMessage(files.join("\n"))
+
+await editor({
+    onInit: async () => {
+        for await (const chunk of jester.textStream) {
+            editor.append(chunk)
+        }
+    }
+})
+```
+
+
+#### assistant chat
+
+```ts
+const chatbot = assistant('You are a helpful assistant')
+
+let currentMessage = ""
+await chat({
+    onSubmit: async (input) => {
+        currentMessage = ""
+        chatbot.stop()
+        chat.addMessage({
+            text: "...",
+            position: "left"
+        })
+
+        chatbot.addUserMessage(input)
+
+        for await (const chunk of chatbot.textStream) {
+            currentMessage += chunk
+            const markdownMessage = md(currentMessage)
+            const messageIndex = (await chat.getMessages()).length - 1
+            chat.setMessage(messageIndex, {
+                text: markdownMessage,
+            })
+        }
+    }
+})
+```
+
+
+#### assistant streaming
+
+```ts
+const ideaGenerator = assistant("You're an idea generatior. Generate 3 extremely terse ideas based on my query")
+const idea = await arg("Enter your idea")
+ideaGenerator.addUserMessage(idea)
+
+const remainingIterations = 3
+
+
+const editorStreamer = async () => {
+    for await (const chunk of ideaGenerator.textStream) {
+        editor.append(chunk)
+    }
+    editor.append("\n\n")
+}
+
+await editor({
+    onInit: async () => {
+        for (let i = 0; i < remainingIterations; i++) {
+            await editorStreamer()
+            ideaGenerator.addSystemMessage("Pick your favorite idea and generate 3 more based on it")
+        }
+    }
+})
+```
+
+
+#### assistant with tools
+
+```ts
+// Assistant with tools
+const fakeWeatherAPI = ({ location }: { location: string }) => {
+    if (location === "moon") return "It's kinda dusty"
+    return `The weather in ${location} is 70 and sunny.`
+}
+
+const weatherTool = {
+    getWeather: {
+        description: "Call this tool for any weather location in the Universe",
+        parameters: z.object({
+            location: z.string().describe("The location to get the weather for")
+        }),
+        execute: async ({ location }: { location: string }) => {
+            console.log("Executing weather tool")
+            const weather = fakeWeatherAPI({ location })
+            return { weather }
+        }
+    }
+}
+
+console.log("Creating weather assistant")
+const weatherAssistant = assistant(
+    "You are a helpful weather assistant. Use the provided tools to answer the user's questions.",
+    { tools: weatherTool }
+)
+
+weatherAssistant.addUserMessage("What's the weather on the moon?")
+const result = await weatherAssistant.generate()
+
+console.log("Generating weather assistant")
+let response = ""
+if ("text" in result) {
+    response = result.text
+} else {
+    toast("No text response")
+    await editor(JSON.stringify(result, null, 2))
+    exit()
+}
+
+await div(md(`
+## Assistant with Tools
+**User:** What's the weather on the moon?
+**Assistant:** ${response}
+`))
+```
+
+### generate
+
+The `generate` helper allows you to generate structured data from text using a schema (such as a Zod schema). This is useful for extracting information, performing analysis, or ensuring the output matches a specific format.
+
+
+#### generate example
+
+```ts
+const result = await generate(
+    'Generate 10 random users as an array in a property called "users"',
+    z.object({
+        users: z.array(
+            z.object({
+                firstName: z.string(),
+                lastName: z.string(),
+                age: z.number(),
+                email: z.string().email(),
+            })
+        )
+    })
+)
+const users = result.users
+
+await editor(JSON.stringify(users, null, 2))
+```
+
+
+#### generate extract data from text
+
+```ts
+const userSchema = z.object({
+    name: z.string(),
+    age: z.number().optional(),
+    email: z.string().email().optional(),
+})
+
+const extractUserInfo = async (text: string) => {
+    return generate(
+        `Extract user information from the text: ${text}`,
+        userSchema
+    )
+}
+
+const userInfo = await extractUserInfo(
+    "My name is John Doe. I am 30 years old. You can reach me at john.doe@example.com"
+)
+
+await div(md(`
+## User Info Extraction
+**Text:** My name is John Doe. I am 30 years old. You can reach me at john.doe@example.com
+**Result:**
+\`\`\`json
+${JSON.stringify(userInfo, null, 2)}
+\`\`\`
+`))
+```
+
+
+#### generate extract sentiment
+
+```ts
+const sentimentSchema = z.object({
+    sentiment: z.enum(["positive", "negative", "neutral"]),
+    confidence: z.number().min(0).max(1),
+    keywords: z.array(z.string()).describe("Keywords that contributed to the sentiment")
+})
+
+const extractSentiment = async (text: string) => {
+    return generate(
+        `Extract sentiment from the following text: ${text}`,
+        sentimentSchema
+    )
+}
+
+const sentimentResult = await extractSentiment("I love Script Kit! It's so easy to use.")
+
+await div(md(`
+## Sentiment Analysis
+**Text:** I love Script Kit! It's so easy to use.
+**Result:**
+\`\`\`json
+${JSON.stringify(sentimentResult, null, 2)}
+\`\`\`
+`))
+```
+
+
+#### generate structured data
+
+```ts
+// Global Generate Function Example
+// This script demonstrates structured object generation using the global generate() function
+
+// Define a schema for extracting contact information
+const contactSchema = z.object({
+  name: z.string().describe("Person's full name"),
+  email: z.string().email().describe("Email address"),
+  phone: z.string().optional().describe("Phone number if mentioned"),
+  company: z.string().optional().describe("Company or organization"),
+  role: z.string().optional().describe("Job title or role"),
+  interests: z.array(z.string()).describe("Professional interests or expertise areas"),
+  priority: z.enum(['low', 'medium', 'high']).describe("Priority level for follow-up")
+})
+
+const contact = await generate(
+  'The coolest person in the world',
+  contactSchema
+)
+
+// Display the structured result
+await div(md(`
+# Contact Information Extracted
+
+**Name:** ${contact.name}
+
+**Email:** ${contact.email}
+
+**Phone:** ${contact.phone || 'Not provided'}
+
+**Company:** ${contact.company || 'Not provided'}
+
+**Role:** ${contact.role || 'Not provided'}
+
+**Priority:** ${contact.priority}
+
+**Interests:**
+${contact.interests.length > 0
+    ? contact.interests.map(interest => `- ${interest}`).join('\n')
+    : '- None specified'
+  }
+
+      ---
+
+* Generated using the global \`generate()\` function with Zod schema validation*
+`))
+```
+
+
+#### generate tips
+
+```ts
+import { Script } from "@johnlindquist/kit"
+
+let scripts = await getScripts()
+
+// Check if kit-docs is a kenv
+
+let kenv = path.basename(projectPath())
+let isKitDocsInAKenv = kenv !== ".kenv"
+let outFilePath = projectPath("TIPS.md")
+
+if (isKitDocsInAKenv) {
+  scripts = scripts.filter(script => script.kenv === kenv)
+}
+
+scripts.sort((a, b) => a.group.localeCompare(b.group))
+
+// Group by group
+let groups: {
+  [key: string]: Script[]
+} = {}
+for (let script of scripts) {
+  if (!groups[script.group]) groups[script.group] = []
+  groups[script.group].push(script)
+}
+
+// Convert Groups into Markdown h2's with the Content Below
+let markdownBody = ``
+for (let [group, scripts] of Object.entries(groups)) {
+  markdownBody += `## ${group}\n\n`
+  for (let script of scripts.sort((a, b) => a.name.localeCompare(b.name))) {
+    let content = await readFile(script.filePath, "utf8")
+    markdownBody += `### ${script.name}\n\n`
+    markdownBody += "```ts\n"
+    markdownBody += content
+    markdownBody += "\n```\n\n"
+  }
+}
+
+let markdown = `# Tips
+
+Tips are a collection of answers to user questions in GitHub Discussions and our Discord organized by topic.
+
+${markdownBody}
+`.trim()
+
+await writeFile(outFilePath, markdown)
+```
+
+### Switching AI Providers
+
+Script Kit supports multiple AI providers out of the box: `openai`, `anthropic`, `google`, `xai`, and `openrouter`.
+
+You can switch between providers by passing a model string in the format `provider:model-id` to the `model` option.
+
+```ts
+const result = await ai("Say hello", { model: "anthropic:claude-3-opus-20240229" })
+```
+
+This will use Anthropic's Claude 3 Opus model. Supported providers are:
+- `openai`
+- `anthropic`
+- `google`
+- `xai`
+- `openrouter`
+
+
+
+#### ai provider switcher
+
+```ts
+const providers = [
+    { name: "OpenAI", value: "openai", models: ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"] },
+    { name: "Anthropic", value: "anthropic", models: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"] },
+    { name: "Google", value: "google", models: ["gemini-1.5-pro-latest", "gemini-1.0-pro"] },
+    { name: "xAI (Grok)", value: "xai", models: ["grok-1"] },
+    { name: "OpenRouter", value: "openrouter", models: ["openrouter/cognitive-compute", "openrouter/other-model"] },
+]
+
+const provider = await arg("Select AI Provider", providers.map(p => ({ name: p.name, value: p.value })))
+const selectedProvider = providers.find(p => p.value === provider)!
+const model = await arg("Select Model", selectedProvider.models)
+const prompt = await arg("Enter your prompt")
+
+const modelString = `${provider}:${model}`
+
+const result = await ai(prompt, { model: modelString })
+
+await div(md(`
+### Provider: ${selectedProvider.name}
+
+### Model: ${model}
+
+**Prompt:**
+
+> ${prompt}
+
+**Result:**
+
+> ${result}
+`))
+```
+
+
 ## Prompts
 
 ### arg
@@ -148,6 +650,17 @@ let value = await arg()
 
 ```ts
 let name = await arg("Enter your name")
+```
+
+
+#### arg onblur
+
+```ts
+await arg({
+    // Prevent the "arg" prompt from closing when blurred
+    // (or implement a custom behavior)
+    onBlur: () => { }
+})
 ```
 
 
@@ -575,7 +1088,7 @@ await chat({
 
 ### selectFile
 
-Prompt the user to select a file using the Finder dialog. You can pass a string as a customized message:
+Prompt the user to select a file using the Finder dialog:
 
 
 #### selectFile example
@@ -589,7 +1102,7 @@ let gist = await createGist(text)
 
 ### selectFolder
 
-Prompt the user to select a folder using the Finder dialog. You can pass a string as a customized message:
+Prompt the user to select a folder using the Finder dialog:
 
 
 #### selectFolder example
@@ -2867,3 +3380,7 @@ import kit from "@johnlindquist/kit"
 
 await kit.arg("Enter your name")
 ```
+
+> **Advanced Usage:**
+>
+> For more advanced scenarios, you can import the [ai-sdk](https://ai-sdk.dev/docs/getting-started/nodejs) directly. Using Script Kit's helpers is not required—if you need features not provided by these helpers, feel free to use the ai-sdk, any other SDK, or any npm library directly in your scripts.
