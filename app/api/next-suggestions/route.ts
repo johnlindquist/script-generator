@@ -3,10 +3,11 @@ import { generateObject } from 'ai'
 import { z } from 'zod'
 import { gateway } from '@/lib/ai-gateway'
 import { logInteraction } from '@/lib/interaction-logger'
+import { getScriptKitDocs } from '@/lib/scriptKitDocs'
 
 export const runtime = 'nodejs'
 
-const DEFAULT_MODEL = 'openai/gpt-4.1-mini'
+const DEFAULT_MODEL = 'openai/gpt-4.1-nano'
 
 // Define the Zod schema for the expected suggestions
 const SuggestionsSchema = z.object({
@@ -18,12 +19,18 @@ const SuggestionsSchema = z.object({
     }),
 })
 
-const baseSystemPrompt = String.raw`You are a UX copywriter for a Script Kit wizard.
+const baseSystemPrompt = String.raw`You are a helping generate ideas for Script Kit scripts.
 Your task is to provide exactly five short, human-readable, title-cased suggestions based on the user's current path in the wizard.
+
+As a reminder, here's the basic Script Kit api:
+
+<SCRIPT_KIT_DOCS>
+${getScriptKitDocs()}
+</SCRIPT_KIT_DOCS>
 
 Guidelines for suggestions:
 1. Three suggestions should continue down the current path, building on the user's previous choices and the current context.
-2. Two suggestions should be branches for ai, prompts, and other Script Kit features in case the user wants to go in a different direction.
+2. Two suggestions should be branches for ai, prompts, terminal, editor, and other Script Kit features in case the user wants to go in a different direction.
 
 Return the suggestions as a JSON object matching the following schema:
 {
