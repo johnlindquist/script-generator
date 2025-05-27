@@ -13,7 +13,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Script Kit',
-  description: 'Generate shell scripts using AI',
+  description: 'An open-source, cross-platform, desktop app for creating and running scripts!',
   icons: {
     icon: '/favicon.ico',
   },
