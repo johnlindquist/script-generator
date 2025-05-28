@@ -185,14 +185,30 @@ export type BetaRelease = {
 
 export async function getBetaRelease(): Promise<BetaRelease | null> {
   const releases = await fetchAllReleases()
-  const betaReleaseData = releases.find(
+
+  // Find the index of the latest stable release
+  const stableReleaseIndex = releases.findIndex(
+    release =>
+      !release?.name?.includes('beta') &&
+      !release?.name?.includes('alpha') &&
+      !release.prerelease &&
+      release?.assets?.length > 0
+  )
+
+  // Find the beta release
+  const betaReleaseIndex = releases.findIndex(
     release =>
       release.prerelease ||
       release.name?.toLowerCase().includes('beta') ||
       release.name?.toLowerCase().includes('alpha')
   )
 
-  if (betaReleaseData) {
+  // Only return beta if it exists and comes before (is newer than) the stable release
+  if (
+    betaReleaseIndex !== -1 &&
+    (stableReleaseIndex === -1 || betaReleaseIndex < stableReleaseIndex)
+  ) {
+    const betaReleaseData = releases[betaReleaseIndex]
     return {
       html_url: betaReleaseData.html_url,
       tag_name: betaReleaseData.tag_name,
