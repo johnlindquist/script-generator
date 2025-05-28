@@ -1,5 +1,4 @@
 import { Octokit } from '@octokit/rest'
-import { unstable_cache } from 'next/cache'
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_RELEASES_TOKEN,
@@ -42,175 +41,6 @@ async function fetchAllReleases() {
   return releaseResponses.flatMap(response => response.data) as GitHubRelease[]
 }
 
-// Step 2: Create cached getters for each platform
-const getCachedMacIntel = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        !asset.name.includes('arm') &&
-        asset.name.endsWith('.dmg')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['mac-intel-release'],
-  {
-    revalidate: false,
-    tags: ['mac-intel-release'],
-  }
-)
-
-const getCachedMacSilicon = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        asset.name.includes('arm') &&
-        asset.name.endsWith('.dmg')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['mac-silicon-release'],
-  {
-    revalidate: false,
-    tags: ['mac-silicon-release'],
-  }
-)
-
-const getCachedWindowsx64 = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        !asset.name.includes('arm') &&
-        asset.name.endsWith('.exe')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['windows-x64-release'],
-  {
-    revalidate: false,
-    tags: ['windows-x64-release'],
-  }
-)
-
-const getCachedWindowsarm64 = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        asset.name.includes('arm') &&
-        asset.name.endsWith('.exe')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['windows-arm64-release'],
-  {
-    revalidate: false,
-    tags: ['windows-arm64-release'],
-  }
-)
-
-const getCachedLinuxx64 = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        !asset.name.includes('arm') &&
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        asset.name.endsWith('AppImage')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['linux-x64-release'],
-  {
-    revalidate: false,
-    tags: ['linux-x64-release'],
-  }
-)
-
-const getCachedLinuxarm64 = unstable_cache(
-  async () => {
-    const releases = await fetchAllReleases()
-    const stableRelease = findStableRelease(releases)
-    if (!stableRelease) return null
-
-    const foundAsset = stableRelease.assets.find(
-      (asset: Asset) =>
-        asset.name.includes('arm') &&
-        !asset.name.includes('beta') &&
-        !asset.name.includes('alpha') &&
-        asset.name.endsWith('AppImage')
-    )
-
-    return foundAsset
-      ? {
-          name: foundAsset.name,
-          browser_download_url: foundAsset.browser_download_url,
-        }
-      : null
-  },
-  ['linux-arm64-release'],
-  {
-    revalidate: false,
-    tags: ['linux-arm64-release'],
-  }
-)
-
 function findStableRelease(releases: GitHubRelease[]) {
   return releases.find(
     release =>
@@ -221,29 +51,131 @@ function findStableRelease(releases: GitHubRelease[]) {
   )
 }
 
-// Step 3: Update the export functions to use cached getters
+// Step 2: Direct async functions for each platform (no caching)
 export async function getMacIntelRelease(): Promise<ScriptKitRelease | null> {
-  return getCachedMacIntel()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      !asset.name.includes('arm') &&
+      asset.name.endsWith('.dmg')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export async function getMacSiliconRelease(): Promise<ScriptKitRelease | null> {
-  return getCachedMacSilicon()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      asset.name.includes('arm') &&
+      asset.name.endsWith('.dmg')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export async function getWindowsx64Release(): Promise<ScriptKitRelease | null> {
-  return getCachedWindowsx64()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      !asset.name.includes('arm') &&
+      asset.name.endsWith('.exe')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export async function getWindowsarm64Release(): Promise<ScriptKitRelease | null> {
-  return getCachedWindowsarm64()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      asset.name.includes('arm') &&
+      asset.name.endsWith('.exe')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export async function getLinuxx64Release(): Promise<ScriptKitRelease | null> {
-  return getCachedLinuxx64()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      !asset.name.includes('arm') &&
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      asset.name.endsWith('AppImage')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export async function getLinuxarm64Release(): Promise<ScriptKitRelease | null> {
-  return getCachedLinuxarm64()
+  const releases = await fetchAllReleases()
+  const stableRelease = findStableRelease(releases)
+  if (!stableRelease) return null
+
+  const foundAsset = stableRelease.assets.find(
+    (asset: Asset) =>
+      asset.name.includes('arm') &&
+      !asset.name.includes('beta') &&
+      !asset.name.includes('alpha') &&
+      asset.name.endsWith('AppImage')
+  )
+
+  return foundAsset
+    ? {
+        name: foundAsset.name,
+        browser_download_url: foundAsset.browser_download_url,
+      }
+    : null
 }
 
 export type BetaRelease = {

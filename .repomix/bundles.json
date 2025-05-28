@@ -1,0 +1,14 @@
+{
+  "bundles": {
+    "route-770": {
+      "name": "route",
+      "created": "2025-05-28T00:07:36.046Z",
+      "lastUsed": "2025-05-28T00:07:36.046Z",
+      "tags": [],
+      "files": [
+        "app/api/next-suggestions/route.ts",
+        "app/api/generate-ai-gateway/route.ts"
+      ]
+    }
+  }
+}

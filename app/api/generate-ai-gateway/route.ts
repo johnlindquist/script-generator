@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { logInteraction } from '@/lib/interaction-logger'
-import { streamText } from 'ai'
+import { ModelMessage, streamText } from 'ai'
 import { gateway } from '@/lib/ai-gateway'
 import { DRAFT_PASS_PROMPT } from './prompt'
 import { extractUserInfo } from '@/lib/generation'
@@ -415,8 +415,18 @@ export async function POST(req: Request) {
     })
 
     // Convert to messages format for AI Gateway
-    const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
-      { role: 'system', content: draftFinalPrompt },
+    const messages: Array<ModelMessage> = [
+      {
+        role: 'system',
+        content: draftFinalPrompt,
+        providerOptions: {
+          anthropic: {
+            cacheControl: {
+              type: 'ephemeral',
+            },
+          },
+        },
+      },
       { role: 'user', content: prompt + ` Generate _ONLY_ the script content below this line.` },
     ]
 
