@@ -19,7 +19,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
   const { data: session } = useSession()
 
   return (
-    <nav className="flex justify-between items-center">
+    <nav className="grid grid-cols-3 items-center">
       <Link href="/" className="flex items-center">
         <div className="flex items-center justify-center w-8 h-8 min-w-8 min-h-8 sm:w-10 sm:h-10 tracking-tighter">
           <Image
@@ -37,7 +37,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           </div>
         </div>
       </Link>
-      <div className="flex-grow flex justify-center items-center">
+      <div className="flex justify-center items-center justify-self-center">
         <a
           href="https://vercel.com/oss"
           target="_blank"
@@ -52,7 +52,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           />
         </a>
       </div>
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center justify-self-end">
         <Link href={STRINGS.SOCIAL.DOCS_URL} target="_blank" rel="noopener noreferrer">
           <BookOpenIcon className="w-5 h-5 hover:text-amber-400 transition-colors" />
         </Link>
@@ -80,7 +80,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
                 })
               }}
             >
-              Test Normal
+              👦
             </Button>
             <Button
               variant="outline"
@@ -93,7 +93,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
                 })
               }}
             >
-              Test Sponsor
+              🤴
             </Button>
           </>
         )}
