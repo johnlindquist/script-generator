@@ -1,2 +1,11 @@
+#!/bin/sh
+# Dynamically find pnpm's directory and add it to PATH
+# This helps ensure Husky uses the pnpm-managed Node version
+PNPM_BIN_DIR=$(dirname "$(which pnpm)")
+if [ -n "$PNPM_BIN_DIR" ] && [ -d "$PNPM_BIN_DIR" ]; then
+  export PATH="$PNPM_BIN_DIR:$PATH"
+fi
+
+# Check if pnpm is using Node.js >= 20, else exit with error
 pnpm lint-staged
 pnpm test
