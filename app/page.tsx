@@ -8,31 +8,34 @@ import SponsorBackground from '@/components/SponsorBackground'
 import Testimonials from '@/components/Testimonials'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getTestimonials } from '@/lib/get-testimonials'
+import {
+  getMacIntelRelease,
+  getMacSiliconRelease,
+  getWindowsx64Release,
+  getWindowsarm64Release,
+  getLinuxx64Release,
+  getLinuxarm64Release,
+  getBetaRelease,
+} from '@/lib/get-scriptkit-releases'
 import React from 'react'
 import ScrollToContent from '@/components/ScrollToContent'
 import Image from 'next/image'
-import { type ScriptKitRelease, type BetaRelease } from '@/lib/get-scriptkit-releases'
-
 export const dynamic = 'force-dynamic'
-
-interface ReleaseData {
-  macIntel: ScriptKitRelease | null
-  macSilicon: ScriptKitRelease | null
-  winx64: ScriptKitRelease | null
-  winarm64: ScriptKitRelease | null
-  linuxx64: ScriptKitRelease | null
-  linuxarm64: ScriptKitRelease | null
-  beta: BetaRelease | null
-}
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const testimonials = getTestimonials()
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/scriptkit-releases`)
-  const releases: ReleaseData = await res.json()
+  const [macIntel, macSilicon, winx64, winarm64, linuxx64, linuxarm64, beta] = await Promise.all([
+    getMacIntelRelease(),
+    getMacSiliconRelease(),
+    getWindowsx64Release(),
+    getWindowsarm64Release(),
+    getLinuxx64Release(),
+    getLinuxarm64Release(),
+    getBetaRelease(),
+  ])
 
   return (
     <div id="layout" className="relative min-h-screen">
@@ -82,13 +85,13 @@ Simply put, Script Kit helps you script away the friction of your day.
       </div>
       <div className="flex justify-center items-center w-full relative">
         <ScriptKitDownload
-          macIntelRelease={releases.macIntel}
-          macSiliconRelease={releases.macSilicon}
-          windowsx64Release={releases.winx64}
-          windowsarm64Release={releases.winarm64}
-          linuxx64Release={releases.linuxx64}
-          linuxarm64Release={releases.linuxarm64}
-          betaRelease={releases.beta}
+          macIntelRelease={macIntel}
+          macSiliconRelease={macSilicon}
+          windowsx64Release={winx64}
+          windowsarm64Release={winarm64}
+          linuxx64Release={linuxx64}
+          linuxarm64Release={linuxarm64}
+          betaRelease={beta}
         />
         <div className="absolute z-0 inset-0">
           <SponsorBackground />
