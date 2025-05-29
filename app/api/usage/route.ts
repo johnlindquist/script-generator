@@ -1,7 +1,6 @@
 // Next.js API route to check if user is a sponsor
-import { NextApiRequest, NextApiResponse } from 'next'
 import { init, track, Types } from '@amplitude/analytics-node'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
@@ -47,9 +46,9 @@ type TrackPayload = {
   }
 }
 
-export async function POST(req: NextApiRequest, res: NextApiResponse) {
+export async function POST(req: NextRequest) {
   // Get track event and properties from request body
-  const { event, properties, device }: TrackPayload = req.body
+  const { event, properties, device }: TrackPayload = await req.json()
   console.debug(`track ${event}`, properties, device)
 
   // Start the track request but don't wait for it
@@ -58,5 +57,5 @@ export async function POST(req: NextApiRequest, res: NextApiResponse) {
   })
 
   // Immediately send back a success status
-  res.status(200).json({ message: 'Track request started' })
+  return NextResponse.json({ message: 'Track request started' })
 }
