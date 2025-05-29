@@ -61,5 +61,7 @@ function getBaseUrl() {
   }
 
   // Fallback for other environments (e.g., production server-side if not Vercel)
-  return 'http://localhost:3000'
+  // It's better to default to a relative path or handle the error
+  // than to assume localhost:3000 in a non-Vercel production server context.
+  return ''
 }

@@ -11,28 +11,15 @@ import { getTestimonials } from '@/lib/get-testimonials'
 import React from 'react'
 import ScrollToContent from '@/components/ScrollToContent'
 import Image from 'next/image'
-import { type ScriptKitRelease, type BetaRelease } from '@/lib/get-scriptkit-releases'
-
-export const dynamic = 'force-dynamic'
-
-interface ReleaseData {
-  macIntel: ScriptKitRelease | null
-  macSilicon: ScriptKitRelease | null
-  winx64: ScriptKitRelease | null
-  winarm64: ScriptKitRelease | null
-  linuxx64: ScriptKitRelease | null
-  linuxarm64: ScriptKitRelease | null
-  beta: BetaRelease | null
-}
+import { type AllReleasesData } from '@/lib/get-scriptkit-releases'
+import { getStaticReleaseData, initialReleaseData } from '@/lib/static-data-fetchers'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const testimonials = getTestimonials()
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/scriptkit-releases`)
-  const releases: ReleaseData = await res.json()
+  const releases: AllReleasesData = (await getStaticReleaseData()) || initialReleaseData
 
   return (
     <div id="layout" className="relative min-h-screen">

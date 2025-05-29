@@ -26,7 +26,7 @@ type GitHubRelease = {
 }
 
 // Step 1: Create a function to fetch releases without caching
-async function fetchAllReleases() {
+async function fetchAllReleases(): Promise<GitHubRelease[]> {
   const releaseResponses = await Promise.all(
     Array.from({ length: 5 }, (_, i) =>
       octokit.repos.listReleases({
@@ -51,10 +51,9 @@ function findStableRelease(releases: GitHubRelease[]) {
   )
 }
 
-// Step 2: Direct async functions for each platform (no caching)
-export async function getMacIntelRelease(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+// Step 2: Modify direct async functions to accept releases data
+export function getMacIntelRelease(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -73,9 +72,8 @@ export async function getMacIntelRelease(): Promise<ScriptKitRelease | null> {
     : null
 }
 
-export async function getMacSiliconRelease(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+export function getMacSiliconRelease(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -94,9 +92,8 @@ export async function getMacSiliconRelease(): Promise<ScriptKitRelease | null> {
     : null
 }
 
-export async function getWindowsx64Release(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+export function getWindowsx64Release(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -115,9 +112,8 @@ export async function getWindowsx64Release(): Promise<ScriptKitRelease | null> {
     : null
 }
 
-export async function getWindowsarm64Release(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+export function getWindowsarm64Release(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -136,9 +132,8 @@ export async function getWindowsarm64Release(): Promise<ScriptKitRelease | null>
     : null
 }
 
-export async function getLinuxx64Release(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+export function getLinuxx64Release(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -157,9 +152,8 @@ export async function getLinuxx64Release(): Promise<ScriptKitRelease | null> {
     : null
 }
 
-export async function getLinuxarm64Release(): Promise<ScriptKitRelease | null> {
-  const releases = await fetchAllReleases()
-  const stableRelease = findStableRelease(releases)
+export function getLinuxarm64Release(allReleases: GitHubRelease[]): ScriptKitRelease | null {
+  const stableRelease = findStableRelease(allReleases)
   if (!stableRelease) return null
 
   const foundAsset = stableRelease.assets.find(
@@ -183,11 +177,9 @@ export type BetaRelease = {
   tag_name: string
 }
 
-export async function getBetaRelease(): Promise<BetaRelease | null> {
-  const releases = await fetchAllReleases()
-
+export function getBetaRelease(allReleases: GitHubRelease[]): BetaRelease | null {
   // Find the index of the latest stable release
-  const stableReleaseIndex = releases.findIndex(
+  const stableReleaseIndex = allReleases.findIndex(
     release =>
       !release?.name?.includes('beta') &&
       !release?.name?.includes('alpha') &&
@@ -196,7 +188,7 @@ export async function getBetaRelease(): Promise<BetaRelease | null> {
   )
 
   // Find the beta release
-  const betaReleaseIndex = releases.findIndex(
+  const betaReleaseIndex = allReleases.findIndex(
     release =>
       release.prerelease ||
       release.name?.toLowerCase().includes('beta') ||
@@ -208,7 +200,7 @@ export async function getBetaRelease(): Promise<BetaRelease | null> {
     betaReleaseIndex !== -1 &&
     (stableReleaseIndex === -1 || betaReleaseIndex < stableReleaseIndex)
   ) {
-    const betaReleaseData = releases[betaReleaseIndex]
+    const betaReleaseData = allReleases[betaReleaseIndex]
     return {
       html_url: betaReleaseData.html_url,
       tag_name: betaReleaseData.tag_name,
@@ -216,4 +208,37 @@ export async function getBetaRelease(): Promise<BetaRelease | null> {
   }
 
   return null
+}
+
+export interface AllReleasesData {
+  macIntel: ScriptKitRelease | null
+  macSilicon: ScriptKitRelease | null
+  winx64: ScriptKitRelease | null
+  winarm64: ScriptKitRelease | null
+  linuxx64: ScriptKitRelease | null
+  linuxarm64: ScriptKitRelease | null
+  beta: BetaRelease | null
+}
+
+export async function getAllScriptKitReleases(): Promise<AllReleasesData> {
+  const allGitHubReleases = await fetchAllReleases()
+
+  // Call sync functions with the fetched data
+  const macIntel = getMacIntelRelease(allGitHubReleases)
+  const macSilicon = getMacSiliconRelease(allGitHubReleases)
+  const winx64 = getWindowsx64Release(allGitHubReleases)
+  const winarm64 = getWindowsarm64Release(allGitHubReleases)
+  const linuxx64 = getLinuxx64Release(allGitHubReleases)
+  const linuxarm64 = getLinuxarm64Release(allGitHubReleases)
+  const beta = getBetaRelease(allGitHubReleases)
+
+  return {
+    macIntel,
+    macSilicon,
+    winx64,
+    winarm64,
+    linuxx64,
+    linuxarm64,
+    beta,
+  }
 }

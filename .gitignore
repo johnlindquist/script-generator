@@ -59,3 +59,6 @@ generated/
 database-backups
 # SpecStory explanation file
 .specstory/.what-is-this.md
+
+# Build artifacts in public
+public/releases.json
