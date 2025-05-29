@@ -48,7 +48,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
             src="https://vercel.com/oss/program-badge.svg"
             alt="Vercel OSS Program"
             width={256}
-            height={72}
+            height={36}
           />
         </a>
       </div>
