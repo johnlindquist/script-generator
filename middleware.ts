@@ -15,7 +15,8 @@ export async function middleware(request: NextRequest) {
   // Skip authentication for the prompt-text route
   if (
     request.nextUrl.pathname.includes('/prompt-template') ||
-    request.nextUrl.pathname.includes('/api/generate-openrouter/prompt-text')
+    request.nextUrl.pathname.includes('/api/generate-openrouter/prompt-text') ||
+    request.nextUrl.pathname === '/api/usage'
   ) {
     return NextResponse.next()
   }
