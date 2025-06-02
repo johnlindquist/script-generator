@@ -688,9 +688,11 @@ if (primaryColor) {
 
 ## Shortcuts & Global Input
 
+**IMPORTANT**: Always always use `await getSelectedText()` and `await setSelectedText("text")` for text manipulation.
+
 - **`registerShortcut("cmd+opt+p", callback)`**: Registers a global hotkey that runs `callback`.
 - **`unregisterShortcut("cmd+opt+p")`**: Removes a previously registered global hotkey.
-- **`keyboard.type("Hello!")`**, `keyboard.tap(Key.Enter)`: Simulate keyboard input.
+- **`keyboard.type("Hello!")`**, `keyboard.tap(Key.Enter)`: Simulate keyboard input. Only use when you need to simulate keyboard input. Otherwise, use `getSelectedText()` and `setSelectedText("text")` for text manipulation.
 - **`mouse.leftClick()`**, `mouse.setPosition({ x:100, y:100 })`: Control the mouse.
 - **`onClick(callback)`**, `onKeydown(callback)`: Listen for global mouse/keyboard events.
 

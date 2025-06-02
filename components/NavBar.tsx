@@ -42,7 +42,7 @@ export default function NavBar({ isAuthenticated }: NavBarProps) {
           href="https://vercel.com/oss"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:flex items-center transition-opacity hover:opacity-80"
+          className="hidden lg:flex items-center transition-opacity hover:opacity-80"
         >
           <Image
             src="https://vercel.com/oss/program-badge.svg"
