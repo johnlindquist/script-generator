@@ -5,6 +5,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import { Editor } from '@monaco-editor/react'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 import { DocumentCheckIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 import { motion } from 'framer-motion'
@@ -107,7 +108,12 @@ const handleUnauthorized = () => {
   }, 2500)
 }
 
+const createInteractionTimestamp = () =>
+  new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+
 export default function ScriptGenerationClient({ isAuthenticated, heading }: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [state, send, service] = useMachine(scriptGenerationMachine, {
     input: {
       prompt: '',
@@ -693,7 +699,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
   const showSignInModal = () => {
     // Save the current prompt to localStorage before showing sign in modal
-    localStorage.setItem('pendingPrompt', state.context.prompt)
+    if (state.context.prompt) {
+      localStorage.setItem('pendingPrompt', state.context.prompt)
+    }
     setShowSignInModal(true)
   }
 
@@ -703,6 +711,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
     if (pendingPrompt && isAuthenticated) {
       send({ type: 'SET_PROMPT', prompt: pendingPrompt })
       localStorage.removeItem('pendingPrompt')
+
+      const autoSubmit = localStorage.getItem('autoSubmit')
+      if (autoSubmit === 'true') {
+        localStorage.removeItem('autoSubmit')
+        send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
+      }
     }
   }, [isAuthenticated, send])
 
@@ -732,8 +746,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
     setIsSubmitting(true)
 
     // Generate a single timestamp for the entire interaction chain
-    const interactionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-    send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+    send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
   }
 
   // Handle keyboard submission
@@ -755,10 +768,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
       setIsSubmitting(true)
 
       // Use the same timestamp from handleSubmit if it exists
-      const interactionTimestamp =
-        state.context.interactionTimestamp ||
-        new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-      send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+      send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
     }
   }
 
@@ -809,11 +819,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
           console.log('[SUGGESTION EFFECT] Dispatching GENERATE_DRAFT after delay')
 
           // Use the existing timestamp if available or create a new one
-          const interactionTimestamp =
-            state.context.interactionTimestamp ||
-            new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-
-          send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+          send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
 
           // Reset the isFromSuggestion flag to prevent re-triggering
           send({ type: 'FROM_SUGGESTION', value: false })
@@ -845,7 +851,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
     try {
       // Generate a single timestamp for the entire lucky interaction chain
-      const interactionTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
+      const interactionTimestamp = createInteractionTimestamp()
       console.log('Starting lucky generation with timestamp:', interactionTimestamp)
 
       // Clear any existing state
@@ -913,10 +919,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
       // Only auto-generate if not manual revision
       if (manualRevision !== 'true') {
         // Use existing timestamp if available
-        const interactionTimestamp =
-          state.context.interactionTimestamp ||
-          new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-        send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
+        send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
       } else {
         // Clean up the manual revision flag
         localStorage.removeItem('manualRevision')
@@ -1054,6 +1057,40 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
   // Add this at the top with other refs
   const editorPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Check for prompt from query on mount
+  useEffect(() => {
+    const promptFromQuery = searchParams?.get('prompt')
+    const promptFromQueryB64 = searchParams?.get('prompt_b64')
+
+    let finalPrompt = null
+    if (promptFromQuery) {
+      finalPrompt = promptFromQuery
+    } else if (promptFromQueryB64) {
+      try {
+        finalPrompt = atob(promptFromQueryB64)
+      } catch (e) {
+        console.error('Failed to decode base64 prompt:', e)
+      }
+    }
+
+    if (finalPrompt) {
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('prompt')
+      newUrl.searchParams.delete('prompt_b64')
+      router.replace(newUrl.toString(), { scroll: false })
+
+      if (isAuthenticated) {
+        send({ type: 'SET_PROMPT', prompt: finalPrompt })
+        send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
+      } else {
+        localStorage.setItem('pendingPrompt', finalPrompt)
+        localStorage.setItem('autoSubmit', 'true')
+        setShowSignInModal(true)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="px-5 w-full">
@@ -1194,10 +1231,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
                 return
               }
 
-              const interactionTimestamp = new Date()
-                .toISOString()
-                .replace(/[:.]/g, '-')
-                .replace('Z', '')
+              const interactionTimestamp = createInteractionTimestamp()
 
               send({ type: 'GENERATE_DRAFT', timestamp: interactionTimestamp })
             }}

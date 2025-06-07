@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Creating Scripts
+
+- Create executable TypeScript scripts in a `./scripts` directory in the root of the project.
+- Use a `#!/usr/bin/env bun` shebang so it can be run with `./scripts/script-name.ts`.
+- Use `chmod +x` to make the script executable.
+
+Refer to the [scripts directory](mdc:scripts) for examples.
