@@ -263,6 +263,7 @@ export async function generateDraftWithStream(
           }
 
           const text = new TextDecoder().decode(value)
+          const prevLength = buffer.length
           buffer += text
 
           console.log('[API] Chunk decoded', {
@@ -271,11 +272,10 @@ export async function generateDraftWithStream(
             timestamp: new Date().toISOString(),
           })
 
-          // Only trim when checking for script ID
-          const trimmedBuffer = buffer.trim()
-          const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-          if (idMatch) {
-            const scriptId = idMatch[1]
+          // Extract script ID if present
+          const match = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+          if (match) {
+            const scriptId = match[1]
             console.log('[API] Script ID received:', scriptId, {
               timestamp: new Date().toISOString(),
             })
@@ -289,7 +289,12 @@ export async function generateDraftWithStream(
             timestamp: new Date().toISOString(),
             chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
           })
-          callbacks.onChunk?.(buffer)
+
+          // Send only the new delta to the client instead of the entire buffer
+          const delta = buffer.slice(prevLength)
+          if (delta) {
+            callbacks.onChunk?.(delta)
+          }
         } catch (readError) {
           console.error('[API] Error during stream read:', readError, {
             errorMessage: readError instanceof Error ? readError.message : String(readError),
@@ -475,6 +480,7 @@ export async function generateOpenRouterDraftWithStream(
           }
 
           const text = new TextDecoder().decode(value)
+          const prevLength = buffer.length
           buffer += text
 
           console.log('[API] OpenRouter chunk decoded', {
@@ -484,11 +490,10 @@ export async function generateOpenRouterDraftWithStream(
             environment: process.env.NODE_ENV,
           })
 
-          // Only trim when checking for script ID
-          const trimmedBuffer = buffer.trim()
-          const idMatch = trimmedBuffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
-          if (idMatch) {
-            const scriptId = idMatch[1]
+          // Extract script ID if present
+          const match = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/)
+          if (match) {
+            const scriptId = match[1]
             console.log('[API] Script ID received from OpenRouter:', scriptId, {
               timestamp: new Date().toISOString(),
               environment: process.env.NODE_ENV,
@@ -502,13 +507,16 @@ export async function generateOpenRouterDraftWithStream(
             totalBufferSize: buffer.length,
             timestamp: new Date().toISOString(),
             chunkPreview: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
-            hasScriptId: !!idMatch,
+            hasScriptId: !!match,
             bufferPreview: buffer.substring(0, 30) + (buffer.length > 30 ? '...' : ''),
             environment: process.env.NODE_ENV,
           })
 
-          // Call the onChunk callback with the current buffer
-          callbacks.onChunk?.(buffer)
+          // Send only the new delta to the client instead of the entire buffer
+          const delta = buffer.slice(prevLength)
+          if (delta) {
+            callbacks.onChunk?.(delta)
+          }
         } catch (readError) {
           console.error('[API] Error during OpenRouter stream read:', readError, {
             errorMessage: readError instanceof Error ? readError.message : String(readError),
@@ -743,23 +751,18 @@ export async function generateAIGatewayDraftWithStream(
           }
 
           if (processedChunk) {
-            // Add to accumulated content
+            // Append to the running buffer for final completion needs
             accumulatedContent += processedChunk
 
-            await logInteraction(
-              timestamp,
-              'client',
-              'AI Gateway sending accumulated content to callback',
-              {
-                chunkNumber: chunkCount,
-                processedChunkLength: processedChunk.length,
-                accumulatedLength: accumulatedContent.length,
-                preview: accumulatedContent.substring(0, 30).replace(/\n/g, '\\n'),
-              }
-            )
+            await logInteraction(timestamp, 'client', 'AI Gateway sending delta to callback', {
+              chunkNumber: chunkCount,
+              processedChunkLength: processedChunk.length,
+              accumulatedLength: accumulatedContent.length,
+              preview: processedChunk.substring(0, 30).replace(/\n/g, '\\n'),
+            })
 
-            // Send the accumulated content, not just the chunk
-            callbacks.onChunk(accumulatedContent)
+            // Send only the delta (processedChunk) to the client UI
+            callbacks.onChunk(processedChunk)
           }
         }
 

@@ -155,7 +155,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
     return () => subscription.unsubscribe()
   }, [service])
 
-  const [streamedText, setStreamedText] = useState('')
+  // Retain a read-only state holder so existing debug logs compile (no perf cost)
+  const [streamedText] = useState('')
+
+  // Holds the growing script without triggering React re-renders on every chunk
+  const accumulatedScriptRef = useRef('')
   const editorRef = useRef<EditorRef | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -182,229 +186,43 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
     }
   }, [send, state.context.prompt])
 
-  // Update the editor with streamed text
-  useEffect(() => {
-    if (streamedText && state.matches('generatingDraft')) {
-      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: streamedText })
-    }
-  }, [streamedText, state.matches])
+  // Handle streaming text updates (delta-based)
+  const handleStreamedText = useCallback(
+    (delta: string) => {
+      if (!delta) return
 
-  // Handle streaming text updates
-  const handleStreamedText = useCallback((text: string) => {
-    console.log('[STREAMING_DEBUG] handleStreamedText called:', {
-      textLength: text.length,
-      firstChars: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-    })
+      // Append delta to the accumulated script
+      accumulatedScriptRef.current += delta
 
-    // Always store the latest streamed text in state
-    setStreamedText(text)
+      const editor = editorRef.current
+      const model = editor?.getModel()
 
-    const editor = editorRef.current
-    if (!editor) {
-      console.warn('[STREAMING_DEBUG] Editor not available, storing streamed text', {
-        editorState: 'null',
-        streamedTextLength: text.length,
-        timestamp: new Date().toISOString(),
-      })
-      return
-    }
-
-    const model = editor.getModel()
-    if (!model) {
-      console.warn('[STREAMING_DEBUG] Model not available, storing streamed text', {
-        editorState: 'available',
-        modelState: 'null',
-        streamedTextLength: text.length,
-        timestamp: new Date().toISOString(),
-      })
-      return
-    }
-
-    try {
-      // Get the current content in the editor
-      const currentContent = model.getValue()
-
-      console.log('[STREAMING_DEBUG] Current editor state:', {
-        currentContentLength: currentContent.length,
-        incomingTextLength: text.length,
-        difference: text.length - currentContent.length,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-      })
-
-      // Edge case: If editor is completely empty, just set the entire content
-      if (!currentContent.trim()) {
-        console.log('[STREAMING_DEBUG] Editor empty, setting entire content', {
-          newContentLength: text.length,
-          timestamp: new Date().toISOString(),
-        })
-        model.setValue(text)
-        return
-      }
-
-      // Compare content length to determine update approach
-      if (text.length > currentContent.length) {
-        // Instead of simply slicing based on length, we need to ensure we're not breaking at a newline
-        // Find the common prefix between the current content and the new text
-        let commonPrefixLength = 0
-        const minLength = Math.min(currentContent.length, text.length)
-
-        for (let i = 0; i < minLength; i++) {
-          if (currentContent[i] !== text[i]) {
-            break
-          }
-          commonPrefixLength++
-        }
-
-        // Get the new content to append, ensuring we don't break in the middle of a line
-        const newContent = text.slice(commonPrefixLength)
-
-        console.log('[STREAMING_DEBUG] Appending new content:', {
-          commonPrefixLength,
-          newContentLength: newContent.length,
-          newContentPreview: newContent.substring(0, 30) + (newContent.length > 30 ? '...' : ''),
-          timestamp: new Date().toISOString(),
-        })
-
-        // If the current content ends with an incomplete line (no newline at the end)
-        // and the new content starts with the completion of that line,
-        // we need to handle this special case
-        if (
-          commonPrefixLength > 0 &&
-          commonPrefixLength < currentContent.length &&
-          !currentContent.endsWith('\n') &&
-          text.charAt(commonPrefixLength - 1) !== '\n'
-        ) {
-          // Find the last newline in the current content
-          const lastNewlineIndex = currentContent.lastIndexOf('\n')
-
-          if (lastNewlineIndex >= 0) {
-            // Replace from the last newline to the end
-            const range = model.getFullModelRange()
-            // const lastLine = currentContent.substring(lastNewlineIndex + 1)
-            const replacementText = text.substring(lastNewlineIndex + 1)
-
-            model.applyEdits([
-              {
-                range: {
-                  startLineNumber: range.endLineNumber,
-                  startColumn: 1,
-                  endLineNumber: range.endLineNumber,
-                  endColumn: range.endColumn,
-                },
-                text: replacementText,
-              },
-            ])
-          } else {
-            // If there's no newline in the current content, replace everything
-            model.setValue(text)
-          }
-        } else {
-          // Normal case: append the new content
-          const range = model.getFullModelRange()
-
-          const editResult = model.applyEdits([
-            {
-              range: {
-                startLineNumber: range.endLineNumber,
-                startColumn: range.endColumn,
-                endLineNumber: range.endLineNumber,
-                endColumn: range.endColumn,
-              },
-              text: newContent,
-            },
-          ])
-
-          console.log('[STREAMING_DEBUG] Edit operation result:', {
-            success: Array.isArray(editResult) && editResult.length > 0,
-            newModelLength: model.getValue().length,
-            timestamp: new Date().toISOString(),
-          })
-        }
-
-        // Ensure we scroll to the bottom with smooth animation
-        const lineCount = model.getLineCount()
-        if (editor) {
-          // Use a small delay to ensure the content is rendered before scrolling
-          requestAnimationFrame(() => {
-            // Always scroll to bottom
-            editor.revealLine(lineCount)
-            console.log('[STREAMING_DEBUG] Revealed last line:', {
-              lineCount,
-              timestamp: new Date().toISOString(),
-            })
-
-            // Add a visual indicator that new content has been added
-            try {
-              const lastLineLength = model.getLineLength(lineCount) || 0
-
-              // Only attempt to add decorations if the method exists
-              if (typeof editor.deltaDecorations === 'function') {
-                const decorations = editor.deltaDecorations(
-                  [],
-                  [
-                    {
-                      range: {
-                        startLineNumber: lineCount,
-                        startColumn: 1,
-                        endLineNumber: lineCount,
-                        endColumn: lastLineLength + 1,
-                      },
-                      options: {
-                        className: 'streaming-highlight',
-                        isWholeLine: true,
-                        animate: true, // Enable decoration animation
-                      },
-                    },
-                  ]
-                )
-
-                // Remove the decoration after a short delay
-                setTimeout(() => {
-                  if (editor && typeof editor.deltaDecorations === 'function') {
-                    editor.deltaDecorations(decorations, [])
-                  }
-                }, 300)
-              }
-            } catch (decorationError) {
-              console.warn('[STREAMING_DEBUG] Error adding decoration:', decorationError)
-            }
-          })
-        }
-      } else if (text.length < currentContent.length) {
-        // Rare case: the new text is shorter (usually only happens during state transitions)
-        console.log('[STREAMING_DEBUG] Replacing entire content - new text is shorter:', {
-          currentLength: currentContent.length,
-          newLength: text.length,
-          difference: currentContent.length - text.length,
-          timestamp: new Date().toISOString(),
-        })
-        model.setValue(text)
-      } else if (text !== currentContent) {
-        // If same length but different content (rare)
-        console.log('[STREAMING_DEBUG] Same length but different content, replacing')
-        model.setValue(text)
-      } else {
-        // No change needed
-        console.log('[STREAMING_DEBUG] Text identical to current content, no update needed')
-      }
-    } catch (error) {
-      // Fallback if there's any error with the editor operations
-      console.error('[STREAMING_DEBUG] Error updating editor, using fallback:', error)
-
-      // Try to update the model directly as a last resort
       if (model) {
-        try {
-          model.setValue(text)
-          console.log('[STREAMING_DEBUG] Used direct setValue fallback')
-        } catch (err) {
-          console.error('[STREAMING_DEBUG] Final fallback failed:', err)
-        }
+        const lastLine = model.getLineCount()
+        const lastColumn = model.getLineLength(lastLine) + 1
+
+        // Fast append without triggering a full re-render
+        model.applyEdits([
+          {
+            range: {
+              startLineNumber: lastLine,
+              startColumn: lastColumn,
+              endLineNumber: lastLine,
+              endColumn: lastColumn,
+            },
+            text: delta,
+          },
+        ])
+
+        // Keep the latest line in view (optional)
+        editor?.revealLine(model.getLineCount())
       }
-    }
-  }, [])
+
+      // Update XState context with the full script (lightweight since it's just a ref read)
+      send({ type: 'UPDATE_EDITABLE_SCRIPT', script: accumulatedScriptRef.current })
+    },
+    [send]
+  )
 
   // Handle draft generation streaming
   useEffect(() => {
@@ -491,7 +309,6 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
                 isAborted: signal.aborted,
               })
               handleStreamedText(text)
-              send({ type: 'UPDATE_EDITABLE_SCRIPT', script: text })
             },
             onError: error => {
               if (!isMounted || signal.aborted) return
