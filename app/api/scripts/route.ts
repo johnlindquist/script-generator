@@ -7,7 +7,7 @@ import { generateDashedName } from '@/lib/names'
 import { parseScriptFromMarkdown } from '@/lib/generation'
 import { Prisma } from '@prisma/client'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 18 // Changed to 18 for better grid layout (6 rows of 3)
 
 // Migration endpoint to update existing scripts
 export async function PUT() {
@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
   const limit = Number(searchParams.get('limit') ?? PAGE_SIZE)
+  const offset = Number(searchParams.get('offset') ?? '0')
   const sort = searchParams.get('sort') || 'createdAt'
 
   // Add search functionality
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
     prisma.script.findMany({
       where: whereClause,
       orderBy,
-      skip: (page - 1) * limit,
+      skip: offset > 0 ? offset : (page - 1) * limit,
       take: limit,
       select: {
         id: true,

@@ -3,11 +3,11 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Highlight, themes } from 'prism-react-renderer'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
 import { StarIcon } from '@heroicons/react/24/solid'
 import { Prisma } from '@prisma/client'
 import { ScriptsResponse } from '@/types/script'
+import { LazyHighlight } from './LazyHighlight'
 
 import CopyButtonClient from './CopyButtonClient'
 import VerifyButtonClient from './VerifyButtonClient'
@@ -99,22 +99,6 @@ function getRelevantLines(
   }
 }
 
-interface LineIndicatorProps {
-  count: number
-  position: 'above' | 'below'
-}
-
-function LineIndicator({ count, position }: LineIndicatorProps) {
-  return (
-    <div
-      className={`-mx-4 ${position === 'above' ? '' : ''} px-4 py-1 bg-amber-400/10 text-amber-300/80 text-xs border-${position === 'above' ? 'b' : 't'} border-amber-400/20 text-center`}
-    >
-      {count} {position === 'above' ? '' : ''}
-      {count === 1 ? 'line' : 'lines'} {position} • View full script
-    </div>
-  )
-}
-
 function highlightText(text: string, searchQuery: string | undefined): React.ReactNode {
   if (!searchQuery || !text) return <>{text}</>
 
@@ -135,7 +119,7 @@ function highlightText(text: string, searchQuery: string | undefined): React.Rea
   )
 }
 
-export default function ScriptCard({
+const ScriptCard = React.memo(function ScriptCard({
   script,
   isAuthenticated,
   currentUserId,
@@ -211,109 +195,27 @@ export default function ScriptCard({
         {truncate ? (
           <Link href={`/${script.owner?.username}/${script.id}`} className="block flex-1 min-h-0">
             <div className="bg-background rounded h-full border transition-colors">
-              <Highlight
-                theme={themes.gruvboxMaterialDark}
+              <LazyHighlight
                 code={relevantContent}
                 language="typescript"
-              >
-                {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                  <div className="relative flex flex-col h-full">
-                    <pre
-                      className={`${className} px-4 text-xs h-full flex flex-col overflow-y-auto`}
-                      style={{
-                        ...style,
-                        margin: 0,
-                        background: 'transparent',
-                        minHeight: '100%',
-                        userSelect: 'text',
-                        WebkitUserSelect: 'text',
-                        cursor: 'text',
-                      }}
-                    >
-                      {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
-                      <div className="flex-1 min-h-0 overflow-y-hidden select-text">
-                        {tokens.map((line, i) => {
-                          const lineContent = line.map(token => token.content).join('')
-                          const shouldHighlight =
-                            searchQuery &&
-                            lineContent.toLowerCase().includes(searchQuery.toLowerCase())
-
-                          return (
-                            <div
-                              key={i}
-                              {...getLineProps({ line })}
-                              className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
-                            >
-                              {line.map((token, key) => (
-                                <span key={key} {...getTokenProps({ token })} />
-                              ))}
-                            </div>
-                          )
-                        })}
-                      </div>
-                      {linesAfter > 0 && (
-                        <div className="flex-shrink-0">
-                          <LineIndicator count={linesAfter} position="below" />
-                        </div>
-                      )}
-                    </pre>
-                  </div>
-                )}
-              </Highlight>
+                searchQuery={searchQuery}
+                truncate={truncate}
+                linesBefore={linesBefore}
+                linesAfter={linesAfter}
+              />
             </div>
           </Link>
         ) : (
           <div className="block flex-1 min-h-0">
             <div className="bg-background rounded h-full border">
-              <Highlight
-                theme={themes.gruvboxMaterialDark}
+              <LazyHighlight
                 code={relevantContent}
                 language="typescript"
-              >
-                {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                  <div className="relative flex flex-col h-full">
-                    <pre
-                      className={`${className} px-4 text-xs h-full flex flex-col overflow-y-auto`}
-                      style={{
-                        ...style,
-                        margin: 0,
-                        background: 'transparent',
-                        minHeight: '100%',
-                        userSelect: 'text',
-                        WebkitUserSelect: 'text',
-                        cursor: 'text',
-                      }}
-                    >
-                      {linesBefore > 0 && <LineIndicator count={linesBefore} position="above" />}
-                      <div className="flex-1 min-h-0 overflow-y-hidden select-text">
-                        {tokens.map((line, i) => {
-                          const lineContent = line.map(token => token.content).join('')
-                          const shouldHighlight =
-                            searchQuery &&
-                            lineContent.toLowerCase().includes(searchQuery.toLowerCase())
-
-                          return (
-                            <div
-                              key={i}
-                              {...getLineProps({ line })}
-                              className={`whitespace-pre break-all ${shouldHighlight ? 'bg-amber-300/10 border border-amber-300/40' : ''}`}
-                            >
-                              {line.map((token, key) => (
-                                <span key={key} {...getTokenProps({ token })} />
-                              ))}
-                            </div>
-                          )
-                        })}
-                      </div>
-                      {linesAfter > 0 && (
-                        <div className="flex-shrink-0">
-                          <LineIndicator count={linesAfter} position="below" />
-                        </div>
-                      )}
-                    </pre>
-                  </div>
-                )}
-              </Highlight>
+                searchQuery={searchQuery}
+                truncate={truncate}
+                linesBefore={linesBefore}
+                linesAfter={linesAfter}
+              />
             </div>
           </div>
         )}
@@ -365,4 +267,6 @@ export default function ScriptCard({
       </div>
     </article>
   )
-}
+})
+
+export default ScriptCard

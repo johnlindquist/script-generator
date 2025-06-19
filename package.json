@@ -59,6 +59,7 @@
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-slot": "^1.1.1",
     "@supabase/supabase-js": "^2.47.10",
+    "@tanstack/react-virtual": "^3.13.10",
     "@types/fs-extra": "^11.0.4",
     "@vercel/ai-sdk-gateway": "^0.1.6",
     "@vercel/analytics": "^1.5.0",

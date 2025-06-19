@@ -8,18 +8,41 @@ import SponsorBackground from '@/components/SponsorBackground'
 import Testimonials from '@/components/Testimonials'
 import { getRandomHeading } from '@/lib/getRandomHeading'
 import { getTestimonials } from '@/lib/get-testimonials'
-import React from 'react'
+import React, { Suspense } from 'react'
 import ScrollToContent from '@/components/ScrollToContent'
 import Image from 'next/image'
 import { type AllReleasesData } from '@/lib/get-scriptkit-releases'
 import { getStaticReleaseData, initialReleaseData } from '@/lib/static-data-fetchers'
+import { fetchScriptsServerSide } from '@/lib/server-fetchers'
 
-export default async function Home() {
+interface HomeProps {
+  searchParams?: {
+    sort?: string
+    page?: string
+    query?: string
+  }
+}
+
+export default async function Home({ searchParams }: HomeProps) {
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const testimonials = getTestimonials()
 
   const releases: AllReleasesData = (await getStaticReleaseData()) || initialReleaseData
+
+  // Fetch initial scripts server-side
+  let initialScripts
+  try {
+    initialScripts = await fetchScriptsServerSide(searchParams)
+  } catch (error) {
+    console.error('Failed to fetch initial scripts:', error)
+    // Fallback to empty state if server fetch fails
+    initialScripts = {
+      scripts: [],
+      totalPages: 0,
+      currentPage: 1,
+    }
+  }
 
   return (
     <div id="layout" className="relative min-h-screen">
@@ -87,7 +110,9 @@ Simply put, Script Kit helps you script away the friction of your day.
       <ScrollToContent>
         <section id="scripts" className="border-t sm:py-16 py-8">
           <div className="w-full container mx-auto px-5">
-            <ViewToggle />
+            <Suspense fallback={<ViewToggle />}>
+              <ViewToggle initialData={initialScripts} />
+            </Suspense>
           </div>
         </section>
       </ScrollToContent>

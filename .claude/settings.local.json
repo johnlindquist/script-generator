@@ -9,7 +9,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(ls:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": []
   }

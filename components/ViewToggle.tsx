@@ -17,7 +17,11 @@ import ScriptCardSkeleton from './ScriptCardSkeleton'
 
 type ViewMode = 'grid' | 'list'
 
-export default function ViewToggle() {
+interface ViewToggleProps {
+  initialData?: ScriptsResponse
+}
+
+export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
   const { data: session } = useSession()
   const [sort, setSort] = useQueryState('sort', {
     defaultValue: 'createdAt',
@@ -34,7 +38,7 @@ export default function ViewToggle() {
   const [isMobile, setIsMobile] = useState(false)
   const [query] = useQueryState('query')
 
-  // Update SWR to include query parameter
+  // Update SWR to include query parameter and use initial data
   const { data: scriptsData, isLoading } = useSWR<ScriptsResponse>(
     `/api/scripts?${new URLSearchParams({
       sort,
@@ -45,7 +49,32 @@ export default function ViewToggle() {
       fetch(url).then(res => {
         if (!res.ok) throw new Error('Failed to fetch scripts')
         return res.json()
-      })
+      }),
+    {
+      fallbackData: initialData,
+      revalidateOnFocus: false,
+      keepPreviousData: true,
+    }
+  )
+
+  // Fetch list view data (30 items initially) separately
+  const { data: listViewData, isLoading: isLoadingList } = useSWR<ScriptsResponse>(
+    view === 'list'
+      ? `/api/scripts?${new URLSearchParams({
+          sort,
+          limit: '30',
+          ...(query ? { query } : {}),
+        }).toString()}`
+      : null,
+    (url: string) =>
+      fetch(url).then(res => {
+        if (!res.ok) throw new Error('Failed to fetch scripts')
+        return res.json()
+      }),
+    {
+      revalidateOnFocus: false,
+      keepPreviousData: true,
+    }
   )
 
   // Initialize from localStorage on mount
@@ -70,6 +99,23 @@ export default function ViewToggle() {
   const handleViewChange = (newView: ViewMode) => {
     setView(newView)
     localStorage.setItem('scriptViewMode', newView)
+  }
+
+  // Prefetch list data when hovering over list button
+  const handleListHover = () => {
+    if (view !== 'list' && !listViewData && !isLoadingList) {
+      // Trigger SWR to start fetching
+      const url = `/api/scripts?${new URLSearchParams({
+        sort,
+        limit: '30',
+        ...(query ? { query } : {}),
+      }).toString()}`
+
+      // Prefetch the data
+      fetch(url)
+        .then(res => res.json())
+        .catch(() => {})
+    }
   }
 
   const handleSortChange = async (newSort: SortMode) => {
@@ -102,7 +148,8 @@ export default function ViewToggle() {
   )
 
   // Update loading state check for initial client-side render
-  if (!isClient) {
+  // Show skeletons only if we have no data at all (neither initial nor fetched)
+  if (!isClient && !initialData) {
     return (
       <div id="scripts" className="min-h-[400px]">
         {view === 'grid' ? <LoadingGrid /> : <LoadingListView />}
@@ -265,6 +312,7 @@ export default function ViewToggle() {
                 </button>
                 <button
                   onClick={() => handleViewChange('list')}
+                  onMouseEnter={handleListHover}
                   className={`flex items-center gap-2 px-3 py-2 rounded-r-lg border-t border-r border-b border-zinc-700 -ml-px ${
                     view === 'list'
                       ? 'bg-zinc-800 text-amber-400'
@@ -281,25 +329,19 @@ export default function ViewToggle() {
       </div>
 
       {/* Scripts Display */}
-      <div className={view === 'list' ? 'h-[600px]' : ''}>
-        {isLoading || !scriptsData ? (
-          view === 'grid' ? (
+      <div>
+        {view === 'grid' ? (
+          isLoading || !scriptsData ? (
             <LoadingGrid />
           ) : (
-            <LoadingListView />
+            <ScriptListClient
+              isAuthenticated={!!session}
+              currentUserId={session?.user?.id}
+              initialData={scriptsData}
+            />
           )
         ) : (
-          <>
-            {view === 'grid' ? (
-              <ScriptListClient
-                isAuthenticated={!!session}
-                currentUserId={session?.user?.id}
-                initialData={scriptsData}
-              />
-            ) : (
-              <ScriptListAll />
-            )}
-          </>
+          <ScriptListAll initialData={listViewData} isLoading={isLoadingList} />
         )}
       </div>
     </div>

@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import type { Prisma } from '@prisma/client'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import ScriptCard from './ScriptCard'
-import { StarIcon, ArrowDownTrayIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
+import VirtualScriptList from './VirtualScriptList'
 import { Skeleton } from './ui/skeleton'
 
 type ScriptWithRelations = Prisma.ScriptGetPayload<{
@@ -71,46 +71,48 @@ export const LoadingListView = () => (
   </div>
 )
 
-export default function ScriptListAll() {
+interface ScriptListAllProps {
+  initialData?: {
+    scripts: ScriptWithRelations[]
+    totalPages: number
+    currentPage: number
+  } | null
+  isLoading?: boolean
+}
+
+const SCRIPTS_PER_PAGE = 30
+
+export default function ScriptListAll({ initialData, isLoading = false }: ScriptListAllProps) {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
-  const [scripts, setScripts] = useState<ScriptWithRelations[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedScript, setSelectedScript] = useState<ScriptWithRelations | null>(null)
+  const [scripts, setScripts] = useState<ScriptWithRelations[]>(initialData?.scripts || [])
+  const [loading, setLoading] = useState(!initialData)
+  const [error] = useState<string | null>(null)
+  const [selectedScript, setSelectedScript] = useState<ScriptWithRelations | null>(
+    initialData?.scripts?.[0] || null
+  )
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [offset, setOffset] = useState(initialData?.scripts?.length || 0)
 
   useEffect(() => {
-    const fetchScripts = async () => {
-      try {
-        const params = new URLSearchParams(searchParams?.toString() ?? '')
-        params.set('limit', '100')
-        const res = await fetch(`/api/scripts?${params.toString()}`)
-        if (!res.ok) {
-          throw new Error('Failed to fetch scripts')
-        }
-        const data = await res.json()
-        if (!data.scripts) {
-          throw new Error('No scripts data received')
-        }
-        const transformedScripts = data.scripts.map((script: ScriptWithRelations) => ({
-          ...script,
-          isVerified: false,
-          isFavorited: false,
-        }))
-        setScripts(transformedScripts)
-        if (transformedScripts.length > 0) {
-          setSelectedScript(transformedScripts[0])
-        } else {
-          setSelectedScript(null)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch scripts')
-      } finally {
-        setLoading(false)
+    // Update state when initial data changes
+    if (initialData) {
+      setScripts(initialData.scripts)
+      if (initialData.scripts.length > 0 && !selectedScript) {
+        setSelectedScript(initialData.scripts[0])
       }
+      setLoading(false)
+      setOffset(initialData.scripts.length)
+      // Check if we have more scripts to load
+      setHasMore(initialData.scripts.length >= SCRIPTS_PER_PAGE)
     }
-    fetchScripts()
-  }, [searchParams])
+  }, [initialData])
+
+  useEffect(() => {
+    // Update loading state
+    setLoading(isLoading)
+  }, [isLoading])
 
   const handleScriptDeleted = (scriptId: string) => {
     setScripts(prev => prev.filter(s => s.id !== scriptId))
@@ -118,6 +120,45 @@ export default function ScriptListAll() {
       setSelectedScript(scripts[0] || null)
     }
   }
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return
+
+    setIsLoadingMore(true)
+    try {
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
+      params.set('limit', String(SCRIPTS_PER_PAGE))
+      params.set('offset', String(offset))
+
+      const res = await fetch(`/api/scripts?${params.toString()}`)
+      if (!res.ok) {
+        throw new Error('Failed to fetch more scripts')
+      }
+
+      const data = await res.json()
+      if (data.scripts && data.scripts.length > 0) {
+        const newScripts = data.scripts.map((script: ScriptWithRelations) => ({
+          ...script,
+          isVerified: false,
+          isFavorited: false,
+        }))
+
+        setScripts(prev => [...prev, ...newScripts])
+        setOffset(prev => prev + newScripts.length)
+
+        // If we got less than requested, we've reached the end
+        if (newScripts.length < SCRIPTS_PER_PAGE) {
+          setHasMore(false)
+        }
+      } else {
+        setHasMore(false)
+      }
+    } catch (err) {
+      console.error('Failed to load more scripts:', err)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [isLoadingMore, hasMore, offset, searchParams])
 
   if (loading) {
     return <LoadingListView />
@@ -128,48 +169,16 @@ export default function ScriptListAll() {
   }
 
   return (
-    <div className="flex gap-6 h-[600px] max-w-full">
-      {/* Scrollable List Panel - Fixed width */}
-      <div className="w-[360px] flex-shrink-0 overflow-y-auto rounded-lg border border-zinc-800">
-        <ul className="divide-y divide-zinc-800">
-          {scripts.map(script => (
-            <li
-              key={script.id}
-              onClick={() => setSelectedScript(script)}
-              className="relative border-l-2 border-transparent hover:bg-zinc-900/50 transition-colors cursor-pointer"
-            >
-              {/* Selection indicator - absolute positioned to avoid layout shifts */}
-              {selectedScript?.id === script.id && (
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
-              )}
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-200 line-clamp-1">{script.title}</h3>
-                <p className="text-sm text-amber-400 mt-1">
-                  by {script.owner?.username || 'Anonymous'}
-                </p>
-                {script.summary && (
-                  <p className="text-gray-400 mt-2 text-sm line-clamp-2">{script.summary}</p>
-                )}
-                {/* Stats Row */}
-                <div className="flex gap-4 mt-3 text-sm text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                    <span>{script._count.installs}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <StarIcon className="h-4 w-4" />
-                    <span>{script._count.favorites}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <CheckBadgeIcon className="h-4 w-4" />
-                    <span>{script._count.verifications}</span>
-                  </div>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="flex gap-6 h-[calc(100vh-300px)] min-h-[600px] max-w-full">
+      {/* Virtual Scrollable List Panel - Fixed width */}
+      <VirtualScriptList
+        scripts={scripts}
+        selectedScript={selectedScript}
+        onScriptClick={setSelectedScript}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+      />
 
       {/* Script Card Panel - Fill remaining width */}
       <div className="flex-1 min-w-0 h-full">
