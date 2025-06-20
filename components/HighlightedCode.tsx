@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import React from 'react'
 import Highlight, { themes, Language } from 'prism-react-renderer'
 
