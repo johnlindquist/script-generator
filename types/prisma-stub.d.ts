@@ -4,7 +4,13 @@ declare module '@prisma/client' {
     id: string
     username: string
     fullName: string | null
-    // optional
+    // Relations used in the app
+    favorites?: unknown[]
+    installs?: unknown[]
+    verifications?: unknown[]
+    scripts?: Script[]
+    requestedBy?: Script[]
+    usage?: unknown[]
     sponsorship?: unknown
   }
 
