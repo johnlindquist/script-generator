@@ -48,3 +48,22 @@ declare module 'next/image' {
   const Image: FC<ImageProps>
   export default Image
 }
+
+// -----------------------------------------------------------------------------
+// next – bare-bones API types required for getServerSession overload
+// -----------------------------------------------------------------------------
+
+declare module 'next' {
+  export interface NextApiRequest {
+    headers: Record<string, string | string[] | undefined>
+    query: Record<string, string | string[]>
+    body?: unknown
+    method?: string
+  }
+
+  export interface NextApiResponse<T = unknown> {
+    status: (code: number) => NextApiResponse<T>
+    json: (data: T) => void
+    end: (data?: string) => void
+  }
+}
