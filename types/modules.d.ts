@@ -55,21 +55,10 @@ declare module 'next/navigation' {
   export function notFound(): never
 }
 
-declare module 'next-auth' {
-  export interface Session {
-    user?: unknown
-  }
-  export interface NextAuthOptions {
-    [key: string]: unknown
-  }
-  export function getServerSession(options?: NextAuthOptions): Promise<Session | null>
-}
-
 declare module 'next/link' {
   import { FC, ReactElement } from 'react'
-  import { UrlObject } from 'url'
 
-  type Url = string | UrlObject
+  type Url = string | { pathname: string; query?: Record<string, unknown> } | { href: string }
 
   export interface LinkProps {
     href: Url
@@ -100,22 +89,49 @@ declare module 'next/image' {
 }
 
 // ---------------------------------------------------------------------------
-// Prisma (minimal typings sufficient for compilation)
+// Prisma rich stub (models we actually use)
 // ---------------------------------------------------------------------------
 
 declare module '@prisma/client' {
-  export class PrismaClient {
-    user: {
-      findUnique: (...args: unknown[]) => Promise<unknown>
-    }
-    script: {
-      findFirst: (...args: unknown[]) => Promise<unknown>
+  /** Basic model interfaces used in the app */
+  export interface User {
+    id: string
+    username: string
+    fullName: string | null
+    sponsorship?: unknown
+  }
+
+  export interface Script {
+    id: string
+    title: string
+    content: string
+    ownerId: string
+    dashedName?: string
+    locked: boolean
+    owner?: User
+    _count?: {
+      verifications: number
+      favorites: number
+      installs: number
     }
   }
 
-  export namespace Prisma {
-    // Generic payload helpers – simplified to `unknown` while preserving generic arity
-    export type UserGetPayload<T extends object> = unknown
-    export type ScriptGetPayload<T extends object> = unknown
+  /** Simplified PrismaClient containing only the queries we call in server components */
+  export class PrismaClient {
+    user: {
+      findUnique: (args: unknown) => Promise<User | null>
+    }
+    script: {
+      findFirst: (args: unknown) => Promise<Script | null>
+    }
   }
+
+  /** Generic helpers aliased to the model interfaces for convenience */
+  export namespace Prisma {
+    export type UserGetPayload<T extends object> = User
+    export type ScriptGetPayload<T extends object> = Script
+  }
+
+  // Re-export so `import { prisma } from '@/lib/prisma'` continues to work in stubbed env.
+  export const PrismaClientInstance: PrismaClient
 }
