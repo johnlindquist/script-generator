@@ -8,11 +8,12 @@ export namespace JSX {
 
 declare module 'react' {
   export type ReactNode = unknown
-  export interface FC<P = {}> {
-    (props: P): ReactNode
+  export type ReactElement = unknown
+  export interface FC<P = Record<string, unknown>> {
+    (props: P): ReactElement | null
   }
   const React: {
-    createElement: (...args: unknown[]) => unknown
+    createElement: (...args: unknown[]) => ReactElement
   }
   export default React
 }

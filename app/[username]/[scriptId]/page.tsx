@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
 import ScriptCardServer from '@/components/ScriptCardServer'
 
 export default async function ScriptPage({
@@ -11,18 +12,20 @@ export default async function ScriptPage({
 }) {
   const { username, scriptId } = await params
   const session = await getServerSession(authOptions)
-  const user = await prisma.user.findUnique({
+  const user = (await prisma.user.findUnique({
     where: { username },
     include: {
       sponsorship: true,
     },
-  })
+  })) as Prisma.UserGetPayload<{
+    include: { sponsorship: true }
+  }>
 
   if (!user) {
     notFound()
   }
 
-  const script = await prisma.script.findFirst({
+  const script = (await prisma.script.findFirst({
     where: {
       id: scriptId,
       ownerId: user.id,
@@ -37,7 +40,18 @@ export default async function ScriptPage({
         },
       },
     },
-  })
+  })) as Prisma.ScriptGetPayload<{
+    include: {
+      owner: true
+      _count: {
+        select: {
+          verifications: true
+          favorites: true
+          installs: true
+        }
+      }
+    }
+  }>
 
   if (!script) {
     notFound()

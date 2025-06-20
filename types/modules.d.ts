@@ -51,38 +51,6 @@ declare module '@heroicons/react/24/outline'
 declare module '@heroicons/react/24/solid'
 declare module 'react-icons/fa'
 
-declare module 'next/link' {
-  import { FC, ReactNode } from 'react'
-  export interface LinkProps {
-    href: string
-    children?: ReactNode
-    className?: string
-  }
-  const Link: FC<LinkProps>
-  export default Link
-}
-
-declare module 'next/image' {
-  import { FC } from 'react'
-  export interface ImageProps {
-    src: string
-    alt: string
-    width?: number
-    height?: number
-    className?: string
-  }
-  const Image: FC<ImageProps>
-  export default Image
-}
-
-declare module '@prisma/client' {
-  export type Prisma = unknown
-  export interface PrismaClient {
-    [key: string]: unknown
-  }
-  export const PrismaClient: new () => PrismaClient
-}
-
 declare module 'next/navigation' {
   export function notFound(): never
 }
