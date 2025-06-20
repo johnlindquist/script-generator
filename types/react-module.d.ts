@@ -24,9 +24,14 @@ declare module 'react' {
     [key: string]: unknown
   }
 
+  export interface FC<P = Record<string, unknown>> {
+    (props: P & { children?: ReactNode }): ReactElement | null
+  }
+
   const React: {
     createElement: (...args: unknown[]) => ReactElement;
     Fragment: unknown;
+    memo: <T>(component: FC<T>) => FC<T>;
   };
   export default React;
 }
