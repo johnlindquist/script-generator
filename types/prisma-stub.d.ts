@@ -11,7 +11,7 @@ declare module '@prisma/client' {
     scripts?: Script[]
     requestedBy?: Script[]
     usage?: Usage[]
-    sponsorship?: GithubSponsor | null
+    sponsorship: GithubSponsor | null
   }
 
   export interface ScriptCount {

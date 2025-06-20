@@ -10,12 +10,18 @@ declare module 'prism-react-renderer' {
     | 'json'
     | string // fallback
 
+  export interface Token {
+    types: string[]
+    content: string
+    empty?: boolean
+  }
+
   export interface HighlightRenderProps {
     className: string
     style: CSSProperties
-    tokens: Array<Array<{ types: string[]; content: string; empty?: boolean }>>
-    getLineProps: (input: { line: string[]; key?: React.Key }) => Record<string, unknown>
-    getTokenProps: (input: { token: string; key?: React.Key }) => Record<string, unknown>
+    tokens: Token[][]
+    getLineProps: (input: { line: Token[]; key?: React.Key }) => Record<string, unknown>
+    getTokenProps: (input: { token: Token; key?: React.Key }) => Record<string, unknown>
   }
 
   export interface HighlightProps {
