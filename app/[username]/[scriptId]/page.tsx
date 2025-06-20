@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
-import ScriptCard from '@/components/ScriptCard'
+import ScriptCardServer from '@/components/ScriptCardServer'
 
 export default async function ScriptPage({
   params,
@@ -46,7 +46,7 @@ export default async function ScriptPage({
   return (
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-0 sm:px-8 py-4">
       <div className="container mx-auto max-w-[98%] sm:max-w-4xl py-0 sm:py-8">
-        <ScriptCard
+        <ScriptCardServer
           script={{
             ...script,
             isVerified: false,
@@ -58,8 +58,6 @@ export default async function ScriptPage({
           }}
           isAuthenticated={!!session}
           currentUserId={session?.user?.id}
-          truncate={false}
-          searchQuery=""
         />
       </div>
     </main>
