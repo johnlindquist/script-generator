@@ -64,3 +64,58 @@ declare module 'next-auth' {
   }
   export function getServerSession(options?: NextAuthOptions): Promise<Session | null>
 }
+
+declare module 'next/link' {
+  import { FC, ReactElement } from 'react'
+  import { UrlObject } from 'url'
+
+  type Url = string | UrlObject
+
+  export interface LinkProps {
+    href: Url
+    children?: ReactElement | ReactElement[] | string
+    className?: string
+    prefetch?: boolean
+  }
+
+  const Link: FC<LinkProps>
+  export default Link
+}
+
+declare module 'next/image' {
+  import { FC } from 'react'
+
+  export interface ImageProps {
+    src: string
+    alt: string
+    width?: number
+    height?: number
+    className?: string
+    priority?: boolean
+    placeholder?: 'blur' | 'empty'
+  }
+
+  const Image: FC<ImageProps>
+  export default Image
+}
+
+// ---------------------------------------------------------------------------
+// Prisma (minimal typings sufficient for compilation)
+// ---------------------------------------------------------------------------
+
+declare module '@prisma/client' {
+  export class PrismaClient {
+    user: {
+      findUnique: (...args: unknown[]) => Promise<unknown>
+    }
+    script: {
+      findFirst: (...args: unknown[]) => Promise<unknown>
+    }
+  }
+
+  export namespace Prisma {
+    // Generic payload helpers – simplified to `unknown` while preserving generic arity
+    export type UserGetPayload<T extends object> = unknown
+    export type ScriptGetPayload<T extends object> = unknown
+  }
+}
