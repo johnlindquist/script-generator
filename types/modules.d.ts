@@ -76,13 +76,23 @@ declare module 'next/image' {
 }
 
 declare module '@prisma/client' {
-  export * from '@prisma/client'
+  export type Prisma = unknown
+  export interface PrismaClient {
+    [key: string]: unknown
+  }
+  export const PrismaClient: new () => PrismaClient
 }
 
-declare module 'next/navigation'
+declare module 'next/navigation' {
+  export function notFound(): never
+}
 
-declare module 'react' {
-  const React: unknown
-  export default React
-  export * from 'react'
+declare module 'next-auth' {
+  export interface Session {
+    user?: unknown
+  }
+  export interface NextAuthOptions {
+    [key: string]: unknown
+  }
+  export function getServerSession(options?: NextAuthOptions): Promise<Session | null>
 }
