@@ -5,13 +5,13 @@ declare module '@prisma/client' {
     username: string
     fullName: string | null
     // Relations used in the app
-    favorites?: unknown[]
-    installs?: unknown[]
-    verifications?: unknown[]
+    favorites?: Favorite[]
+    installs?: Install[]
+    verifications?: Verification[]
     scripts?: Script[]
     requestedBy?: Script[]
-    usage?: unknown[]
-    sponsorship?: unknown
+    usage?: Usage[]
+    sponsorship?: GithubSponsor | null
   }
 
   export interface ScriptCount {
@@ -30,6 +30,13 @@ declare module '@prisma/client' {
     owner?: User
     _count?: ScriptCount
   }
+
+  export interface Favorite { id: string }
+  export interface Install { id: string }
+  export interface Verification { id: string }
+  export interface Usage { id: string; userId: string; count: number }
+
+  export interface GithubSponsor { id: string; login: string }
 
   export namespace Prisma {
     export type UserGetPayload<T> = User

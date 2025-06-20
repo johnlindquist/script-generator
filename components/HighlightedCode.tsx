@@ -1,5 +1,6 @@
 import React from 'react'
 import Highlight, { themes, Language } from 'prism-react-renderer'
+import type { HighlightProps } from 'prism-react-renderer'
 
 // The cache lives for the lifetime of the serverless function / node process.
 // Keyed by a hash of the code + language (for our use-case language is constant).
@@ -7,19 +8,9 @@ const highlightCache = new Map<string, React.ReactElement>()
 
 // Minimal type re-declarations to avoid bringing in the entire prism type graph.
 // They align with the structures returned by prism-react-renderer.
-interface Token {
-  types: string[]
-  content: string
-  empty?: boolean
-}
+type HighlightRenderProps = Parameters<HighlightProps['children']>[0]
 
-interface HighlightRenderProps {
-  className: string
-  style: React.CSSProperties
-  tokens: Token[][]
-  getLineProps: (input: { line: Token[]; key?: React.Key }) => React.HTMLAttributes<HTMLDivElement>
-  getTokenProps: (input: { token: Token; key?: React.Key }) => React.HTMLAttributes<HTMLSpanElement>
-}
+type Token = HighlightRenderProps['tokens'][number][number]
 
 interface HighlightedCodeProps {
   code: string
@@ -60,9 +51,9 @@ export default function HighlightedCode({
       style={{ ...highlightStyle, ...style, margin: 0, userSelect: 'text', WebkitUserSelect: 'text' }}
     >
       {tokens.map((line: Token[], lineIndex: number) => (
-        <div key={`line-${lineIndex}`} {...getLineProps({ line, key: `line-${lineIndex}` })}>
+        <div key={`line-${lineIndex}`} {...getLineProps({ line: line as unknown as string[], key: `line-${lineIndex}` })}>
           {line.map((token: Token, tokenIndex: number) => (
-            <span key={`token-${lineIndex}-${tokenIndex}`} {...getTokenProps({ token, key: `token-${lineIndex}-${tokenIndex}` })} />
+            <span key={`token-${lineIndex}-${tokenIndex}`} {...getTokenProps({ token: token as unknown as string, key: `token-${lineIndex}-${tokenIndex}` })} />
           ))}
         </div>
       ))}
