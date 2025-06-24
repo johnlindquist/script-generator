@@ -267,33 +267,86 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
+  try {
+    const session = await getServerSession(authOptions)
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+    if (!session?.user?.id) {
+      console.error('POST /api/scripts - No session or user ID found')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-  const { prompt, code } = await request.json()
+    let body: { prompt?: string; code?: string; saved?: boolean }
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('POST /api/scripts - Invalid JSON in request body:', error)
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+    }
 
-  if (!prompt || !code) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
+    const { prompt, code, saved } = body
 
-  // Parse out metadata including "// Name:" from code
-  const { name } = parseScriptFromMarkdown(code)
-  const shortName = name || 'unnamed'
-  const dashedName = generateDashedName(shortName)
+    // Validate required fields
+    if (!code || typeof code !== 'string' || code.trim().length === 0) {
+      console.error('POST /api/scripts - Code is missing or invalid')
+      return NextResponse.json(
+        { error: 'Code is required and must be a non-empty string' },
+        { status: 400 }
+      )
+    }
 
-  const script = await prisma.script.create({
-    data: {
-      title: shortName,
-      content: code,
-      saved: true,
-      status: 'ACTIVE',
-      ownerId: session.user.id,
+    // Parse out metadata including "// Name:" from code
+    const { name } = parseScriptFromMarkdown(code)
+    const title = name || prompt?.slice(0, 50) || 'Untitled Script'
+    const dashedName = generateDashedName(title)
+
+    console.log('POST /api/scripts - Creating script:', {
+      title,
+      hasPrompt: !!prompt,
+      hasCode: !!code,
+      userId: session.user.id,
       dashedName,
-    },
-  })
+    })
 
-  return NextResponse.json(script)
+    const script = await prisma.script.create({
+      data: {
+        title,
+        content: code,
+        prompt: prompt || '', // Include the prompt field
+        saved: saved !== false, // Default to true if not specified
+        status: 'ACTIVE',
+        ownerId: session.user.id,
+        dashedName,
+      },
+    })
+
+    console.log('POST /api/scripts - Script created successfully:', script.id)
+    return NextResponse.json(script)
+  } catch (error) {
+    console.error('POST /api/scripts - Error creating script:', error)
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle specific Prisma errors
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'A script with this name already exists' },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(
+        {
+          error: 'Database error',
+          details: error.message,
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        error: 'Failed to save script',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
+  }
 }

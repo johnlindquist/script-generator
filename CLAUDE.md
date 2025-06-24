@@ -256,3 +256,11 @@ The app uses XState for complex UI states, particularly in `ScriptGenerationMach
 - Environment variables in Vercel dashboard
 - Automatic deployments from main branch
 - Preview deployments for PRs
+
+## Debugging and Troubleshooting
+
+### Vercel CLI Logs Investigation
+- Use `vercel logs` to easily inspect deployment logs
+- Quickly diagnose issues by running `vercel logs --debug` for verbose output
+- Filter logs by deployment or instance using additional CLI flags
+- Check both server-side and client-side logs to understand failures

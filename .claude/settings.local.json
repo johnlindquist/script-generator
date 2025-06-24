@@ -15,7 +15,10 @@
       "Bash(npm run lint)",
       "Bash(npm run check:*)",
       "Bash(npx tsc:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(vercel:*)",
+      "Bash(pnpm tsc:*)",
+      "Bash(pnpm eslint:*)"
     ],
     "deny": []
   }
