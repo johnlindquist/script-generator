@@ -16,30 +16,36 @@ export default async function NewScriptPage() {
         <form
           action={async (formData: FormData) => {
             'use server'
-            const title = formData.get('title')
-            const content = formData.get('content')
+            const { prisma } = await import('@/lib/prisma')
+            const { generateDashedName } = await import('@/lib/names')
+            const { parseScriptFromMarkdown } = await import('@/lib/generation')
+
+            const title = formData.get('title') as string
+            const content = formData.get('content') as string
 
             if (!title || !content) {
-              return
+              throw new Error('Title and content are required')
             }
 
-            const response = await fetch('/api/scripts', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                title,
+            // Parse metadata from content
+            const { name } = parseScriptFromMarkdown(content)
+            const scriptTitle = name || title
+            const dashedName = generateDashedName(scriptTitle)
+
+            // Create script directly using Prisma instead of calling the API
+            const script = await prisma.script.create({
+              data: {
+                title: scriptTitle,
                 content,
-              }),
+                prompt: `User created script: ${title}`,
+                saved: true,
+                status: 'ACTIVE',
+                ownerId: session.user.id,
+                dashedName,
+              },
             })
 
-            if (!response.ok) {
-              return
-            }
-
-            const data = await response.json()
-            redirect(`/${session.user.username}/${data.id}`)
+            redirect(`/${session.user.username}/${script.id}`)
           }}
         >
           <div className="space-y-4">
