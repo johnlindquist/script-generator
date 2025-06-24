@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import NewScriptClient from './NewScriptClient'
 
 export default async function NewScriptPage() {
   const session = await getServerSession(authOptions)
@@ -13,74 +14,7 @@ export default async function NewScriptPage() {
     <main className="min-h-screen bg-gradient-to-b from-zinc-900 to-black px-8 py-4">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-300 mb-4">Create New Script</h1>
-        <form
-          action={async (formData: FormData) => {
-            'use server'
-            const { prisma } = await import('@/lib/prisma')
-            const { generateDashedName } = await import('@/lib/names')
-            const { parseScriptFromMarkdown } = await import('@/lib/generation')
-
-            const title = formData.get('title') as string
-            const content = formData.get('content') as string
-
-            if (!title || !content) {
-              throw new Error('Title and content are required')
-            }
-
-            // Parse metadata from content
-            const { name } = parseScriptFromMarkdown(content)
-            const scriptTitle = name || title
-            const dashedName = generateDashedName(scriptTitle)
-
-            // Create script directly using Prisma instead of calling the API
-            const script = await prisma.script.create({
-              data: {
-                title: scriptTitle,
-                content,
-                prompt: `User created script: ${title}`,
-                saved: true,
-                status: 'ACTIVE',
-                ownerId: session.user.id,
-                dashedName,
-              },
-            })
-
-            redirect(`/${session.user.username}/${script.id}`)
-          }}
-        >
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-300">
-                Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                id="title"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 bg-neutral-800 text-gray-100"
-                placeholder="My Awesome Script"
-              />
-            </div>
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-300">
-                Content
-              </label>
-              <textarea
-                name="content"
-                id="content"
-                rows={10}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 bg-neutral-800 text-gray-100 font-mono"
-                placeholder="// Your script here..."
-              />
-            </div>
-            <button
-              type="submit"
-              className="inline-flex justify-center rounded-md border border-transparent bg-primary py-2 px-4 text-sm font-medium text-primary-foreground shadow-sm  focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-            >
-              Create Script
-            </button>
-          </div>
-        </form>
+        <NewScriptClient />
       </div>
     </main>
   )
