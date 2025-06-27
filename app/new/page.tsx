@@ -3,11 +3,28 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import NewScriptClient from './NewScriptClient'
 
-export default async function NewScriptPage() {
+export default async function NewScriptPage({
+  searchParams
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
-    redirect('/api/auth/signin')
+    // Preserve query params by encoding the full URL as the callbackUrl
+    const params = new URLSearchParams()
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value !== undefined) {
+        if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, v))
+        } else {
+          params.append(key, value)
+        }
+      }
+    })
+    const queryString = params.toString()
+    const callbackUrl = `/new${queryString ? `?${queryString}` : ''}`
+    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`)
   }
 
   return (

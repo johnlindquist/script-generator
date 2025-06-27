@@ -5,20 +5,34 @@ import { authOptions } from '../auth/[...nextauth]/route'
 import { wrapApiHandler } from '@/lib/timing'
 import { shouldLockScript } from '@/lib/scripts'
 import { debugLog } from '@/lib/debug'
+import { logInteraction } from '@/lib/interaction-logger'
+import { FavoriteRequestSchema } from '@/lib/schemas'
 
 const toggleFavorite = async (req: NextRequest) => {
+  const interactionTimestamp = req.headers.get('Interaction-Timestamp') || new Date().toISOString()
+
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       debugLog('favorite', 'Unauthorized - No valid user ID')
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Unauthorized', {
+        userId: session?.user?.id,
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { scriptId } = await req.json()
-    if (!scriptId) {
-      debugLog('favorite', 'Missing script ID')
-      return NextResponse.json({ error: 'Script ID is required' }, { status: 400 })
+    // Parse and validate request body
+    const rawBody = await req.json()
+    const parseResult = FavoriteRequestSchema.safeParse(rawBody)
+
+    if (!parseResult.success) {
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Invalid favorite request body', {
+        errors: parseResult.error.errors,
+      })
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
     }
+
+    const { scriptId } = parseResult.data
 
     // Check if script exists
     const script = await prisma.script.findUnique({
@@ -27,6 +41,10 @@ const toggleFavorite = async (req: NextRequest) => {
 
     if (!script) {
       debugLog('favorite', 'Script not found', { scriptId })
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Script not found', {
+        userId: session.user.id,
+        scriptId,
+      })
       return NextResponse.json({ error: 'Script not found' }, { status: 404 })
     }
 
@@ -58,6 +76,10 @@ const toggleFavorite = async (req: NextRequest) => {
         scriptId,
         userId: session.user.id,
       })
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Script unfavorited', {
+        userId: session.user.id,
+        scriptId,
+      })
     } else {
       // Create new favorite if it doesn't exist
       await prisma.favorite.create({
@@ -70,6 +92,10 @@ const toggleFavorite = async (req: NextRequest) => {
       debugLog('favorite', 'Added favorite', {
         scriptId,
         userId: session.user.id,
+      })
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Script favorited', {
+        userId: session.user.id,
+        scriptId,
       })
 
       // Check if script should be locked
@@ -108,6 +134,9 @@ const toggleFavorite = async (req: NextRequest) => {
     return NextResponse.json({ isFavorited, favoriteCount })
   } catch (error) {
     debugLog('favorite', 'Error toggling favorite', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    await logInteraction(interactionTimestamp, 'serverRoute', 'Error in favorite route', {
       error: error instanceof Error ? error.message : String(error),
     })
     return NextResponse.json({ error: 'Failed to toggle favorite' }, { status: 500 })

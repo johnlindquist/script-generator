@@ -1,4 +1,4 @@
-import { createGatewayProvider } from '@vercel/ai-sdk-gateway'
+import { createGatewayProvider } from '@ai-sdk/gateway'
 import { logInteraction } from './interaction-logger'
 
 const timestamp = new Date().toISOString()

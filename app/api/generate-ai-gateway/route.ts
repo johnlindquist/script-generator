@@ -5,17 +5,19 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { logInteraction } from '@/lib/interaction-logger'
-import { ModelMessage, streamText } from 'ai'
-import { gateway } from '@/lib/ai-gateway'
+import { type ModelMessage, streamText, type LanguageModel } from 'ai'
 import { DRAFT_PASS_PROMPT } from './prompt'
 import { extractUserInfo } from '@/lib/generation'
+import type { GatewayModelId } from '@ai-sdk/gateway'
+import { gateway } from '@/lib/ai-gateway'
+import { GenerateRequestSchema } from '@/lib/schemas'
 
 // Explicitly declare this route uses Node.js runtime
 export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 const CLI_API_KEY = process.env.CLI_API_KEY
-const DEFAULT_MODEL = process.env.DEFAULT_AI_SDK_MODEL || 'anthropic/claude-4-sonnet-20250514'
+const DEFAULT_MODEL: GatewayModelId = process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId || 'anthropic/claude-4-sonnet'
 
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
@@ -79,13 +81,13 @@ export async function POST(req: Request) {
       sessionExpires: session?.expires,
       sessionUser: session?.user
         ? {
-            hasUser: !!session.user,
-            userKeys: Object.keys(session.user),
-            userId: session.user.id,
-            userEmail: session.user.email,
-            username: session.user.username,
-            userType: typeof session.user,
-          }
+          hasUser: !!session.user,
+          userKeys: Object.keys(session.user),
+          userId: session.user.id,
+          userEmail: session.user.email,
+          username: session.user.username,
+          userType: typeof session.user,
+        }
         : null,
     })
 
@@ -183,10 +185,10 @@ export async function POST(req: Request) {
             hasUserId: !!session?.user?.id,
             sessionData: session
               ? {
-                  expires: session.expires,
-                  userKeys: session.user ? Object.keys(session.user) : [],
-                  fullUserObject: session.user,
-                }
+                expires: session.expires,
+                userKeys: session.user ? Object.keys(session.user) : [],
+                fullUserObject: session.user,
+              }
               : null,
             failureReasons: sessionFailureReasons,
           }
@@ -209,15 +211,19 @@ export async function POST(req: Request) {
       authMethod,
     })
 
-    const body = await req.json().catch(err => {
-      logInteraction(interactionTimestamp, 'serverRoute', 'Failed to parse request body', {
-        requestId,
-        error: err.message,
-      })
-      return {}
-    })
+    // Parse and validate the request body
+    const rawBody = await req.json()
+    const parseResult = GenerateRequestSchema.safeParse(rawBody)
 
-    const { prompt, luckyRequestId } = body
+    if (!parseResult.success) {
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Invalid request body', {
+        requestId,
+        errors: parseResult.error.errors,
+      })
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
+    }
+
+    const { prompt, luckyRequestId } = parseResult.data
 
     await logInteraction(interactionTimestamp, 'serverRoute', 'Request body parsed', {
       requestId,
@@ -228,10 +234,12 @@ export async function POST(req: Request) {
       model: DEFAULT_MODEL,
     })
 
+    // The prompt is already validated by Zod schema, so this check is now redundant
+    // But kept for consistency with logging
     if (!prompt) {
       await logInteraction(interactionTimestamp, 'serverRoute', 'Missing prompt error', {
         requestId,
-        bodyKeys: Object.keys(body),
+        bodyKeys: Object.keys(parseResult.data),
       })
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
@@ -354,9 +362,9 @@ export async function POST(req: Request) {
       userId === 'cli-user'
         ? null
         : await prisma.user.findUnique({
-            where: { id: userId },
-            select: { id: true, username: true },
-          })
+          where: { id: userId },
+          select: { id: true, username: true },
+        })
 
     // Check daily limit
     if (usage.count >= DAILY_LIMIT) {
@@ -390,15 +398,30 @@ export async function POST(req: Request) {
     })
 
     // Get user info for prompt using extractUserInfo
-    const userInfo =
-      userId === 'cli-user'
-        ? {
-            name: 'CLI Tool',
-            username: 'CLI Tool',
-            fullName: 'CLI Tool',
-            image: null,
-          }
-        : extractUserInfo(session!, dbUser)
+    let userInfo: {
+      name: string | null
+      username: string | null
+      fullName: string | null
+      image: string | null
+    }
+
+    if (userId === 'cli-user') {
+      userInfo = {
+        name: 'CLI Tool',
+        username: 'CLI Tool',
+        fullName: 'CLI Tool',
+        image: null,
+      }
+    } else if (session?.user) {
+      userInfo = extractUserInfo(session, dbUser)
+    } else {
+      userInfo = {
+        name: null,
+        username: null,
+        fullName: null,
+        image: null,
+      }
+    }
 
     // Generate draft script using Vercel AI Gateway
     const draftFinalPrompt = DRAFT_PASS_PROMPT.replace(
@@ -427,7 +450,7 @@ export async function POST(req: Request) {
           },
         },
       },
-      { role: 'user', content: prompt + ` Generate _ONLY_ the script content below this line.` },
+      { role: 'user', content: `${prompt} Generate _ONLY_ the script content below this line.` },
     ]
 
     await logInteraction(
@@ -441,9 +464,12 @@ export async function POST(req: Request) {
       }
     )
 
+
+    const model = gateway.languageModel(DEFAULT_MODEL as GatewayModelId) as unknown as LanguageModel
+
     const result = await streamText({
-      model: gateway.languageModel(DEFAULT_MODEL),
-      messages: messages,
+      model,
+      messages,
       temperature: 0.4,
       onError: (errorData: { error: unknown }) => {
         const error = errorData.error as Error
@@ -458,51 +484,21 @@ export async function POST(req: Request) {
     await logInteraction(
       interactionTimestamp,
       'serverRoute',
-      'streamText result obtained, creating response stream',
+      'streamText result obtained, returning data stream response',
       {
         requestId,
       }
     )
 
+    // Return the AI stream as a Response
+    // The result provides a readable stream of strings in `textStream`.
     const responseStream = new ReadableStream({
       async start(controller) {
-        await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream started', {
-          requestId,
-          luckyRequestId,
-          scriptId,
-          promptLength: draftFinalPrompt.length,
-          userId,
-        })
-
-        let accumulatedCompletion = ''
-        try {
-          for await (const chunk of result.textStream) {
-            controller.enqueue(new TextEncoder().encode(chunk))
-            accumulatedCompletion += chunk
-          }
-          await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream completed', {
-            requestId,
-            completion: accumulatedCompletion.trim(),
-          })
-          controller.close()
-        } catch (error: unknown) {
-          await logInteraction(
-            interactionTimestamp,
-            'serverRoute',
-            'Error during AI stream processing',
-            {
-              requestId,
-              error: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined,
-            }
-          )
-          controller.error(error)
+        for await (const chunk of result.textStream) {
+          controller.enqueue(new TextEncoder().encode(chunk))
         }
+        controller.close()
       },
-    })
-
-    await logInteraction(interactionTimestamp, 'serverRoute', 'Returning stream response', {
-      requestId,
     })
 
     return new Response(responseStream, {
@@ -519,10 +515,10 @@ export async function POST(req: Request) {
       hasSession: !!session,
       sessionData: session
         ? {
-            expires: session.expires,
-            hasUser: !!session.user,
-            userId: session.user?.id,
-          }
+          expires: session.expires,
+          hasUser: !!session.user,
+          userId: session.user?.id,
+        }
         : null,
     })
 

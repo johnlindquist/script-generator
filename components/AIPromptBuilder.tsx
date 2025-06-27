@@ -100,7 +100,7 @@ export default function AIPromptBuilder(props: Props) {
     'Images',
     'Audio',
     'Video',
-    'API',
+    'serverRoute',
     'Editor',
     'Terminal',
   ]

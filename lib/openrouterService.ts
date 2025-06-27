@@ -389,7 +389,7 @@ export async function generateDraftWithStream(
     }
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({})) as { error?: string }
       console.error('[OpenRouter API] Response not OK:', {
         status: res.status,
         data,

@@ -103,7 +103,9 @@ export default function NewScriptClient() {
           type="text"
           id="title"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setTitle((e.target as HTMLInputElement).value)
+          }
           className="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-amber-400/20 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
           placeholder="Enter script title"
         />

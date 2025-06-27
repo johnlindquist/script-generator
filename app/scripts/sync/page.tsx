@@ -57,7 +57,7 @@ export default function SyncRepoPage() {
               id="repoUrl"
               type="text"
               value={repoUrl}
-              onChange={e => setRepoUrl(e.target.value)}
+              onChange={e => setRepoUrl((e.target as HTMLInputElement).value)}
               placeholder={STRINGS.SYNC_REPO.inputPlaceholder}
               className="w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-200 placeholder-gray-500"
               required

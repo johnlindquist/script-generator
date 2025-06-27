@@ -873,7 +873,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
             <Textarea
               ref={textareaRef}
               value={state.context.prompt}
-              onChange={e => send({ type: 'SET_PROMPT', prompt: e.target.value })}
+              onChange={e => send({ type: 'SET_PROMPT', prompt: (e.target as HTMLInputElement).value })}
               onKeyDown={handleKeyDown}
               placeholder={
                 state.context.usageCount === state.context.usageLimit

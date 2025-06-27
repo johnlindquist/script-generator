@@ -1,23 +1,34 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Editor } from '@monaco-editor/react'
 import Link from 'next/link'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
 
 export default function NewScriptPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (!session) {
-    router.push('/api/auth/signin')
+  useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session) {
+      // Preserve query params by encoding the full URL as the callbackUrl
+      const params = searchParams.toString()
+      const callbackUrl = `/scripts/new${params ? `?${params}` : ''}`
+      router.push(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`)
+    }
+  }, [session, status, router, searchParams])
+
+  if (status === 'loading' || !session) {
     return null
   }
 
@@ -75,7 +86,7 @@ export default function NewScriptPage() {
                 <input
                   type="text"
                   value={title}
-                  onChange={e => setTitle(e.target.value)}
+                  onChange={e => setTitle((e.target as HTMLInputElement).value)}
                   className="w-full px-4 py-2 rounded-lg bg-neutral-800/80 border border-amber-400/10 focus:ring-2 focus:ring-amber-400/20 focus:border-transparent text-amber-300"
                   placeholder="Enter script title..."
                 />

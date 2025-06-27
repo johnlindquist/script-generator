@@ -6,6 +6,8 @@ import { shouldLockScript } from '@/lib/scripts'
 import { generateDashedName } from '@/lib/names'
 import { parseScriptFromMarkdown } from '@/lib/generation'
 import { Prisma } from '@prisma/client'
+import { NextSuggestionsSchema } from '@/lib/schemas'
+import { logInteraction } from '@/lib/interaction-logger'
 
 const PAGE_SIZE = 18 // Changed to 18 for better grid layout (6 rows of 3)
 
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
   const limit = Number(searchParams.get('limit') ?? PAGE_SIZE)
   const offset = Number(searchParams.get('offset') ?? '0')
-  const sort = searchParams.get('sort') || 'createdAt'
+  const sort = await searchParams.get('sort') || 'createdAt'
 
   // Add search functionality
   const searchTerm = searchParams.get('query')?.trim() || ''
@@ -184,34 +186,34 @@ export async function GET(request: NextRequest) {
         },
         verifications: session?.user?.id
           ? {
-              where: {
-                userId: session.user.id,
-              },
-              select: {
-                id: true,
-              },
-            }
-          : {
-              select: {
-                id: true,
-              },
-              take: 0,
+            where: {
+              userId: session.user.id,
             },
+            select: {
+              id: true,
+            },
+          }
+          : {
+            select: {
+              id: true,
+            },
+            take: 0,
+          },
         favorites: session?.user?.id
           ? {
-              where: {
-                userId: session.user.id,
-              },
-              select: {
-                id: true,
-              },
-            }
-          : {
-              select: {
-                id: true,
-              },
-              take: 0,
+            where: {
+              userId: session.user.id,
             },
+            select: {
+              id: true,
+            },
+          }
+          : {
+            select: {
+              id: true,
+            },
+            take: 0,
+          },
       },
     }),
   ])
@@ -267,23 +269,33 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const interactionTimestamp = request.headers.get('Interaction-Timestamp') || new Date().toISOString()
+
   try {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      console.error('POST /api/scripts - No session or user ID found')
+      await logInteraction(interactionTimestamp, 'serverRoute', 'POST /api/scripts - Unauthorized', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasUserId: !!session?.user?.id,
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let body: { prompt?: string; code?: string; saved?: boolean }
-    try {
-      body = await request.json()
-    } catch (error) {
-      console.error('POST /api/scripts - Invalid JSON in request body:', error)
-      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+    // Parse and validate request body
+    const rawBody = await request.json()
+    const parseResult = NextSuggestionsSchema.safeParse(rawBody)
+
+    if (!parseResult.success) {
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Invalid scripts request body', {
+        errors: parseResult.error.errors,
+        userId: session.user.id,
+      })
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
     }
 
-    const { prompt, code, saved } = body
+    const { prompt, code, saved } = parseResult.data
 
     // Validate required fields
     if (!code || typeof code !== 'string' || code.trim().length === 0) {

@@ -76,7 +76,7 @@ export default function ImportScriptsPage() {
             <textarea
               id="content"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={e => setContent((e.target as HTMLInputElement).value)}
               placeholder={PLACEHOLDER}
               className="w-full h-96 px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-200 placeholder-gray-500 font-mono"
               required

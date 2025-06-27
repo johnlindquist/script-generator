@@ -23,7 +23,7 @@ export default function ScriptSearch() {
           placeholder="Search scripts..."
           value={query ?? ''}
           onChange={async e => {
-            await setQuery(e.target.value || null)
+            await setQuery((e.target as HTMLInputElement).value || null)
           }}
         />
       </div>

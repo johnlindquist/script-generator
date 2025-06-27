@@ -1,5 +1,6 @@
 import { toast } from 'react-hot-toast'
 import { logInteraction } from './interaction-logger'
+import type { UsageResponse } from '@/lib/schemas'
 
 export async function generateDraft(
   prompt: string,

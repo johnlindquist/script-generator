@@ -1,52 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { wrapApiHandler } from '@/lib/timing'
 import { logInteraction } from '@/lib/interaction-logger'
+import { MockGenerateDraftSchema } from '@/lib/schemas'
 
-export const runtime = 'nodejs'
-
-const mockGenerateDraftScript = async (req: NextRequest) => {
-  const requestId = Math.random().toString(36).substring(7)
-  const interactionTimestamp =
-    req.headers.get('Interaction-Timestamp') ||
-    new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '')
-
-  logInteraction(interactionTimestamp, 'serverRoute', 'Started /api/mock-generate-draft route', {
-    requestId,
-  })
+export async function POST(req: NextRequest) {
+  const interactionTimestamp = req.headers.get('Interaction-Timestamp') || new Date().toISOString()
 
   try {
-    const body = await req.json().catch(() => ({}))
-    const { prompt } = body
-    if (!prompt) {
-      return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
+    // Parse and validate request body
+    const rawBody = await req.json()
+    const parseResult = MockGenerateDraftSchema.safeParse(rawBody)
+
+    if (!parseResult.success) {
+      await logInteraction(interactionTimestamp, 'serverRoute', 'Invalid mock generate draft request body', {
+        errors: parseResult.error.errors,
+      })
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
     }
 
-    const mockScriptId = 'mock-draft-' + Math.random().toString(36).substring(7)
+    const { prompt } = parseResult.data
 
-    const dummyChunks = [
-      'Lorem ipsum dolor sit amet, ',
-      'consectetur adipiscing elit, ',
-      'sed do eiusmod tempor incididunt.',
-    ]
+    await logInteraction(interactionTimestamp, 'serverRoute', 'Mock generate draft request', {
+      promptLength: prompt.length,
+    })
 
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${mockScriptId}__SCRIPT_ID__`))
-        dummyChunks.forEach(chunk => {
-          controller.enqueue(new TextEncoder().encode(chunk))
-        })
-        controller.close()
+    // Mock response for testing
+    const mockScript = `// Mock generated script for: ${prompt}
+import '@johnlindquist/kit'
+
+console.log("This is a mock script generated for the prompt: ${prompt}")
+
+// Add your actual script logic here
+export default async () => {
+  await div({
+    html: \`<h1>Mock Script</h1>
+          <p>Generated for prompt: ${prompt}</p>\`,
+  })
+}`
+
+    return new Response(mockScript, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
       },
     })
-
-    return new NextResponse(stream)
   } catch (error) {
-    logInteraction(interactionTimestamp, 'serverRoute', 'Error in /api/mock-generate-draft route', {
+    await logInteraction(interactionTimestamp, 'serverRoute', 'Error in mock generate draft route', {
       error: error instanceof Error ? error.message : String(error),
-      requestId,
     })
-    return NextResponse.json({ error: 'Mock generation failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-export const POST = wrapApiHandler('mock_generate_draft_script', mockGenerateDraftScript)

@@ -15,15 +15,21 @@ import { type AllReleasesData } from '@/lib/get-scriptkit-releases'
 import { getStaticReleaseData, initialReleaseData } from '@/lib/static-data-fetchers'
 import { fetchScriptsServerSide } from '@/lib/server-fetchers'
 
-interface HomeProps {
-  searchParams?: {
-    sort?: string
-    page?: string
-    query?: string
-  }
+type SearchParams = {
+  sort?: string
+  page?: string
+  query?: string
 }
 
-export default async function Home({ searchParams }: HomeProps) {
+export default async function Home({
+  searchParams,
+}: {
+  // In Next.js 15 `searchParams` is now a Promise that must be awaited
+  searchParams: Promise<SearchParams>
+}) {
+  // Resolve the params before using them
+  const resolvedSearchParams = await searchParams
+
   const session = await getServerSession(authOptions)
   const heading = getRandomHeading()
   const testimonials = getTestimonials()
@@ -33,7 +39,7 @@ export default async function Home({ searchParams }: HomeProps) {
   // Fetch initial scripts server-side
   let initialScripts
   try {
-    initialScripts = await fetchScriptsServerSide(searchParams)
+    initialScripts = await fetchScriptsServerSide(resolvedSearchParams)
   } catch (error) {
     console.error('Failed to fetch initial scripts:', error)
     // Fallback to empty state if server fetch fails
@@ -56,7 +62,7 @@ export default async function Home({ searchParams }: HomeProps) {
             <Image
               src="/assets/desktop_cropped.png"
               alt="desktop"
-              className="object-cover"
+              className="object-contain"
               quality={100}
               fill
             />
@@ -75,7 +81,7 @@ export default async function Home({ searchParams }: HomeProps) {
 How often do you avoid scripting something because it takes too much effort?
 
 Script Kit makes it easy to create and run scripts that solve your daily problems.
-Create a new script from the prompt then your script opens in the editor of your choice. 
+Create a new script from the prompt then your script opens in the editor of your choice.
 Write a few lines of JavaScript. Then run the script from the prompt.
 
 Simply put, Script Kit helps you script away the friction of your day.

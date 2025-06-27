@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
-import { ScriptsResponse, ScriptLite } from '@/types/script'
+import type { Prisma } from '@prisma/client'
+import type { ScriptsResponse, ScriptLite } from '@/types/script'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
@@ -112,23 +112,23 @@ export async function fetchScriptsServerSide(searchParams?: {
         },
         verifications: session?.user?.id
           ? {
-              where: {
-                userId: session.user.id,
-              },
-              select: {
-                id: true,
-              },
-            }
+            where: {
+              userId: session.user.id,
+            },
+            select: {
+              id: true,
+            },
+          }
           : false,
         favorites: session?.user?.id
           ? {
-              where: {
-                userId: session.user.id,
-              },
-              select: {
-                id: true,
-              },
-            }
+            where: {
+              userId: session.user.id,
+            },
+            select: {
+              id: true,
+            },
+          }
           : false,
       },
     }),
