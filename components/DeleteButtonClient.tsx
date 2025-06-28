@@ -26,7 +26,7 @@ export default function DeleteButtonClient({ scriptId, onDeleted }: DeleteButton
       })
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}))
+        const errorBody = await response.json().catch(() => ({})) as { error?: string }
         const errorMsg =
           errorBody?.error ||
           STRINGS.DELETE_BUTTON.errorMessageWithStatus.replace(

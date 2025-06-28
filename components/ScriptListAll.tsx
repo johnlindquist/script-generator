@@ -135,7 +135,7 @@ export default function ScriptListAll({ initialData, isLoading = false }: Script
         throw new Error('Failed to fetch more scripts')
       }
 
-      const data = await res.json()
+      const data = await res.json() as { scripts: ScriptWithRelations[] }
       if (data.scripts && data.scripts.length > 0) {
         const newScripts = data.scripts.map((script: ScriptWithRelations) => ({
           ...script,

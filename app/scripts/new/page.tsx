@@ -22,7 +22,7 @@ export default function NewScriptPage() {
     
     if (!session) {
       // Preserve query params by encoding the full URL as the callbackUrl
-      const params = searchParams.toString()
+      const params = searchParams?.toString() || ''
       const callbackUrl = `/scripts/new${params ? `?${params}` : ''}`
       router.push(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`)
     }

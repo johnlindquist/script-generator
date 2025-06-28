@@ -78,11 +78,11 @@ export default function NewScriptClient() {
       })
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
+        const data = await response.json().catch(() => ({})) as { error?: string }
         throw new Error(data.error || 'Failed to create script')
       }
 
-      const script = await response.json()
+      const script = await response.json() as { id: string }
       toast.success('Script created successfully')
       router.push(`/scripts/${script.id}`)
     } catch (error) {

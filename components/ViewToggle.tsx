@@ -46,7 +46,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
       page,
       ...(query ? { query } : {}),
     }).toString()}`,
-    (url: string) =>
+    (url: string): Promise<ScriptsResponse> =>
       fetch(url).then(res => {
         if (!res.ok) throw new Error('Failed to fetch scripts')
         return res.json()
@@ -67,7 +67,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
           ...(query ? { query } : {}),
         }).toString()}`
       : null,
-    (url: string) =>
+    (url: string): Promise<ScriptsResponse> =>
       fetch(url).then(res => {
         if (!res.ok) throw new Error('Failed to fetch scripts')
         return res.json()

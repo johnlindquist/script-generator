@@ -44,7 +44,7 @@ export default function ImportScriptsPage() {
       })
 
       if (!res.ok) {
-        const { error } = await res.json()
+        const { error } = await res.json() as { error?: string }
         throw new Error(error || STRINGS.IMPORT_SCRIPTS.error.unknown)
       }
 

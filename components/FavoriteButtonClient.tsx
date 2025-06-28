@@ -89,7 +89,7 @@ export default function FavoriteButtonClient({
         throw new Error(STRINGS.FAVORITE_BUTTON.error)
       }
 
-      const data = await response.json()
+      const data = await response.json() as { isFavorited: boolean; favoriteCount: number }
 
       // Update with the real data from the server
       mutate(
