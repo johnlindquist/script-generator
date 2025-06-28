@@ -20,7 +20,8 @@
       "Bash(pnpm tsc:*)",
       "Bash(pnpm eslint:*)",
       "Bash(grep:*)",
-      "Bash(pnpm check:*)"
+      "Bash(pnpm check:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
