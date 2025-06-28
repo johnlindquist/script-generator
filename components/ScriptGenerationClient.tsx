@@ -875,7 +875,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
             <Textarea
               ref={textareaRef}
               value={state.context.prompt}
-              onChange={e => send({ type: 'SET_PROMPT', prompt: (e.target as HTMLInputElement).value })}
+              onChange={e =>
+                send({ type: 'SET_PROMPT', prompt: (e.target as HTMLTextAreaElement).value })
+              }
               onKeyDown={handleKeyDown}
               placeholder={
                 state.context.usageCount === state.context.usageLimit
@@ -1057,7 +1059,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
                       <button
                         onClick={() => {
                           // Store the current script and prompt in localStorage
-                          safeLocalStorage.setItem('scriptToRevise', state.context.editableScript || '')
+                          safeLocalStorage.setItem(
+                            'scriptToRevise',
+                            state.context.editableScript || ''
+                          )
                           safeLocalStorage.setItem('originalPrompt', state.context.prompt)
                           // Add a flag to indicate we want manual editing
                           safeLocalStorage.setItem('manualRevision', 'true')

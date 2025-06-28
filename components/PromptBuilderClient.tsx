@@ -44,7 +44,7 @@ export default function PromptBuilderClient({ categories, snippets, prompt, setP
         <select
           className="border rounded px-2 py-1 bg-background"
           value={selectedCategory}
-          onChange={e => setSelectedCategory((e.target as HTMLInputElement).value)}
+          onChange={e => setSelectedCategory((e.target as HTMLSelectElement).value)}
         >
           {categories.map(cat => (
             <option key={cat.category} value={cat.category}>
@@ -55,7 +55,7 @@ export default function PromptBuilderClient({ categories, snippets, prompt, setP
         <select
           className="border rounded px-2 py-1 bg-background"
           value={selectedFunc}
-          onChange={e => setSelectedFunc((e.target as HTMLInputElement).value)}
+          onChange={e => setSelectedFunc((e.target as HTMLSelectElement).value)}
         >
           {functions.map(fn => (
             <option key={fn} value={fn}>
