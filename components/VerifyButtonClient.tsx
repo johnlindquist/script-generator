@@ -5,6 +5,7 @@ import { ShieldCheckIcon } from '@heroicons/react/24/outline'
 import { STRINGS } from '@/lib/strings'
 import useSWR from 'swr'
 import { useParams } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 interface VerifyButtonClientProps {
   scriptId: string
@@ -45,12 +46,12 @@ export default function VerifyButtonClient({
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
-      alert(STRINGS.VERIFY_BUTTON.signInRequired)
+      toast.error(STRINGS.VERIFY_BUTTON.signInRequired)
       return
     }
 
     if (isOwner) {
-      alert("You can't verify your own script")
+      toast.error("You can't verify your own script")
       return
     }
 
@@ -98,7 +99,7 @@ export default function VerifyButtonClient({
         throw new Error(STRINGS.VERIFY_BUTTON.error)
       }
 
-      const data = await response.json()
+      const data = await response.json() as { isVerified: boolean; verifiedCount: number }
 
       // Update with the real data from the server
       mutate(

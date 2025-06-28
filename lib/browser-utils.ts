@@ -5,7 +5,7 @@ export const safeLocalStorage = {
   getItem: (key: string): string | null => {
     if (!isBrowser) return null
     try {
-      return localStorage.getItem(key)
+      return window.localStorage.getItem(key)
     } catch {
       return null
     }
@@ -13,7 +13,7 @@ export const safeLocalStorage = {
   setItem: (key: string, value: string): void => {
     if (!isBrowser) return
     try {
-      localStorage.setItem(key, value)
+      window.localStorage.setItem(key, value)
     } catch {
       // Ignore errors (e.g., quota exceeded)
     }
@@ -21,19 +21,19 @@ export const safeLocalStorage = {
   removeItem: (key: string): void => {
     if (!isBrowser) return
     try {
-      localStorage.removeItem(key)
+      window.localStorage.removeItem(key)
     } catch {
       // Ignore errors
     }
   },
 }
 
-export const safeRequestAnimationFrame = (callback: FrameRequestCallback): number | null => {
+export const safeRequestAnimationFrame = (callback: (time: number) => void): number | null => {
   if (!isBrowser) return null
-  return requestAnimationFrame(callback)
+  return window.requestAnimationFrame(callback)
 }
 
 export const safeAlert = (message: string): void => {
   if (!isBrowser) return
-  alert(message)
+  window.alert(message)
 }

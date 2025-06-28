@@ -20,6 +20,7 @@ import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { cn } from '@/lib/utils'
 import { safeLocalStorage } from '@/lib/event-handlers'
+import { safeRequestAnimationFrame } from '@/lib/browser-utils'
 import {
   Dialog,
   DialogContent,
@@ -182,14 +183,12 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         textareaRef.current.focus()
       }
       // Try again after a delay
-      if (typeof window !== 'undefined') {
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.scrollTop = textareaRef.current.scrollHeight
-            textareaRef.current.focus()
-          }
-        })
-      }
+      safeRequestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+          textareaRef.current.focus()
+        }
+      })
     }
   }, [send, state.context.prompt])
 
@@ -201,10 +200,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
       // Collect delta
       pendingDeltaRef.current += delta
 
-      if (!frameScheduledRef.current && typeof window !== 'undefined') {
+      if (!frameScheduledRef.current) {
         frameScheduledRef.current = true
 
-        requestAnimationFrame(() => {
+        safeRequestAnimationFrame(() => {
           const flushDelta = pendingDeltaRef.current
           pendingDeltaRef.current = ''
           frameScheduledRef.current = false
@@ -479,11 +478,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         console.log('[EDITOR] Applying complete script from state')
         model.setValue(state.context.editableScript)
         const lineCount = model.getLineCount()
-        if (typeof window !== 'undefined') {
-          requestAnimationFrame(() => {
-            editorWrapper.revealLine(lineCount)
-          })
-        }
+        safeRequestAnimationFrame(() => {
+          editorWrapper.revealLine(lineCount)
+        })
       }
     }
   }
@@ -1060,10 +1057,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
                       <button
                         onClick={() => {
                           // Store the current script and prompt in localStorage
-                          localStorage.setItem('scriptToRevise', state.context.editableScript || '')
-                          localStorage.setItem('originalPrompt', state.context.prompt)
+                          safeLocalStorage.setItem('scriptToRevise', state.context.editableScript || '')
+                          safeLocalStorage.setItem('originalPrompt', state.context.prompt)
                           // Add a flag to indicate we want manual editing
-                          localStorage.setItem('manualRevision', 'true')
+                          safeLocalStorage.setItem('manualRevision', 'true')
 
                           // Reset the state machine to return to the input form
                           send({ type: 'RESET' })
