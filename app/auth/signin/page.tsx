@@ -9,7 +9,7 @@ export default function SignInPage() {
   
   useEffect(() => {
     // Get callbackUrl from query params, default to '/' if not provided
-    const callbackUrl = searchParams.get('callbackUrl') || '/'
+    const callbackUrl = searchParams?.get('callbackUrl') || '/'
     signIn('github', { callbackUrl })
   }, [searchParams])
 

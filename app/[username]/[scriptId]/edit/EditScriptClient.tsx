@@ -34,7 +34,7 @@ export default function EditScriptClient({
       })
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
+        const data = await response.json().catch(() => ({})) as { error?: string }
         throw new Error(data.error || 'Failed to update script')
       }
 
