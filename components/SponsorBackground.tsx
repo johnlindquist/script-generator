@@ -24,7 +24,7 @@ async function getSponsors(): Promise<GitHubSponsor[]> {
     if (!res.ok) {
       return []
     }
-    return res.json()
+    return res.json() as Promise<GitHubSponsor[]>
   } catch (error) {
     console.error('Error fetching sponsors:', error)
     return []

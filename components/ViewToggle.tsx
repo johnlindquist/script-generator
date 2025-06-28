@@ -49,7 +49,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
     (url: string): Promise<ScriptsResponse> =>
       fetch(url).then(res => {
         if (!res.ok) throw new Error('Failed to fetch scripts')
-        return res.json()
+        return res.json() as Promise<ScriptsResponse>
       }),
     {
       fallbackData: initialData,
@@ -70,7 +70,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
     (url: string): Promise<ScriptsResponse> =>
       fetch(url).then(res => {
         if (!res.ok) throw new Error('Failed to fetch scripts')
-        return res.json()
+        return res.json() as Promise<ScriptsResponse>
       }),
     {
       revalidateOnFocus: false,

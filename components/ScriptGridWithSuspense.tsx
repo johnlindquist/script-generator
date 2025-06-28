@@ -22,7 +22,7 @@ interface ScriptsResponse {
   currentPage: number
 }
 
-const fetcher = (url: string): Promise<ScriptsResponse> => fetch(url).then(r => r.json())
+const fetcher = (url: string): Promise<ScriptsResponse> => fetch(url).then(r => r.json() as Promise<ScriptsResponse>)
 
 export default function ScriptGridWithSuspense({
   scripts: initialScripts,

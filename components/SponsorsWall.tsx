@@ -28,7 +28,7 @@ export default function SponsorsWall() {
     async function fetchSponsors() {
       try {
         const res = await fetch('/api/get-all-sponsors')
-        const data = await res.json()
+        const data = await res.json() as Sponsor[]
 
         if (!res.ok) {
           throw new Error(JSON.stringify(data))

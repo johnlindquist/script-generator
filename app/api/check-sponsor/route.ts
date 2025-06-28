@@ -100,9 +100,6 @@ export async function POST(request: Request) {
         login,
         nodeId: node_id,
         databaseId: Number(id),
-        user: {
-          connect: { id: node_id }
-        },
       },
       update: {
         login,

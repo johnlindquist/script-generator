@@ -21,8 +21,8 @@ export default function ForkButtonClient({ scriptContent }: ForkButtonClientProp
 We want to modify the script above with the following instructions:
 `
       safeLocalStorage.setItem('forkedScriptContent', forkedText)
-      if (typeof window !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur()
+      if (typeof window !== 'undefined' && document.activeElement && 'blur' in document.activeElement) {
+        (document.activeElement as HTMLElement).blur()
       }
       // TODO: Hack to remove focus from the fork button
       window.location.href = '/'
