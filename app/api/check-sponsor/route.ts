@@ -3,6 +3,7 @@ import { gql, GraphQLClient } from 'graphql-request'
 import { NextResponse } from 'next/server'
 import { readJSON } from 'fs-extra'
 import { PrismaClient } from '@prisma/client'
+import { GitHubUserSchema } from '@/lib/schemas'
 
 interface GitHubSponsor {
   __typename: string
@@ -23,7 +24,14 @@ interface GitHubResponse {
 const prisma = new PrismaClient()
 
 export async function POST(request: Request) {
-  const { id, login, node_id, twitter_username, email, name, feature } = await request.json()
+  const body = await request.json()
+  const parseResult = GitHubUserSchema.safeParse(body)
+  
+  if (!parseResult.success) {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+  
+  const { id, login, node_id, twitter_username, email, name, feature } = parseResult.data
 
   // Load in the "free-riders.json" from /public
   console.log(`Loading free-riders.json`)

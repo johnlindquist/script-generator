@@ -58,6 +58,10 @@ export const NextSuggestionsSchema = z.object({
     prompt: z.string().optional(),
     code: z.string().optional(),
     saved: z.boolean().optional(),
+    breadcrumb: z.string().optional(),
+    sessionInteractionId: z.string().optional(),
+    currentStep: z.number().optional(),
+    maxDepth: z.number().optional(),
 })
 
 // Sync repo
@@ -72,9 +76,11 @@ export const TestAIGatewaySchema = z.object({
 
 // Usage tracking
 export const TrackUsageSchema = z.object({
-    userId: z.string().min(1),
-    action: z.string(),
-    metadata: z.record(z.unknown()).optional(),
+    event: z.string(),
+    properties: z.record(z.unknown()),
+    device: z.object({
+        device_id: z.string(),
+    }),
 })
 
 // GitHub user schema for imports

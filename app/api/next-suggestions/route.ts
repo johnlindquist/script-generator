@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { gateway } from '@/lib/ai-gateway'
 import { logInteraction } from '@/lib/interaction-logger'
 import { getScriptKitDocs } from '@/lib/scriptKitDocs'
+import { NextSuggestionsSchema } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 
@@ -60,11 +61,18 @@ export async function POST(req: Request) {
   let sessionInteractionId: string | undefined
 
   try {
-    const body = await req.json()
-    const breadcrumb = body.breadcrumb as string
-    sessionInteractionId = body.sessionInteractionId as string
-    const currentStep = body.currentStep as number
-    const maxDepth = body.maxDepth as number
+    const rawBody = await req.json()
+    const parseResult = NextSuggestionsSchema.safeParse(rawBody)
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
+    }
+    
+    const body = parseResult.data
+    const breadcrumb = body.breadcrumb || ''
+    sessionInteractionId = body.sessionInteractionId
+    const currentStep = body.currentStep || 0
+    const maxDepth = body.maxDepth || 10
 
     if (!sessionInteractionId) {
       console.warn(

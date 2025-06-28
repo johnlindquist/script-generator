@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import { SyncRepoSchema } from '@/lib/schemas'
 
 const GITHUB_TOKEN = process.env.GITHUB_ACCESS_TOKEN || ''
 
@@ -29,10 +30,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { repoUrl } = await req.json()
-    if (!repoUrl) {
-      return NextResponse.json({ error: 'Missing repository URL' }, { status: 400 })
+    const body = await req.json()
+    const parseResult = SyncRepoSchema.safeParse(body)
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
     }
+    
+    const { repoUrl } = parseResult.data
 
     const parsed = parseRepoUrl(repoUrl)
     if (!parsed) {
@@ -57,14 +62,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!res.ok) {
-      const errorBody = await res.json()
+      const errorBody = await res.json() as { message?: string }
       return NextResponse.json(
         { error: errorBody?.message || 'Failed to fetch scripts from GitHub' },
         { status: res.status }
       )
     }
 
-    const files = await res.json()
+    const files = await res.json() as Array<{ name: string; path: string; download_url: string }>
 
     // Filter for TypeScript files
     const scriptFiles = files.filter(

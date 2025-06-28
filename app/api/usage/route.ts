@@ -38,17 +38,16 @@ init(process.env.AMPLITUDE_API_KEY as string, {
   logLevel: Types.LogLevel.Debug,
 })
 
-type TrackPayload = {
-  event: string
-  properties: Record<string, unknown>
-  device: {
-    device_id: string
-  }
-}
-
 export async function POST(req: NextRequest) {
   // Get track event and properties from request body
-  const { event, properties, device }: TrackPayload = await req.json()
+  const body = await req.json()
+  const { event, properties, device } = body as {
+    event: string
+    properties: Record<string, unknown>
+    device: {
+      device_id: string
+    }
+  }
   console.debug(`track ${event}`, properties, device)
 
   // Start the track request but don't wait for it

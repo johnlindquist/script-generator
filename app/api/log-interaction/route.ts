@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { LogInteractionSchema } from '@/lib/schemas'
 
 const LOG_DIR = path.join(process.cwd(), 'logs', 'interactions')
 
@@ -40,7 +41,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { interactionTimestamp, logEntry } = await request.json()
+    const body = await request.json()
+    const parseResult = LogInteractionSchema.safeParse(body)
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    
+    const { interactionTimestamp, logEntry } = parseResult.data
     // Console log to verify received data
     console.log(
       `[log-interaction API] Received log for ${interactionTimestamp}: "${logEntry?.message}"`
