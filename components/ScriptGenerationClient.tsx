@@ -19,6 +19,7 @@ import { scriptGenerationConfig } from '@/lib/config'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { cn } from '@/lib/utils'
+import { safeLocalStorage } from '@/lib/event-handlers'
 import {
   Dialog,
   DialogContent,
@@ -170,10 +171,10 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
   // Check for forked content on mount
   useEffect(() => {
-    const forkedContent = localStorage.getItem('forkedScriptContent')
+    const forkedContent = safeLocalStorage.getItem('forkedScriptContent')
     if (forkedContent && !state.context.prompt) {
       send({ type: 'SET_PROMPT', prompt: forkedContent })
-      localStorage.removeItem('forkedScriptContent')
+      safeLocalStorage.removeItem('forkedScriptContent')
 
       // Focus immediately and after a delay to ensure it works
       if (textareaRef.current) {
@@ -181,12 +182,14 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         textareaRef.current.focus()
       }
       // Try again after a delay
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.scrollTop = textareaRef.current.scrollHeight
-          textareaRef.current.focus()
-        }
-      })
+      if (typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.scrollTop = textareaRef.current.scrollHeight
+            textareaRef.current.focus()
+          }
+        })
+      }
     }
   }, [send, state.context.prompt])
 
@@ -198,7 +201,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
       // Collect delta
       pendingDeltaRef.current += delta
 
-      if (!frameScheduledRef.current) {
+      if (!frameScheduledRef.current && typeof window !== 'undefined') {
         frameScheduledRef.current = true
 
         requestAnimationFrame(() => {
@@ -476,9 +479,11 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         console.log('[EDITOR] Applying complete script from state')
         model.setValue(state.context.editableScript)
         const lineCount = model.getLineCount()
-        requestAnimationFrame(() => {
-          editorWrapper.revealLine(lineCount)
-        })
+        if (typeof window !== 'undefined') {
+          requestAnimationFrame(() => {
+            editorWrapper.revealLine(lineCount)
+          })
+        }
       }
     }
   }
@@ -533,21 +538,21 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
   const showSignInModal = () => {
     // Save the current prompt to localStorage before showing sign in modal
     if (state.context.prompt) {
-      localStorage.setItem('pendingPrompt', state.context.prompt)
+      safeLocalStorage.setItem('pendingPrompt', state.context.prompt)
     }
     setShowSignInModal(true)
   }
 
   // Check for pending prompt on mount
   useEffect(() => {
-    const pendingPrompt = localStorage.getItem('pendingPrompt')
+    const pendingPrompt = safeLocalStorage.getItem('pendingPrompt')
     if (pendingPrompt && isAuthenticated) {
       send({ type: 'SET_PROMPT', prompt: pendingPrompt })
-      localStorage.removeItem('pendingPrompt')
+      safeLocalStorage.removeItem('pendingPrompt')
 
-      const autoSubmit = localStorage.getItem('autoSubmit')
+      const autoSubmit = safeLocalStorage.getItem('autoSubmit')
       if (autoSubmit === 'true') {
-        localStorage.removeItem('autoSubmit')
+        safeLocalStorage.removeItem('autoSubmit')
         send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
       }
     }
@@ -736,9 +741,9 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
   // Check for script to revise from localStorage
   useEffect(() => {
-    const scriptToRevise = localStorage.getItem('scriptToRevise')
-    const originalPrompt = localStorage.getItem('originalPrompt')
-    const manualRevision = localStorage.getItem('manualRevision')
+    const scriptToRevise = safeLocalStorage.getItem('scriptToRevise')
+    const originalPrompt = safeLocalStorage.getItem('originalPrompt')
+    const manualRevision = safeLocalStorage.getItem('manualRevision')
 
     if (scriptToRevise && originalPrompt && !state.context.prompt) {
       const enhancePrompt = createEnhancePrompt(originalPrompt, scriptToRevise)
@@ -746,8 +751,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
       send({ type: 'SET_PROMPT', prompt: enhancePrompt })
 
       // Clean up localStorage
-      localStorage.removeItem('scriptToRevise')
-      localStorage.removeItem('originalPrompt')
+      safeLocalStorage.removeItem('scriptToRevise')
+      safeLocalStorage.removeItem('originalPrompt')
 
       // Only auto-generate if not manual revision
       if (manualRevision !== 'true') {
@@ -755,7 +760,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
       } else {
         // Clean up the manual revision flag
-        localStorage.removeItem('manualRevision')
+        safeLocalStorage.removeItem('manualRevision')
 
         // Focus and scroll the textarea to the bottom after a short delay
         // to ensure the UI has updated
@@ -826,8 +831,8 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
         send({ type: 'SET_PROMPT', prompt: finalPrompt })
         send({ type: 'GENERATE_DRAFT', timestamp: createInteractionTimestamp() })
       } else {
-        localStorage.setItem('pendingPrompt', finalPrompt)
-        localStorage.setItem('autoSubmit', 'true')
+        safeLocalStorage.setItem('pendingPrompt', finalPrompt)
+        safeLocalStorage.setItem('autoSubmit', 'true')
         setShowSignInModal(true)
       }
     }

@@ -45,12 +45,12 @@ export const safeLocalStorage = {
 }
 
 export const safeWindow = {
-    addEventListener: (event: string, handler: EventListener): void => {
+    addEventListener: (event: string, handler: EventListenerOrEventListenerObject): void => {
         if (typeof window !== 'undefined') {
             window.addEventListener(event, handler)
         }
     },
-    removeEventListener: (event: string, handler: EventListener): void => {
+    removeEventListener: (event: string, handler: EventListenerOrEventListenerObject): void => {
         if (typeof window !== 'undefined') {
             window.removeEventListener(event, handler)
         }

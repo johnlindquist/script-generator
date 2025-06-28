@@ -41,7 +41,7 @@ export default function FavoriteButtonClient({
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
-      alert(STRINGS.FAVORITE_BUTTON.signInRequired)
+      toast.error(STRINGS.FAVORITE_BUTTON.signInRequired)
       return
     }
 

@@ -12,10 +12,14 @@ export default function CopyButtonClient({ content }: CopyButtonClientProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
-    setCopied(true)
-    toast.success(STRINGS.COPY_BUTTON.tooltipCopied)
-    setTimeout(() => setCopied(false), 2000)
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      toast.success(STRINGS.COPY_BUTTON.tooltipCopied)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error('Clipboard not available')
+    }
   }
 
   return (

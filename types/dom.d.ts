@@ -11,7 +11,7 @@ declare global {
         removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void
         requestAnimationFrame(callback: FrameRequestCallback): number
         innerWidth: number
-        alert(message?: any): void
+        alert(message?: string): void
     }
 
     interface Document {
@@ -60,14 +60,15 @@ declare global {
         scrollTop: number
         scrollHeight: number
         clientHeight: number
+        getBoundingClientRect(): DOMRect
         addEventListener<K extends keyof HTMLElementEventMap>(
             type: K,
-            listener: (this: HTMLDivElement, ev: HTMLElementEventMap[K]) => any,
+            listener: (this: HTMLDivElement, ev: HTMLElementEventMap[K]) => void,
             options?: boolean | AddEventListenerOptions
         ): void
         removeEventListener<K extends keyof HTMLElementEventMap>(
             type: K,
-            listener: (this: HTMLDivElement, ev: HTMLElementEventMap[K]) => any,
+            listener: (this: HTMLDivElement, ev: HTMLElementEventMap[K]) => void,
             options?: boolean | EventListenerOptions
         ): void
     }

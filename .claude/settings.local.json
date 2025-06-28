@@ -19,7 +19,8 @@
       "Bash(vercel:*)",
       "Bash(pnpm tsc:*)",
       "Bash(pnpm eslint:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(pnpm check:*)"
     ],
     "deny": []
   }

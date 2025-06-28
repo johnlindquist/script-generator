@@ -13,6 +13,7 @@ import { SortMode, sortOptions } from '@/components/ScriptSort'
 import ScriptSearch from './ScriptSearch'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import useSWR from 'swr'
+import { safeLocalStorage } from '@/lib/event-handlers'
 import ScriptCardSkeleton from './ScriptCardSkeleton'
 
 type ViewMode = 'grid' | 'list'
@@ -80,7 +81,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
   // Initialize from localStorage on mount
   useEffect(() => {
     setIsClient(true)
-    const savedView = localStorage.getItem('scriptViewMode') as ViewMode
+    const savedView = safeLocalStorage.getItem('scriptViewMode') as ViewMode
     if (savedView) {
       setView(savedView)
     }
@@ -98,7 +99,7 @@ export default function ViewToggle({ initialData }: ViewToggleProps = {}) {
 
   const handleViewChange = (newView: ViewMode) => {
     setView(newView)
-    localStorage.setItem('scriptViewMode', newView)
+    safeLocalStorage.setItem('scriptViewMode', newView)
   }
 
   // Prefetch list data when hovering over list button

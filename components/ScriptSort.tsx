@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Menu, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronUpDownIcon, CheckIcon } from '@heroicons/react/20/solid'
+import { safeLocalStorage } from '@/lib/event-handlers'
 
 export type SortMode =
   | 'alphabetical'
@@ -31,7 +32,7 @@ export default function ScriptSort({ sort, setSort }: ScriptSortProps) {
 
   const handleSortChange = (newSort: SortMode) => {
     setSort(newSort)
-    localStorage.setItem('scriptSortMode', newSort)
+    safeLocalStorage.setItem('scriptSortMode', newSort)
     const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.set('sort', newSort)
     params.set('page', '1') // Reset to first page when changing sort

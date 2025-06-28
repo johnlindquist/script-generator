@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, Bug, Clock, GripHorizontal } from 'lucide-re
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
 import { ScrollArea } from './ui/scroll-area'
+import { safeLocalStorage } from '@/lib/event-handlers'
 
 interface ScriptDebugPanelProps {
   state: string
@@ -47,7 +48,7 @@ export default function ScriptDebugPanel({
   // Load saved position from localStorage on mount
   useEffect(() => {
     try {
-      const savedPosition = localStorage.getItem('scriptDebugPanelPosition')
+      const savedPosition = safeLocalStorage.getItem('scriptDebugPanelPosition')
       if (savedPosition) {
         setPosition(JSON.parse(savedPosition))
       }
@@ -59,7 +60,7 @@ export default function ScriptDebugPanel({
   // Save position to localStorage when it changes
   useEffect(() => {
     if (position.x !== 0 || position.y !== 0) {
-      localStorage.setItem('scriptDebugPanelPosition', JSON.stringify(position))
+      safeLocalStorage.setItem('scriptDebugPanelPosition', JSON.stringify(position))
     }
   }, [position])
 
