@@ -100,16 +100,7 @@ export async function POST(request: Request) {
         login,
         nodeId: node_id,
         databaseId: Number(id),
-        user: {
-          connectOrCreate: {
-            where: { id: node_id },
-            create: {
-              id: node_id,
-              username: login,
-              fullName: name,
-            },
-          },
-        },
+        userId: node_id, // Use direct userId instead of nested user relation
       },
       update: {
         login,

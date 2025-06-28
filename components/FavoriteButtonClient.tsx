@@ -4,6 +4,7 @@ import { Tooltip } from '@nextui-org/react'
 import { STRINGS } from '@/lib/strings'
 import useSWR from 'swr'
 import { useParams } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 interface FavoriteButtonClientProps {
   scriptId: string

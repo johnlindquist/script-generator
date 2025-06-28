@@ -26,7 +26,7 @@ export default function SyncRepoPage() {
       })
 
       if (!res.ok) {
-        const { error } = await res.json()
+        const { error } = await res.json() as { error?: string }
         throw new Error(error || STRINGS.SYNC_REPO.error.unknown)
       }
 

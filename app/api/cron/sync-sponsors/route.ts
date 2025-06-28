@@ -13,9 +13,9 @@ export async function GET() {
     }
 
     interface SponsorNode {
-      sponsorEntity: Sponsor
-      tier: {
-        isOneTime: boolean
+      sponsorEntity?: Sponsor
+      tier?: {
+        isOneTime?: boolean
       }
     }
 
@@ -84,7 +84,7 @@ export async function GET() {
 
       const pageSponsors = data.user.sponsorshipsAsMaintainer.nodes
         .filter((node: SponsorNode) => !node.tier?.isOneTime && node.sponsorEntity)
-        .map((node: SponsorNode) => node.sponsorEntity)
+        .map((node: SponsorNode) => node.sponsorEntity as Sponsor)
 
       allSponsors = [...allSponsors, ...pageSponsors]
       console.log(`Fetched ${pageSponsors.length} sponsors (total: ${allSponsors.length})`)

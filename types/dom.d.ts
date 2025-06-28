@@ -21,8 +21,9 @@ declare global {
         activeElement: Element | null
     }
 
-    interface HTMLElement {
+    interface HTMLElement extends Element {
         scrollIntoView(arg?: boolean | ScrollIntoViewOptions): void
+        blur(): void
     }
 
     interface Navigator {
@@ -90,6 +91,12 @@ declare global {
         | 'no-cache'
         | 'force-cache'
         | 'only-if-cached'
+
+    // Mouse events
+    interface MouseEvent {
+        clientX: number
+        clientY: number
+    }
 
     // DOMRect
     interface DOMRect {

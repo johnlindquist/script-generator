@@ -56,7 +56,7 @@ export default function NewScriptPage() {
         throw new Error('Failed to create script')
       }
 
-      const data = await response.json()
+      const data = await response.json() as { id: string }
       router.push(`/scripts/${data.id}`)
     } catch (err) {
       setError('Error creating script. Please try again.')

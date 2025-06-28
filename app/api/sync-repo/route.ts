@@ -69,11 +69,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const files = await res.json() as Array<{ name: string; path: string; download_url: string }>
+    const files = await res.json() as Array<{ name: string; path: string; download_url: string; type?: string }>
 
     // Filter for TypeScript files
     const scriptFiles = files.filter(
-      (f: { type: string; name: string }) => f.type === 'file' && f.name.endsWith('.ts')
+      (f) => f.type === 'file' && f.name.endsWith('.ts')
     )
 
     // Limit the number of scripts to 200
