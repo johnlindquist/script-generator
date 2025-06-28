@@ -43,7 +43,7 @@ async function fetchNextSuggestions(
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
+      const errorData = await response.json() as { error?: string }
       logInteraction(
         sessionInteractionId,
         'client',
@@ -58,7 +58,7 @@ async function fetchNextSuggestions(
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
     }
 
-    const data: SuggestionsResponse = await response.json()
+    const data = await response.json() as SuggestionsResponse
 
     if (data.error) {
       logInteraction(

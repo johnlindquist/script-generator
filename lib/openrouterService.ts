@@ -37,12 +37,14 @@ export async function generateDraft(
     // Handle too many requests (duplicate request)
     const errorData = await response.json().catch(() => ({}))
     console.warn('Duplicate request detected:', errorData)
-    throw new Error(errorData.error || 'A similar request is already being processed')
+    const error = (errorData as { error?: string }).error || 'A similar request is already being processed'
+    throw new Error(error)
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.details || 'Failed to generate draft')
+    const details = (errorData as { details?: string }).details || 'Failed to generate draft'
+    throw new Error(details)
   }
 
   const reader = response.body?.getReader()
@@ -129,7 +131,8 @@ export async function generateFinal(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.details || 'Failed to generate final script')
+    const details = (errorData as { details?: string }).details || 'Failed to generate final script'
+    throw new Error(details)
   }
 
   const reader = response.body?.getReader()
@@ -265,7 +268,7 @@ export async function saveAndInstallScript(prompt: string, editableScript: strin
       throw new Error('Failed to save script before install')
     }
 
-    const responseData = await scriptResponse.json()
+    const responseData = await scriptResponse.json() as { id: string; dashedName: string }
     const { id, dashedName } = responseData
 
     console.log('[SAVE_AND_INSTALL] Script saved successfully', {
@@ -306,7 +309,7 @@ export async function fetchUsage(): Promise<UsageResponse> {
   if (!response.ok) {
     throw new Error('Failed to fetch usage')
   }
-  return response.json()
+  return response.json() as Promise<UsageResponse>
 }
 
 interface LuckyResponse {
@@ -325,7 +328,7 @@ export async function generateLucky(timestamp: string): Promise<LuckyResponse> {
     throw new Error('UNAUTHORIZED')
   }
 
-  const data = await response.json()
+  const data = await response.json() as { error?: string; combinedPrompt?: string; requestId?: string }
   if (!response.ok) {
     throw new Error(data.error || 'Failed to get random scripts')
   }
@@ -336,7 +339,7 @@ export async function generateLucky(timestamp: string): Promise<LuckyResponse> {
 
   return {
     combinedPrompt: data.combinedPrompt,
-    requestId: data.requestId,
+    requestId: data.requestId!,
   }
 }
 

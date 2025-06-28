@@ -3,6 +3,8 @@
 
 // Ensure DOM globals are available
 declare global {
+    // Event listener types
+    type EventListenerOrEventListenerObject = EventListener | EventListenerObject
     // Window and document should be available in client components
     interface Window {
         location: Location

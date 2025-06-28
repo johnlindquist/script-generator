@@ -1,6 +1,5 @@
 import { toast } from 'react-hot-toast'
 import { logInteraction } from './interaction-logger'
-import type { UsageResponse } from '@/lib/schemas'
 
 export async function generateDraft(
   prompt: string,
@@ -25,8 +24,8 @@ export async function generateDraft(
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.details || 'Failed to generate draft')
+    const errorData = await response.json().catch(() => ({ details: 'Failed to generate draft' }))
+    throw new Error((errorData as { details?: string }).details || 'Failed to generate draft')
   }
 
   const reader = response.body?.getReader()
@@ -77,7 +76,8 @@ export async function saveAndInstallScript(prompt: string, editableScript: strin
     throw new Error('Failed to save script before install')
   }
 
-  const { id, dashedName } = await scriptResponse.json()
+  const scriptData = await scriptResponse.json() as { id: string; dashedName: string }
+  const { id, dashedName } = scriptData
 
   const installResponse = await fetch('/api/install', {
     method: 'POST',
@@ -107,7 +107,7 @@ export async function fetchUsage(): Promise<UsageResponse> {
   if (!response.ok) {
     throw new Error('Failed to fetch usage')
   }
-  return response.json()
+  return response.json() as Promise<UsageResponse>
 }
 
 interface LuckyResponse {
@@ -129,16 +129,17 @@ export async function generateLucky(timestamp: string): Promise<LuckyResponse> {
 
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to get random scripts')
+    throw new Error((data as { error?: string }).error || 'Failed to get random scripts')
   }
 
-  if (!data.combinedPrompt) {
+  const luckyData = data as { combinedPrompt?: string; requestId?: string }
+  if (!luckyData.combinedPrompt) {
     throw new Error('Invalid response format')
   }
 
   return {
-    combinedPrompt: data.combinedPrompt,
-    requestId: data.requestId,
+    combinedPrompt: luckyData.combinedPrompt!,
+    requestId: luckyData.requestId!,
   }
 }
 
@@ -222,10 +223,12 @@ export async function generateDraftWithStream(
       } else if (res.status === 401) {
         toast.error('Session expired. Please sign in again.')
       } else {
-        toast.error(data.error || 'Failed to generate draft')
+        const errorData = data as { error?: string }
+        toast.error(errorData.error || 'Failed to generate draft')
       }
 
-      throw new Error(data.error || 'Failed to generate draft')
+      const errorMsg = (data as { error?: string }).error || 'Failed to generate draft'
+      throw new Error(errorMsg)
     }
 
     const reader = res.body?.getReader()
@@ -435,10 +438,12 @@ export async function generateOpenRouterDraftWithStream(
       } else if (res.status === 401) {
         toast.error('Session expired. Please sign in again.')
       } else {
-        toast.error(data.error || 'Failed to generate draft')
+        const errorData = data as { error?: string }
+        toast.error(errorData.error || 'Failed to generate draft')
       }
 
-      throw new Error(data.error || 'Failed to generate draft')
+      const errorMsg = (data as { error?: string }).error || 'Failed to generate draft'
+      throw new Error(errorMsg)
     }
 
     const reader = res.body?.getReader()
@@ -658,10 +663,12 @@ export async function generateAIGatewayDraftWithStream(
       } else if (res.status === 401) {
         toast.error('Session expired. Please sign in again.')
       } else {
-        toast.error(data.error || 'Failed to generate draft')
+        const errorData = data as { error?: string }
+        toast.error(errorData.error || 'Failed to generate draft')
       }
 
-      throw new Error(data.error || 'Failed to generate draft')
+      const errorMsg = (data as { error?: string }).error || 'Failed to generate draft'
+      throw new Error(errorMsg)
     }
 
     const reader = res.body?.getReader()
