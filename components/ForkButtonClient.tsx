@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Tooltip } from '@nextui-org/react'
 import { GitBranch } from 'lucide-react'
+import { safeLocalStorage } from '@/lib/event-handlers'
 
 interface ForkButtonClientProps {
   scriptId: string
@@ -19,11 +20,9 @@ export default function ForkButtonClient({ scriptContent }: ForkButtonClientProp
 ---(Original code above)---
 We want to modify the script above with the following instructions:
 `
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('forkedScriptContent', forkedText)
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur()
-        }
+      safeLocalStorage.setItem('forkedScriptContent', forkedText)
+      if (typeof window !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
       }
       // TODO: Hack to remove focus from the fork button
       window.location.href = '/'

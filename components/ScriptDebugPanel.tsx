@@ -92,7 +92,7 @@ export default function ScriptDebugPanel({
   }
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
+    if (isDragging && typeof window !== 'undefined') {
       setPosition({
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y,

@@ -57,7 +57,20 @@ export async function GET() {
         }),
       })
 
-      const { data } = await response.json()
+      const result = await response.json() as { 
+        data?: { 
+          user?: { 
+            sponsorshipsAsMaintainer?: { 
+              pageInfo: { hasNextPage: boolean; endCursor: string | null },
+              nodes?: Array<{ 
+                tier?: { isOneTime?: boolean }, 
+                sponsorEntity?: { login: string, id: string, databaseId: number } 
+              }> 
+            } 
+          } 
+        } 
+      }
+      const { data } = result
 
       if (!data?.user?.sponsorshipsAsMaintainer?.nodes) {
         console.error('Failed to fetch sponsors page')

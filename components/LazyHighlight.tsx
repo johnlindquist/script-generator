@@ -69,7 +69,7 @@ export const LazyHighlight = memo(
 
     useEffect(() => {
       const observer = new IntersectionObserver(
-        ([entry]) => {
+        ([entry]: IntersectionObserverEntry[]) => {
           if (entry.isIntersecting && !isVisible) {
             setIsVisible(true)
             // Keep observing in case the component goes out of view and comes back

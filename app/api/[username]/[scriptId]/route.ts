@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { RouteContext, wrapApiHandler } from '@/lib/timing'
+import { ScriptUpdateSchema } from '@/lib/schemas'
 
 const deleteScript = async (request: NextRequest, context?: RouteContext) => {
   try {
@@ -137,7 +138,14 @@ const updateScript = async (request: NextRequest, context?: RouteContext) => {
       return NextResponse.json({ error: 'Not authorized to modify this script' }, { status: 403 })
     }
 
-    const { saved, content, title } = await request.json()
+    const body = await request.json()
+    const parseResult = ScriptUpdateSchema.safeParse(body)
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    
+    const { saved, content, title } = parseResult.data
 
     const updatedScript = await prisma.script.update({
       where: { id: scriptId },

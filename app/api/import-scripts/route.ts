@@ -47,7 +47,7 @@ async function findOrCreateGitHubUser(username: string) {
       throw new Error(`Failed to fetch GitHub user: ${username}`)
     }
 
-    const githubUser = await res.json()
+    const githubUser = await res.json() as { login: string; name?: string }
 
     // Create the user in our database
     user = await prisma.user.create({

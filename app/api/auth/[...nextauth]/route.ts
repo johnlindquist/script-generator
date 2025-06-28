@@ -36,8 +36,8 @@ async function checkUserSponsorStatus(username: string) {
       }),
     })
 
-    const { data } = await response.json()
-    const sponsorship = data?.user?.sponsorshipsAsMaintainer?.nodes?.[0]
+    const result = await response.json() as { data?: { user?: { sponsorshipsAsMaintainer?: { nodes?: Array<{ tier?: { isOneTime?: boolean }, sponsorEntity?: { login: string, id: string, databaseId: number } }> } } } }
+    const sponsorship = result.data?.user?.sponsorshipsAsMaintainer?.nodes?.[0]
 
     if (sponsorship && !sponsorship.tier?.isOneTime) {
       const sponsor = sponsorship.sponsorEntity
