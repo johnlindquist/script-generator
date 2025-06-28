@@ -7,7 +7,8 @@ export const UserIdSchema = z.string().min(1)
 // Generate AI Gateway
 export const GenerateRequestSchema = z.object({
     prompt: z.string().min(1),
-    luckyRequestId: z.string().optional(),
+    luckyRequestId: z.string().nullable().optional(),
+    extractReasoning: z.boolean().optional(),
 })
 
 // Script creation/update

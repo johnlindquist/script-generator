@@ -18,7 +18,8 @@
       "Bash(pnpm add:*)",
       "Bash(vercel:*)",
       "Bash(pnpm tsc:*)",
-      "Bash(pnpm eslint:*)"
+      "Bash(pnpm eslint:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

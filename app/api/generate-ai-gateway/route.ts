@@ -494,10 +494,43 @@ export async function POST(req: Request) {
     // The result provides a readable stream of strings in `textStream`.
     const responseStream = new ReadableStream({
       async start(controller) {
-        for await (const chunk of result.textStream) {
-          controller.enqueue(new TextEncoder().encode(chunk))
+        await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream started', {
+          requestId,
+          luckyRequestId,
+          scriptId,
+          promptLength: draftFinalPrompt.length,
+          userId,
+        })
+
+        // Send script ID first
+        if (scriptId) {
+          controller.enqueue(new TextEncoder().encode(`__SCRIPT_ID__${scriptId}__SCRIPT_ID__`))
         }
-        controller.close()
+
+        let accumulatedCompletion = ''
+        try {
+          for await (const chunk of result.textStream) {
+            controller.enqueue(new TextEncoder().encode(chunk))
+            accumulatedCompletion += chunk
+          }
+          await logInteraction(interactionTimestamp, 'serverRoute', 'AI Stream completed', {
+            requestId,
+            completion: accumulatedCompletion.trim(),
+          })
+          controller.close()
+        } catch (error: unknown) {
+          await logInteraction(
+            interactionTimestamp,
+            'serverRoute',
+            'Error during AI stream processing',
+            {
+              requestId,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            }
+          )
+          controller.error(error)
+        }
       },
     })
 
