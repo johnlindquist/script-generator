@@ -15,23 +15,23 @@ export enum Category {
   Docs = 'DIC_kwDOEu7MBc4B_u-c',
 }
 
-let endpoint = 'https://api.github.com/graphql'
+const endpoint = 'https://api.github.com/graphql'
 
 const categoryKey = 'Docs'
 
-let category = {
+const category = {
   name: categoryKey as string,
   value: (Category as any)[categoryKey] as string,
 }
 
-let client = new GraphQLClient(endpoint, {
+const client = new GraphQLClient(endpoint, {
   headers: {
     'GraphQL-Features': 'discussions_api',
     authorization: `Bearer ${await env('GITHUB_DISCUSSIONS_TOKEN')}`,
   },
 })
 
-let query = gql`
+const query = gql`
   query ($categoryId: ID) {
     repository(owner: "johnlindquist", name: "kit") {
       discussions(
@@ -62,9 +62,9 @@ let query = gql`
   }
 `
 
-let response = await client.request(query, { categoryId: category.value })
+const response = await client.request(query, { categoryId: category.value })
 
-let discussions: Discussion[] = response.repository.discussions.nodes.map((d: Discussion) => {
+const discussions: Discussion[] = response.repository.discussions.nodes.map((d: Discussion) => {
   const slug = slugify(d.title, {
     lower: true,
     strict: true,
@@ -76,20 +76,20 @@ let discussions: Discussion[] = response.repository.discussions.nodes.map((d: Di
   }
 })
 
-let loadedScripts: any[] = discussions.map(
+const loadedScripts: any[] = discussions.map(
   ({ author, body, createdAt, id, slug, title, url: discussion }) => {
-    let url = body.match(/(?<=(Install|Open).*)https:\/\/gist.*js(?=\"|\))/gim)?.[0] || ''
-    let metadata = getMetadata(body)
+    const url = body.match(/(?<=(Install|Open).*)https:\/\/gist.*js(?=\"|\))/gim)?.[0] || ''
+    const metadata = getMetadata(body)
 
-    let [, dir, file] = body.match(/(?<=<meta path=")(.*)\/(.*)(?=")/) || [null, '', '']
+    const [, dir, file] = body.match(/(?<=<meta path=")(.*)\/(.*)(?=")/) || [null, '', '']
 
-    let [description] = body.match(/(?<=<meta description=")(.*)(?=")/) || ['']
-    let [tag] = body.match(/(?<=<meta tag=")(.*)(?=")/) || ['']
-    let [section] = body.match(/(?<=<meta section=")(.*)(?=")/) || ['']
-    let [i] = body.match(/(?<=<meta i=")(.*)(?=")/) || ['']
-    let [sectionIndex] = body.match(/(?<=<meta sectionIndex=")(.*)(?=")/) || ['']
+    const [description] = body.match(/(?<=<meta description=")(.*)(?=")/) || ['']
+    const [tag] = body.match(/(?<=<meta tag=")(.*)(?=")/) || ['']
+    const [section] = body.match(/(?<=<meta section=")(.*)(?=")/) || ['']
+    const [i] = body.match(/(?<=<meta i=")(.*)(?=")/) || ['']
+    const [sectionIndex] = body.match(/(?<=<meta sectionIndex=")(.*)(?=")/) || ['']
 
-    let content = body
+    const content = body
     // let prevLength = 0
 
     // let i = 0

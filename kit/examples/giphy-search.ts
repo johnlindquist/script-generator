@@ -13,12 +13,12 @@
 import '@johnlindquist/kit'
 import { infoPane } from '@johnlindquist/kit'
 
-let GIPHY_API_KEY = await env('GIPHY_API_KEY', {
+const GIPHY_API_KEY = await env('GIPHY_API_KEY', {
   panel: md('## Get a [Giphy API Key](https://developers.giphy.com/dashboard/)'),
   secret: true,
 })
 
-let css = `
+const css = `
 .focused {
   background: color-mix(in srgb, var(--color-secondary) calc(var(--ui-bg-opacity)* 100%), transparent);
   padding: 0;
@@ -41,16 +41,16 @@ let css = `
 }
 `
 
-let search = q =>
+const search = q =>
   `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${q}&limit=10&offset=0&rating=g&lang=en`
 
-let giphy = async (input: string) => {
+const giphy = async (input: string) => {
   if (!input) {
     return infoPane('Search Giphy', 'Search for a gif and paste it into your document.')
   }
-  let query = search(input)
-  let { data } = await get(query)
-  let result = data.data.map(gif => {
+  const query = search(input)
+  const { data } = await get(query)
+  const result = data.data.map(gif => {
     return {
       name: gif.title.trim() || gif.slug,
       value: gif.images.original.url,
@@ -67,7 +67,7 @@ let giphy = async (input: string) => {
   return result
 }
 
-let formattedLink = await grid<string>(
+const formattedLink = await grid<string>(
   {
     input: (flag?.pass as string) || '',
     placeholder: 'Search Giphy',

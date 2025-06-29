@@ -53,7 +53,7 @@ export default function InfiniteScrollGrid({
         throw new Error('Failed to fetch more scripts')
       }
 
-      const data = await res.json() as { scripts: ScriptLite[] }
+      const data = (await res.json()) as { scripts: ScriptLite[] }
       if (data.scripts && data.scripts.length > 0) {
         setScripts(prev => [...prev, ...data.scripts])
         setOffset(prev => prev + data.scripts.length)
@@ -155,7 +155,7 @@ export default function InfiniteScrollGrid({
       {/* End of results message */}
       {!hasMore && visibleScripts.length > 0 && (
         <div className="text-center text-gray-400 py-8">
-          <p>You've reached the end! {visibleScripts.length} scripts loaded.</p>
+          <p>You&apos;ve reached the end! {visibleScripts.length} scripts loaded.</p>
         </div>
       )}
     </div>

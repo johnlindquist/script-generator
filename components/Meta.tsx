@@ -33,9 +33,9 @@ export default function Meta({
   const protocol = vercelUrl?.includes('localhost') ? 'http' : 'https'
   const baseUrl = `${protocol}://${vercelUrl}`
 
-  let opengraphImage = `${baseUrl}/api/cloudinary-cache?${qs.stringify(query)}`
-  let defaultOgImage = `${baseUrl}/card@2x.png`
-  let url = `${baseUrl}${router.asPath}`
+  const opengraphImage = `${baseUrl}/api/cloudinary-cache?${qs.stringify(query)}`
+  const defaultOgImage = `${baseUrl}/card@2x.png`
+  const url = `${baseUrl}${router.asPath}`
 
   return (
     <Head>

@@ -10,9 +10,9 @@ export enum Category {
   Share = 'MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDg0MTcw',
 }
 
-let endpoint = 'https://api.github.com/graphql'
+const endpoint = 'https://api.github.com/graphql'
 
-let categoryId = await arg(
+const categoryId = await arg(
   'Category',
   Object.entries(Category).map(([name, value]) => {
     return {
@@ -22,14 +22,14 @@ let categoryId = await arg(
   })
 )
 
-let client = new GraphQLClient(endpoint, {
+const client = new GraphQLClient(endpoint, {
   headers: {
     'GraphQL-Features': 'discussions_api',
     authorization: `Bearer ${await env('GITHUB_DISCUSSIONS_TOKEN')}`,
   },
 })
 
-let query = gql`
+const query = gql`
   query ($categoryId: ID) {
     repository(owner: "johnlindquist", name: "kit") {
       discussions(
@@ -56,9 +56,9 @@ let query = gql`
   }
 `
 
-let response = await client.request(query, { categoryId })
+const response = await client.request(query, { categoryId })
 
-let discussions = response.repository.discussions.nodes.map((d: Discussion) => {
+const discussions = response.repository.discussions.nodes.map((d: Discussion) => {
   const slug = slugify(d.title, {
     lower: true,
     strict: true,

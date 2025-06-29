@@ -10,7 +10,7 @@
 
 import '@johnlindquist/kit'
 
-let cheatSheet: string = `
+const cheatSheet: string = `
 # Main Menu Cheat Sheet
 
 ## Scripts
@@ -53,7 +53,7 @@ let cheatSheet: string = `
 | Manage Running Processes  | ${cmd}+p       |
 `.trim()
 
-let { workArea } = await getActiveScreen()
+const { workArea } = await getActiveScreen()
 
 await widget(md(cheatSheet), {
   height: workArea.height,

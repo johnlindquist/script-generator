@@ -20,12 +20,12 @@ interface Person {
   group: string
 }
 
-let generatePeople = (): Person[] => {
-  let faang: string[] = ['Facebook', 'Apple', 'Amazon', 'Netflix', 'Google']
-  let sample = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+const generatePeople = (): Person[] => {
+  const faang: string[] = ['Facebook', 'Apple', 'Amazon', 'Netflix', 'Google']
+  const sample = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
   return Array.from({ length: 22 }).map(() => {
-    let name = faker.person.fullName()
+    const name = faker.person.fullName()
     return {
       name,
       value: name,
@@ -35,8 +35,8 @@ let generatePeople = (): Person[] => {
   })
 }
 
-let storePath: string = kenvPath('db', 'people.json') // ~/.kenv/db/people.json
-let peopleStore = await store(storePath)
+const storePath: string = kenvPath('db', 'people.json') // ~/.kenv/db/people.json
+const peopleStore = await store(storePath)
 
 let people: Person[] = await peopleStore.get('people')
 if (!people) {
@@ -45,7 +45,7 @@ if (!people) {
 }
 
 // groupChoices is based on the "group" property of each person
-let groupedChoices = groupChoices(people)
+const groupedChoices = groupChoices(people)
 
-let result: string = await micro('Select a Person', groupedChoices)
+const result: string = await micro('Select a Person', groupedChoices)
 await editor(result)

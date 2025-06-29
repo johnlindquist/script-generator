@@ -63,11 +63,14 @@ export async function POST(req: Request) {
   try {
     const rawBody = await req.json()
     const parseResult = NextSuggestionsSchema.safeParse(rawBody)
-    
+
     if (!parseResult.success) {
-      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid request body', details: parseResult.error.errors },
+        { status: 400 }
+      )
     }
-    
+
     const body = parseResult.data
     const breadcrumb = body.breadcrumb || ''
     sessionInteractionId = body.sessionInteractionId
@@ -210,7 +213,7 @@ export async function POST(req: Request) {
     const errorStack = error instanceof Error ? error.stack : undefined
     const errorName = error instanceof Error ? error.name : 'UnknownError'
 
-    let errorDetails: {
+    const errorDetails: {
       error: string
       stack?: string
       errorType: string

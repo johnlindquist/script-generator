@@ -18,9 +18,9 @@ interface DogResponse {
   }
 }
 
-let dogUrl: string = `https://dog.ceo/api/breed/corgi/images/random`
-let getState = async () => {
-  let response: DogResponse = await get(dogUrl)
+const dogUrl: string = `https://dog.ceo/api/breed/corgi/images/random`
+const getState = async () => {
+  const response: DogResponse = await get(dogUrl)
   return {
     url: response.data.message,
   }
@@ -32,8 +32,8 @@ let getState = async () => {
   Note: the `draggable` class is necessary to use an html element to drag the widget, 
   but it will also interfere with all other mouse interactions
 */
-let dragBar: string = `draggable absolute z-10 h-6 w-full top-0 left-0 bg-gray-100 bg-opacity-50`
-let corgi = await widget(
+const dragBar: string = `draggable absolute z-10 h-6 w-full top-0 left-0 bg-gray-100 bg-opacity-50`
+const corgi = await widget(
   `
 <img :src="url"/>
 <div class="${dragBar}">

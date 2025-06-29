@@ -18,7 +18,7 @@ interface JokeResponse {
 }
 
 const getJoke = async (): Promise<string> => {
-  let response: JokeResponse = await get(`https://icanhazdadjoke.com/`, {
+  const response: JokeResponse = await get(`https://icanhazdadjoke.com/`, {
     headers: {
       Accept: 'text/plain',
       'User-Agent': 'axios 0.21.1',

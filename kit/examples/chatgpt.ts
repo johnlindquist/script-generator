@@ -51,7 +51,7 @@ const llm = new ChatOpenAI({
         setLoading(false)
         if (!token) return
         currentMessage += token
-        let htmlMessage = md(currentMessage)
+        const htmlMessage = md(currentMessage)
         chat.setMessage(-1, htmlMessage)
         appendFile(chatFile, token)
       },

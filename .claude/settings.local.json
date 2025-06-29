@@ -25,7 +25,9 @@
       "Bash(git restore:*)",
       "mcp__deepwiki__ask_question",
       "Bash(fd:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(git checkout:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": []
   }

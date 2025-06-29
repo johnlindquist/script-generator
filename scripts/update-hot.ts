@@ -3,7 +3,7 @@ import { Extension, LoadedScript } from './types'
 
 const githubURL = 'https://api.github.com/graphql'
 
-let token = env.GITHUB_DISCUSSIONS_TOKEN
+const token = env.GITHUB_DISCUSSIONS_TOKEN
 
 const config = {
   headers: {
@@ -80,11 +80,11 @@ const fetchPosts = async (categoryId = '') => {
     }
   }`
 
-  let options = {
+  const options = {
     query,
   }
 
-  let response: any = await post(githubURL, options, config)
+  const response: any = await post(githubURL, options, config)
 
   return response?.data?.data?.repository?.discussions?.nodes
 }

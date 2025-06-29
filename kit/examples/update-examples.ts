@@ -12,7 +12,7 @@
 
 import '@johnlindquist/kit'
 
-let examplesDir: string = kenvPath('kenvs', 'examples')
+const examplesDir: string = kenvPath('kenvs', 'examples')
 cd(examplesDir)
 
 await $`git stash`

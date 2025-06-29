@@ -21,20 +21,20 @@ interface Todo {
 // "kv" is a key/value store
 // The name "todos" will map to ~/.kenv/db/todos.json
 // The object will be the initial value
-let kv = await store('todos', { todos: [] })
+const kv = await store('todos', { todos: [] })
 let defaultChoiceId: string = ''
 
 // The input allows you to maintain input when switching tabs
-let toggleTab = async (input: string = '') => {
-  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
-  let toggleTodos = todos.map(t => {
+const toggleTab = async (input: string = '') => {
+  const todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
+  const toggleTodos = todos.map(t => {
     return {
       ...t,
       enter: 'Toggle Todo',
       name: `${t.done ? '✅' : '❌'} ${t.name}`,
     }
   })
-  let choices = [
+  const choices = [
     ...toggleTodos,
     {
       name: 'Add Todo',
@@ -42,7 +42,7 @@ let toggleTab = async (input: string = '') => {
       info: true,
     },
   ]
-  let todo = await micro<Todo>(
+  const todo = await micro<Todo>(
     {
       input,
       placeholder: todos.length ? 'Add Todo' : 'Toggle Todo',
@@ -71,7 +71,7 @@ let toggleTab = async (input: string = '') => {
   }
   // "todo" was the selected object
   else if (todo?.id) {
-    let foundTodo = todos.find(({ id }) => id === todo.id)
+    const foundTodo = todos.find(({ id }) => id === todo.id)
     if (foundTodo) {
       foundTodo.done = !foundTodo.done
     }
@@ -81,9 +81,9 @@ let toggleTab = async (input: string = '') => {
   await toggleTab()
 }
 
-let removeTab = async (input: string = '') => {
-  let todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
-  let todo = await micro<Todo>(
+const removeTab = async (input: string = '') => {
+  const todos: Todo[] = (await kv.get<{ todos: Todo[] }>('todos'))?.todos || []
+  const todo = await micro<Todo>(
     {
       input,
       defaultChoiceId,
@@ -109,7 +109,7 @@ let removeTab = async (input: string = '') => {
     ]
   )
   // Remove the todo from the array
-  let index = todos.findIndex(t => t.id === todo.id)
+  const index = todos.findIndex(t => t.id === todo.id)
 
   todos.splice(index, 1)
   await kv.set('todos', { todos })

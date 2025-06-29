@@ -11,7 +11,7 @@
 
 import { backToMainShortcut } from '@johnlindquist/kit'
 
-let contents: string = await editor({
+const contents: string = await editor({
   shortcuts: [
     backToMainShortcut,
     {
@@ -25,5 +25,5 @@ let contents: string = await editor({
   ],
 })
 
-let { html_url } = await createGist(contents)
+const { html_url } = await createGist(contents)
 open(html_url)

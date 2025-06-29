@@ -184,7 +184,7 @@ export async function GET(req: Request) {
     const errorStack = error instanceof Error ? error.stack : undefined
     const errorName = error instanceof Error ? error.name : 'UnknownError'
 
-    let errorDetails: {
+    const errorDetails: {
       error: string
       stack?: string
       errorType: string

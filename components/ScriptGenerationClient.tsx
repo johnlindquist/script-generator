@@ -962,7 +962,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
               disabled={state.matches('generatingDraft')}
             >
               <Sparkles className="w-4 h-4 mr-2 text-white/50 hover:text-primary" />
-              I'm Feeling Lucky
+              I&apos;m Feeling Lucky
             </Button>
           </div>
 

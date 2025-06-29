@@ -30,27 +30,27 @@ interface Repo {
   repo: string
 }
 
-let octokit = new Octokit({
+const octokit = new Octokit({
   auth: await env('GITHUB_SCRIPTKITCOM_TOKEN'),
 })
 
-let scripts: LoadedScript[] = []
+const scripts: LoadedScript[] = []
 
-let repos: Repo[] = await readJson(path.resolve('users.json'))
+const repos: Repo[] = await readJson(path.resolve('users.json'))
 
-for await (let repo of repos) {
-  let scriptsResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+for await (const repo of repos) {
+  const scriptsResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
     ...repo,
     path: 'scripts',
   })
 
-  let scriptsDir = scriptsResponse.data as any[]
+  const scriptsDir = scriptsResponse.data as any[]
 
-  for await (let script of scriptsDir) {
-    let file = script.name
-    let url = script.download_url
+  for await (const script of scriptsDir) {
+    const file = script.name
+    const url = script.download_url
 
-    let scriptResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+    const scriptResponse = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
       ...repo,
       path: `${script.path}`,
       mediaType: {
@@ -58,10 +58,10 @@ for await (let repo of repos) {
       },
     })
 
-    let content = scriptResponse.data as any
+    const content = scriptResponse.data as any
 
-    let command = commandFromFilePath(script.path)
-    let metadata = getMetadata(content)
+    const command = commandFromFilePath(script.path)
+    const metadata = getMetadata(content)
 
     scripts.push({
       ...repo,

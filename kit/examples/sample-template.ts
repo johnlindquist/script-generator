@@ -14,7 +14,7 @@ import '@johnlindquist/kit'
 
 // Templates use the same variable syntax as VS Code templates
 // Templates pair very nicely with snippets!
-let result: string = await template(
+const result: string = await template(
   `
 Dear \${1:Name},
 

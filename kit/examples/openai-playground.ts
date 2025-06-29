@@ -14,13 +14,13 @@ import '@johnlindquist/kit'
 import { OpenAI } from 'openai'
 import { ChatCompletion, ChatCompletionMessageParam } from 'openai/resources/chat'
 
-let openai = new OpenAI({
+const openai = new OpenAI({
   apiKey: await env('OPENAI_API_KEY'),
 })
 
 let currentPanel: string = ``
 let content: string = ``
-let messages: ChatCompletionMessageParam[] = []
+const messages: ChatCompletionMessageParam[] = []
 
 while (true) {
   content = await micro(
@@ -42,12 +42,12 @@ while (true) {
 
   setLoading(true)
 
-  let response: ChatCompletion = await openai.chat.completions.create({
+  const response: ChatCompletion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages,
   })
 
-  let message = response?.choices?.[0]?.message
+  const message = response?.choices?.[0]?.message
   if (message) {
     messages.push(message)
     currentPanel = md(message?.content)

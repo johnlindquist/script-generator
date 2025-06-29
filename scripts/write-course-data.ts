@@ -1,12 +1,12 @@
 import '@johnlindquist/kit'
 import { gql, GraphQLClient } from 'graphql-request'
 
-let endpoint = 'https://app.egghead.io/graphql'
-let slugs = await arg('Course slug or slugs separated with comma')
+const endpoint = 'https://app.egghead.io/graphql'
+const slugs = await arg('Course slug or slugs separated with comma')
 
-let client = new GraphQLClient(endpoint)
+const client = new GraphQLClient(endpoint)
 
-let query = gql`
+const query = gql`
   query CourseQuery($slug: String!) {
     course(slug: $slug) {
       title
@@ -25,11 +25,11 @@ let query = gql`
     }
   }
 `
-let courses = []
+const courses = []
 
-for (let courseSlug of slugs.split(',')) {
-  let response = await client.request(query, { slug: courseSlug })
-  let course = response.course
+for (const courseSlug of slugs.split(',')) {
+  const response = await client.request(query, { slug: courseSlug })
+  const course = response.course
   courses.push(course)
 }
 

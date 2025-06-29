@@ -41,13 +41,13 @@ if (clipboardImage.byteLength) {
   console.clear()
   await editor(text)
 } else {
-  let selectedFiles: string | undefined = await getSelectedFile()
+  const selectedFiles: string | undefined = await getSelectedFile()
   let filePaths: string[]
 
   if (selectedFiles) {
     filePaths = selectedFiles.split('\n')
   } else {
-    let droppedFiles = await drop({ placeholder: 'Drop images to compress' })
+    const droppedFiles = await drop({ placeholder: 'Drop images to compress' })
     filePaths = droppedFiles.map(file => file.path)
   }
   for (const filePath of filePaths) {
