@@ -21,7 +21,8 @@
       "Bash(pnpm eslint:*)",
       "Bash(grep:*)",
       "Bash(pnpm check:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }
