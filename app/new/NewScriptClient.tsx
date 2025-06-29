@@ -37,7 +37,9 @@ export default function NewScriptClient() {
       finalScript = scriptFromQuery
     } else if (scriptFromQueryB64) {
       try {
-        finalScript = atob(scriptFromQueryB64)
+        // First URL-decode, then base64-decode
+        const urlDecodedScript = decodeURIComponent(scriptFromQueryB64)
+        finalScript = atob(urlDecodedScript)
       } catch (e) {
         console.error('Failed to decode base64 script:', e)
       }

@@ -1,4 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { MockedFunction } from 'vitest'
+
+// Create mock localStorage object
+const mockLocalStorage = {
+  getItem: vi.fn() as MockedFunction<typeof localStorage.getItem>,
+  setItem: vi.fn() as MockedFunction<typeof localStorage.setItem>,
+  removeItem: vi.fn() as MockedFunction<typeof localStorage.removeItem>,
+}
+
+// Mock safeLocalStorage before importing the module that uses it
+vi.mock('@/lib/event-handlers', () => ({
+  safeLocalStorage: mockLocalStorage,
+}))
+
 import {
   getMockConfig,
   setMockConfig,
@@ -7,18 +21,6 @@ import {
   enableMockStreaming,
   disableMockStreaming,
 } from '@/lib/mock-integration'
-
-// Mock window and localStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-}
-
-// Mock safeLocalStorage
-vi.mock('@/lib/event-handlers', () => ({
-  safeLocalStorage: mockLocalStorage,
-}))
 
 describe('Mock Integration', () => {
   const originalWindow = (global as any).window
