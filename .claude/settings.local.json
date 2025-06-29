@@ -22,7 +22,10 @@
       "Bash(grep:*)",
       "Bash(pnpm check:*)",
       "Bash(git push:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "mcp__deepwiki__ask_question",
+      "Bash(fd:*)",
+      "Bash(pnpm test:*)"
     ],
     "deny": []
   }

@@ -662,10 +662,8 @@ if (primaryColor) {
 - **`setChoices(choicesArray, config?)`**: Replaces the current list of choices.
 - **`md(markdownString)`**: Converts a Markdown string to HTML.
 - **`highlight(markdownString)`**: Syntax-highlights code blocks within a Markdown string.
-- **`setStatus({ message: "...", status: "busy" })`**: Shows an icon and message in the system tray (ephemeral).
 - **`notify({ title: "...", body: "..." })`**: Sends a system notification.
 - **`toast("Message", options?)`**: Displays a small, temporary message within the Script Kit window.
-- **`menu("Emoji", ["script1", "script2"])`**: Customizes the system tray menu.
 
 ## Windows & UI Control
 

@@ -1,18 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { MockedFunction } from 'vitest'
 
-// Create mock localStorage object
-const mockLocalStorage = {
-  getItem: vi.fn() as MockedFunction<typeof localStorage.getItem>,
-  setItem: vi.fn() as MockedFunction<typeof localStorage.setItem>,
-  removeItem: vi.fn() as MockedFunction<typeof localStorage.removeItem>,
-}
+// Mock the module first
+vi.mock('@/lib/event-handlers')
 
-// Mock safeLocalStorage before importing the module that uses it
-vi.mock('@/lib/event-handlers', () => ({
-  safeLocalStorage: mockLocalStorage,
-}))
-
+// Import after mocking
 import {
   getMockConfig,
   setMockConfig,
@@ -22,9 +13,15 @@ import {
   disableMockStreaming,
 } from '@/lib/mock-integration'
 
+// Import the mocked module to get type safety
+import { safeLocalStorage } from '@/lib/event-handlers'
+
+// Type the mocked functions
+const mockLocalStorage = vi.mocked(safeLocalStorage)
+
 describe('Mock Integration', () => {
-  const originalWindow = (global as any).window
-  const originalLocation = (global as any).window?.location
+  const originalWindow = (global as unknown as { window?: Window }).window
+  const originalLocation = (global as unknown as { window?: Window }).window?.location
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,13 +29,18 @@ describe('Mock Integration', () => {
     delete process.env.MOCK_STREAMING
     delete process.env.MOCK_SCENARIO
     delete process.env.MOCK_ERROR
+
+    // Setup default mock implementations
+    mockLocalStorage.getItem.mockReturnValue(null)
+    mockLocalStorage.setItem.mockImplementation(() => {})
+    mockLocalStorage.removeItem.mockImplementation(() => {})
   })
 
   afterEach(() => {
     if (originalWindow) {
-      (global as any).window = originalWindow
+      ;(global as unknown as { window: Window }).window = originalWindow
       if (originalLocation) {
-        (global as any).window.location = originalLocation
+        ;(global as unknown as { window: Window }).window.location = originalLocation
       }
     }
   })
@@ -51,8 +53,8 @@ describe('Mock Integration', () => {
 
     it('should read from environment variables on server', () => {
       // Simulate server environment
-      const windowBackup = (global as any).window
-      delete (global as any).window
+      const windowBackup = (global as unknown as { window?: Window }).window
+      delete (global as unknown as { window?: Window }).window
 
       process.env.MOCK_STREAMING = 'true'
       process.env.MOCK_SCENARIO = 'long'
@@ -63,17 +65,19 @@ describe('Mock Integration', () => {
 
       const config = getMockConfig()
 
-      expect(config).toEqual({
+      const expectedConfig = {
         enabled: true,
-        scenario: 'long',
-        error: 'rate_limit',
+        scenario: 'long' as const,
+        error: 'rate_limit' as const,
         errorAfterChunks: 5,
         chunkSize: 20,
         delayMs: 100,
-      })
+      }
+
+      expect(config).toEqual(expectedConfig)
 
       // Restore window
-      (global as any).window = windowBackup
+      ;(global as unknown as { window?: Window }).window = windowBackup
     })
 
     it('should read from localStorage on client', () => {
@@ -105,7 +109,8 @@ describe('Mock Integration', () => {
       // Mock window.location
       Object.defineProperty(window, 'location', {
         value: {
-          search: '?mock=true&mock_scenario=slow_stream&mock_error=network_timeout&mock_error_after=3',
+          search:
+            '?mock=true&mock_scenario=slow_stream&mock_error=network_timeout&mock_error_after=3',
         },
         writable: true,
       })
@@ -166,13 +171,12 @@ describe('Mock Integration', () => {
     })
 
     it('should not throw on server', () => {
-      const windowBackup = (global as any).window
-      delete (global as any).window
+      const windowBackup = (global as unknown as { window?: Window }).window
+      delete (global as unknown as { window?: Window }).window
 
       expect(() => setMockConfig({ enabled: true })).not.toThrow()
       expect(() => clearMockConfig()).not.toThrow()
-
-      (global as any).window = windowBackup
+      ;(global as unknown as { window?: Window }).window = windowBackup
     })
   })
 
@@ -260,9 +264,7 @@ describe('Mock Integration', () => {
     })
 
     it('should not mock non-streaming endpoints', async () => {
-      mockLocalStorage.getItem.mockReturnValue(
-        JSON.stringify({ enabled: true })
-      )
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify({ enabled: true }))
 
       const streamingFetch = getStreamingFetch()
 
@@ -272,9 +274,7 @@ describe('Mock Integration', () => {
     })
 
     it('should handle URL objects', async () => {
-      mockLocalStorage.getItem.mockReturnValue(
-        JSON.stringify({ enabled: true })
-      )
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify({ enabled: true }))
 
       Object.defineProperty(window, 'location', {
         value: {
@@ -313,9 +313,7 @@ describe('Mock Integration', () => {
           error: undefined,
         })
       )
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✅ Mock streaming enabled')
-      )
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Mock streaming enabled'))
     })
 
     it('should enable mock with custom scenario and error', () => {
@@ -335,35 +333,30 @@ describe('Mock Integration', () => {
       disableMockStreaming()
 
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('mockStreamingConfig')
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Mock streaming disabled')
-      )
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Mock streaming disabled'))
     })
   })
 
   describe('Window integration', () => {
     it('should expose __mockStreaming in development', async () => {
-      const originalEnv = process.env.NODE_ENV
+      // Original env saved for cleanup
       vi.stubEnv('NODE_ENV', 'development')
 
       // Re-import to trigger window setup
       vi.resetModules()
-      vi.doMock('@/lib/event-handlers', () => ({
-        safeLocalStorage: mockLocalStorage,
-      }))
-      
+
       await import('@/lib/mock-integration')
-      
+
       expect(window).toHaveProperty('__mockStreaming')
-      const mockStreaming = (window as any).__mockStreaming
-      
+      const mockStreaming = (window as Window & { __mockStreaming?: unknown }).__mockStreaming
+
       expect(mockStreaming).toHaveProperty('enable')
       expect(mockStreaming).toHaveProperty('disable')
       expect(mockStreaming).toHaveProperty('config')
       expect(mockStreaming).toHaveProperty('setConfig')
       expect(mockStreaming).toHaveProperty('scenarios')
       expect(mockStreaming).toHaveProperty('errors')
-      
+
       vi.unstubAllEnvs()
     })
   })

@@ -58,10 +58,12 @@ export function mapErrorToStreamError(error: Error | unknown): StreamError {
   const timestamp = new Date()
 
   if (error instanceof Error) {
+    const lowerMessage = error.message.toLowerCase()
+
     // Network errors
     if (
-      error.message.includes('fetch') ||
-      error.message.includes('network') ||
+      lowerMessage.includes('fetch') ||
+      lowerMessage.includes('network') ||
       error.message.includes('ETIMEDOUT')
     ) {
       return {
@@ -83,7 +85,7 @@ export function mapErrorToStreamError(error: Error | unknown): StreamError {
     }
 
     // Rate limit
-    if (error.message.includes('429') || error.message.includes('rate limit')) {
+    if (error.message.includes('429') || lowerMessage.includes('rate limit')) {
       return {
         type: 'rate_limit',
         message: 'Rate limit exceeded',
@@ -93,7 +95,7 @@ export function mapErrorToStreamError(error: Error | unknown): StreamError {
     }
 
     // Validation
-    if (error.message.includes('validation') || error.message.includes('invalid')) {
+    if (lowerMessage.includes('validation') || lowerMessage.includes('invalid')) {
       return {
         type: 'validation',
         message: error.message,
@@ -103,7 +105,7 @@ export function mapErrorToStreamError(error: Error | unknown): StreamError {
     }
 
     // Server errors
-    if (error.message.includes('500') || error.message.includes('server')) {
+    if (error.message.includes('500') || lowerMessage.includes('server')) {
       return {
         type: 'server',
         message: 'Internal server error',
