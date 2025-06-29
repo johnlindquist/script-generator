@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock Streaming Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #4b5563;
+      cursor: not-allowed;
+    }
+    .output {
+      background: #262626;
+      padding: 20px;
+      border-radius: 8px;
+      min-height: 300px;
+      white-space: pre-wrap;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      background: #374151;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .error {
+      background: #7f1d1d;
+      color: #fca5a5;
+    }
+    .success {
+      background: #14532d;
+      color: #86efac;
+    }
+    h1 {
+      color: #f3f4f6;
+    }
+    .config {
+      background: #1f2937;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mock Streaming Demo</h1>
+  
+  <div class="config">
+    <strong>Current Config:</strong>
+    <span id="config">Loading...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="testScenario('short')">Test Short Script</button>
+    <button onclick="testScenario('long')">Test Long Script</button>
+    <button onclick="testScenario('slow_stream')">Test Slow Stream</button>
+    <button onclick="testScenario('unicode_stress')">Test Unicode</button>
+    <button onclick="testError('rate_limit')">Test Rate Limit</button>
+    <button onclick="testError('network_timeout')">Test Network Error</button>
+    <button onclick="testError('auth_failed')">Test Auth Error</button>
+    <button onclick="testMidstreamError()">Test Midstream Error</button>
+    <button onclick="clearOutput()">Clear Output</button>
+    <button onclick="toggleMock()">Toggle Mock</button>
+  </div>
+
+  <div class="status" id="status">Ready</div>
+  
+  <div class="output" id="output">
+    Click a button to test mock streaming...
+  </div>
+
+  <script type="module">
+    // Import mock utilities
+    import { 
+      getMockConfig, 
+      setMockConfig, 
+      getStreamingFetch 
+    } from '/lib/mock-integration.js';
+
+    // Update config display
+    function updateConfigDisplay() {
+      const config = getMockConfig();
+      document.getElementById('config').textContent = JSON.stringify(config, null, 2);
+    }
+
+    // Helper to update status
+    function setStatus(message, type = '') {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status ' + type;
+    }
+
+    // Helper to append output
+    function appendOutput(text, clear = false) {
+      const output = document.getElementById('output');
+      if (clear) output.textContent = '';
+      output.textContent += text;
+    }
+
+    // Test a scenario
+    window.testScenario = async function(scenario) {
+      setMockConfig({
+        enabled: true,
+        scenario,
+        chunkSize: scenario === 'slow_stream' ? 5 : 30,
+        delayMs: scenario === 'slow_stream' ? 200 : 50
+      });
+      
+      updateConfigDisplay();
+      await runTest(`Testing ${scenario} scenario...`);
+    };
+
+    // Test an error
+    window.testError = async function(errorType) {
+      setMockConfig({
+        enabled: true,
+        scenario: 'short',
+        error: errorType,
+        errorAfterChunks: 3
+      });
+      
+      updateConfigDisplay();
+      await runTest(`Testing ${errorType} error...`);
+    };
+
+    // Test midstream error
+    window.testMidstreamError = async function() {
+      setMockConfig({
+        enabled: true,
+        scenario: 'error_midstream',
+        error: 'server_error'
+      });
+      
+      updateConfigDisplay();
+      await runTest('Testing midstream error injection...');
+    };
+
+    // Run the actual test
+    async function runTest(statusMessage) {
+      setStatus(statusMessage);
+      appendOutput('', true); // Clear
+      
+      const streamingFetch = getStreamingFetch();
+      let buffer = '';
+      let scriptId = '';
+      
+      try {
+        const response = await streamingFetch('/api/generate-ai-gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: 'Test prompt for mock streaming demo'
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Request failed');
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let chunkCount = 0;
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          buffer += chunk;
+          chunkCount++;
+          
+          // Extract script ID
+          const idMatch = buffer.match(/__SCRIPT_ID__(.+?)__SCRIPT_ID__/);
+          if (idMatch && !scriptId) {
+            scriptId = idMatch[1];
+            buffer = buffer.replace(/__SCRIPT_ID__.+?__SCRIPT_ID__/, '');
+            appendOutput(`[Script ID: ${scriptId}]\n\n`);
+          }
+          
+          // Show the latest chunk
+          appendOutput(chunk);
+          setStatus(`Streaming... (${chunkCount} chunks)`);
+        }
+        
+        setStatus(`Complete! Received ${chunkCount} chunks`, 'success');
+        
+      } catch (error) {
+        setStatus(`Error: ${error.message}`, 'error');
+        appendOutput(`\n\n[ERROR]: ${error.message}\n`);
+      }
+    }
+
+    // Clear output
+    window.clearOutput = function() {
+      appendOutput('', true);
+      setStatus('Ready');
+    };
+
+    // Toggle mock on/off
+    window.toggleMock = function() {
+      const config = getMockConfig();
+      setMockConfig({ enabled: !config.enabled });
+      updateConfigDisplay();
+      setStatus(`Mock streaming ${!config.enabled ? 'enabled' : 'disabled'}`);
+    };
+
+    // Initialize
+    updateConfigDisplay();
+    
+    // Enable mock by default for demo
+    setMockConfig({ enabled: true });
+    updateConfigDisplay();
+  </script>
+</body>
+</html>
