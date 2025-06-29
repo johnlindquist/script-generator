@@ -1,5 +1,6 @@
 import { toast } from 'react-hot-toast'
 import { logInteraction } from './interaction-logger'
+import { getStreamingFetch } from './mock-integration'
 
 export async function generateDraft(
   prompt: string,
@@ -76,7 +77,7 @@ export async function saveAndInstallScript(prompt: string, editableScript: strin
     throw new Error('Failed to save script before install')
   }
 
-  const scriptData = await scriptResponse.json() as { id: string; dashedName: string }
+  const scriptData = (await scriptResponse.json()) as { id: string; dashedName: string }
   const { id, dashedName } = scriptData
 
   const installResponse = await fetch('/api/install', {
@@ -618,7 +619,8 @@ export async function generateAIGatewayDraftWithStream(
       promptLength: prompt.length,
     })
 
-    const res = await fetch('/api/generate-ai-gateway', {
+    const streamingFetch = getStreamingFetch()
+    const res = await streamingFetch('/api/generate-ai-gateway', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
