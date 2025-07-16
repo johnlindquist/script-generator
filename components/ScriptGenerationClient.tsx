@@ -135,6 +135,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
   })
 
   const draftGenerationControllerRef = useRef<AbortController | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Add state transition observer
   useEffect(() => {
@@ -1034,15 +1035,33 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
                   <div className="flex-1 relative">
                     <div className="absolute bottom-4 right-4 flex gap-2 pointer-events-auto">
                       <button
-                        onClick={() => send({ type: 'SAVE_SCRIPT' })}
+                        onClick={async () => {
+                          if (isSaving) return
+                          setIsSaving(true)
+                          try {
+                            await send({ type: 'SAVE_SCRIPT' })
+                          } finally {
+                            setIsSaving(false)
+                          }
+                        }}
                         className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                        disabled={isSaving}
                       >
                         <DocumentCheckIcon className="w-5 h-5" />
                         Save
                       </button>
                       <button
-                        onClick={() => send({ type: 'SAVE_AND_INSTALL' })}
+                        onClick={async () => {
+                          if (isSaving) return
+                          setIsSaving(true)
+                          try {
+                            await send({ type: 'SAVE_AND_INSTALL' })
+                          } finally {
+                            setIsSaving(false)
+                          }
+                        }}
                         className="bg-gradient-to-tr from-amber-300 to-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg shadow-2xl hover:brightness-110 transition-colors flex items-center gap-2"
+                        disabled={isSaving}
                       >
                         <ArrowDownTrayIcon className="w-5 h-5" />
                         Save & Install

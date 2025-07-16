@@ -25,7 +25,8 @@ export default function NewScriptClient() {
   const searchParams = useSearchParams()
   const [content, setContent] = useState(defaultContent)
   const [title, setTitle] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [, setIsSaving] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   // Check for script content in URL query parameters
   useEffect(() => {
@@ -57,6 +58,8 @@ export default function NewScriptClient() {
   }, [searchParams])
 
   async function handleSave() {
+    if (isCreating) return
+    setIsCreating(true)
     if (!title.trim()) {
       toast.error('Please enter a script title')
       return
@@ -80,17 +83,18 @@ export default function NewScriptClient() {
       })
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({})) as { error?: string }
+        const data = (await response.json().catch(() => ({}))) as { error?: string }
         throw new Error(data.error || 'Failed to create script')
       }
 
-      const script = await response.json() as { id: string }
+      const script = (await response.json()) as { id: string }
       toast.success('Script created successfully')
       router.push(`/scripts/${script.id}`)
     } catch (error) {
       console.error('Error creating script:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to create script')
     } finally {
+      setIsCreating(false)
       setIsSaving(false)
     }
   }
@@ -134,10 +138,10 @@ export default function NewScriptClient() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isCreating}
           className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isSaving ? 'Creating...' : 'Create Script'}
+          {isCreating ? 'Creating...' : 'Create Script'}
         </button>
       </div>
     </div>
