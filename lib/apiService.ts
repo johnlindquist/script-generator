@@ -662,14 +662,19 @@ export async function generateAIGatewayDraftWithStream(
       // Add toast notifications for different error cases
       if (res.status === 429) {
         toast.error('Daily generation limit reached. Try again tomorrow!')
+      } else if (res.status === 503) {
+        toast.error('Service temporarily unavailable. Please try again later.')
       } else if (res.status === 401) {
         toast.error('Session expired. Please sign in again.')
       } else {
-        const errorData = data as { error?: string }
-        toast.error(errorData.error || 'Failed to generate draft')
+        const errorData = data as { error?: string; message?: string }
+        toast.error(errorData.message || errorData.error || 'Failed to generate draft')
       }
 
-      const errorMsg = (data as { error?: string }).error || 'Failed to generate draft'
+      const errorMsg =
+        (data as { error?: string; message?: string }).message ||
+        (data as { error?: string }).error ||
+        'Failed to generate draft'
       throw new Error(errorMsg)
     }
 

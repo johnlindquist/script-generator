@@ -6,6 +6,7 @@ export type GenerationErrorType =
   | 'TIMEOUT'
   | 'UNAUTHORIZED'
   | 'DAILY_LIMIT'
+  | 'COST_LIMIT'
   | 'VALIDATION'
   | 'DATABASE'
   | 'STREAM'
@@ -47,6 +48,12 @@ const ERROR_RESPONSES: Record<GenerationErrorType, ErrorResponse> = {
     details: 'You have reached your daily generation limit.',
     message: 'Please try again tomorrow.',
     status: 429,
+  },
+  COST_LIMIT: {
+    error: 'Cost limit exceeded',
+    details: 'The AI provider has reached its cost limit.',
+    message: 'Service temporarily unavailable. Please try again later.',
+    status: 503,
   },
   VALIDATION: {
     error: 'Invalid request',
@@ -99,6 +106,10 @@ function determineErrorType(error: Error | unknown): GenerationErrorType {
 
   if (error.message.includes('daily limit') || error.message.includes('rate limit')) {
     return 'DAILY_LIMIT'
+  }
+
+  if (error.message.includes('Cost limit exceeded') || error.message.includes('cost limit')) {
+    return 'COST_LIMIT'
   }
 
   if (error.message.includes('database') || error.message.includes('prisma')) {

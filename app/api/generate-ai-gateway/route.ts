@@ -17,7 +17,8 @@ export const runtime = 'nodejs'
 
 const DAILY_LIMIT = 24
 const CLI_API_KEY = process.env.CLI_API_KEY
-const DEFAULT_MODEL: GatewayModelId = process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId || 'anthropic/claude-4-sonnet'
+const DEFAULT_MODEL: GatewayModelId =
+  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'anthropic/claude-4-sonnet'
 
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
@@ -81,13 +82,13 @@ export async function POST(req: Request) {
       sessionExpires: session?.expires,
       sessionUser: session?.user
         ? {
-          hasUser: !!session.user,
-          userKeys: Object.keys(session.user),
-          userId: session.user.id,
-          userEmail: session.user.email,
-          username: session.user.username,
-          userType: typeof session.user,
-        }
+            hasUser: !!session.user,
+            userKeys: Object.keys(session.user),
+            userId: session.user.id,
+            userEmail: session.user.email,
+            username: session.user.username,
+            userType: typeof session.user,
+          }
         : null,
     })
 
@@ -185,10 +186,10 @@ export async function POST(req: Request) {
             hasUserId: !!session?.user?.id,
             sessionData: session
               ? {
-                expires: session.expires,
-                userKeys: session.user ? Object.keys(session.user) : [],
-                fullUserObject: session.user,
-              }
+                  expires: session.expires,
+                  userKeys: session.user ? Object.keys(session.user) : [],
+                  fullUserObject: session.user,
+                }
               : null,
             failureReasons: sessionFailureReasons,
           }
@@ -220,7 +221,10 @@ export async function POST(req: Request) {
         requestId,
         errors: parseResult.error.errors,
       })
-      return NextResponse.json({ error: 'Invalid request body', details: parseResult.error.errors }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid request body', details: parseResult.error.errors },
+        { status: 400 }
+      )
     }
 
     const { prompt, luckyRequestId } = parseResult.data
@@ -362,9 +366,9 @@ export async function POST(req: Request) {
       userId === 'cli-user'
         ? null
         : await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, username: true },
-        })
+            where: { id: userId },
+            select: { id: true, username: true },
+          })
 
     // Check daily limit
     if (usage.count >= DAILY_LIMIT) {
@@ -464,22 +468,45 @@ export async function POST(req: Request) {
       }
     )
 
-
     const model = gateway.languageModel(DEFAULT_MODEL as GatewayModelId) as unknown as LanguageModel
 
-    const result = await streamText({
-      model,
-      messages,
-      temperature: 0.4,
-      onError: (errorData: { error: unknown }) => {
-        const error = errorData.error as Error
-        logInteraction(interactionTimestamp, 'serverRoute', 'Error while streaming', {
-          requestId,
-          error: error.message,
-          stack: error.stack,
-        })
-      },
-    })
+    let streamError: Error | null = null
+    let result
+
+    try {
+      result = await streamText({
+        model,
+        messages,
+        temperature: 0.4,
+        onError: (errorData: { error: unknown }) => {
+          const error = errorData.error as Error
+          streamError = error
+          logInteraction(interactionTimestamp, 'serverRoute', 'Error while streaming', {
+            requestId,
+            error: error.message,
+            stack: error.stack,
+          })
+        },
+      })
+    } catch (error) {
+      // Handle immediate errors (like cost limit exceeded)
+      await logInteraction(interactionTimestamp, 'serverRoute', 'StreamText threw error', {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        scriptId,
+      })
+
+      const { handleGenerationError } = await import('@/lib/error-handler')
+      return handleGenerationError({
+        error: error as Error,
+        requestId,
+        interactionTimestamp,
+        routeName: 'serverRoute',
+        scriptId,
+        luckyRequestId,
+      })
+    }
 
     await logInteraction(
       interactionTimestamp,
@@ -510,6 +537,20 @@ export async function POST(req: Request) {
         let accumulatedCompletion = ''
         try {
           for await (const chunk of result.textStream) {
+            // Check if error occurred during streaming
+            if (streamError) {
+              await logInteraction(
+                interactionTimestamp,
+                'serverRoute',
+                'Error occurred during streaming',
+                {
+                  requestId,
+                  error: streamError.message,
+                }
+              )
+              controller.error(streamError)
+              return
+            }
             controller.enqueue(new TextEncoder().encode(chunk))
             accumulatedCompletion += chunk
           }
@@ -548,10 +589,10 @@ export async function POST(req: Request) {
       hasSession: !!session,
       sessionData: session
         ? {
-          expires: session.expires,
-          hasUser: !!session.user,
-          userId: session.user?.id,
-        }
+            expires: session.expires,
+            hasUser: !!session.user,
+            userId: session.user?.id,
+          }
         : null,
     })
 
