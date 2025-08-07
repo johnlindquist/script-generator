@@ -8,7 +8,7 @@ import { NextSuggestionsSchema } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 
-const DEFAULT_MODEL = 'openai/gpt-4.1-nano'
+const DEFAULT_MODEL = 'openai/gpt-5-nano'
 
 // Define the Zod schema for the expected suggestions
 const SuggestionsSchema = z.object({

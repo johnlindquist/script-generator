@@ -28,7 +28,7 @@ await ensureDir(chatsDir)
 const chatFile = kenvPath(`chats`, `${formatDate(new Date(), 'yyyy-MM-dd-T-HH-mm-ss')}.md`)
 
 const llm = new ChatOpenAI({
-  modelName: 'gpt-4o-mini',
+  modelName: 'gpt-5-nano',
   apiKey: await env('OPENAI_API_KEY'),
   temperature: 0.7,
   streaming: true,

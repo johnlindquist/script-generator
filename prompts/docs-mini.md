@@ -413,7 +413,7 @@ await div(md(sentence))
 
 // Translate text using a specific model
 const translateToSpanish = ai('Translate the following English text to Spanish:', {
-  model: 'openai:gpt-4o-mini', // Example: specify provider and model
+  model: 'openai:gpt-5-nano', // Example: specify provider and model
 })
 const spanishText = await translateToSpanish('Hello, how are you?')
 await div(md(`Spanish: ${spanishText}`))

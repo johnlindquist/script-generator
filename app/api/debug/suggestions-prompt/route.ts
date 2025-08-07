@@ -5,7 +5,7 @@ import { getScriptKitDocs } from '@/lib/scriptKitDocs'
 
 export const runtime = 'nodejs'
 
-const DEFAULT_MODEL = 'openai/gpt-4.1-mini'
+const DEFAULT_MODEL = 'openai/gpt-5-nano'
 
 // Use the same Zod schema as the real route
 const SuggestionsSchema = z.object({
