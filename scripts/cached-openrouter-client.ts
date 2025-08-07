@@ -22,7 +22,7 @@ async function main() {
   console.log('🚀 Testing OpenRouter Caching with Anthropic Claude...')
 
   const apiKey = process.env.OPENROUTER_API_KEY
-  const model = process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3-5-sonnet'
+  const model = process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-5'
 
   if (!apiKey) {
     console.error('❌ Missing OPENROUTER_API_KEY environment variable')

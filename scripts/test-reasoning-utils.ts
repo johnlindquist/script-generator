@@ -33,7 +33,7 @@ async function testReasoningUtils() {
   console.log('🚀 Testing reasoning extraction utilities...')
 
   const apiKey = process.env.OPENROUTER_API_KEY
-  const modelName = process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3-5-sonnet'
+  const modelName = process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-5'
 
   if (!apiKey) {
     console.error('❌ Missing OPENROUTER_API_KEY environment variable')

@@ -18,7 +18,7 @@ export const runtime = 'nodejs'
 const DAILY_LIMIT = 24
 const CLI_API_KEY = process.env.CLI_API_KEY
 const DEFAULT_MODEL: GatewayModelId =
-  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'anthropic/claude-4-sonnet'
+  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
 
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
