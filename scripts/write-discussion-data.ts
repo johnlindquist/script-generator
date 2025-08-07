@@ -105,12 +105,18 @@ const loadedScripts: any[] = discussions.map(
     //   }
     // }
 
+    // Safely handle missing author fields
+    const safeAvatar = author?.avatarUrl ?? ''
+    const safeUser = author?.login ?? ''
+    const safeAuthorName = (author as any)?.name ?? ''
+    const safeTwitter = (author as any)?.twitterUsername ?? ''
+
     return {
       ...metadata,
-      avatar: author.avatarUrl,
-      user: author.login,
-      author: author.name,
-      twitter: author.twitterUsername,
+      avatar: safeAvatar,
+      user: safeUser,
+      author: safeAuthorName,
+      twitter: safeTwitter,
       discussion,
       url,
       title,
