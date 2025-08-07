@@ -5,10 +5,12 @@ import { gateway } from '@/lib/ai-gateway'
 import { logInteraction } from '@/lib/interaction-logger'
 import { getScriptKitDocs } from '@/lib/scriptKitDocs'
 import { NextSuggestionsSchema } from '@/lib/schemas'
+import type { GatewayModelId } from '@ai-sdk/gateway'
 
 export const runtime = 'nodejs'
 
-const DEFAULT_MODEL = 'openai/gpt-5-nano'
+const DEFAULT_MODEL: GatewayModelId =
+  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
 
 // Define the Zod schema for the expected suggestions
 const SuggestionsSchema = z.object({

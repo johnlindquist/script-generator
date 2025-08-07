@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logInteraction } from '@/lib/interaction-logger'
 import { getScriptKitDocs } from '@/lib/scriptKitDocs'
+import type { GatewayModelId } from '@ai-sdk/gateway'
 
 export const runtime = 'nodejs'
 
-const DEFAULT_MODEL = 'openai/gpt-5-nano'
+const DEFAULT_MODEL: GatewayModelId =
+  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
 
 // Use the same Zod schema as the real route
 const SuggestionsSchema = z.object({
