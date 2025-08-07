@@ -44,12 +44,17 @@ const discussionInnerQuery = `
 const buildChoice = (node: any) => {
   const { title, resourcePath, createdAt, category, slug, id, body, author, url } = node
 
-  const description = `Created by ${author.login}`
+  const safeLogin = author?.login ?? ''
+  const safeAvatar = author?.avatarUrl ?? ''
+  const safeAuthorName = (author as any)?.name ?? ''
+  const safeTwitter = (author as any)?.twitterUsername ?? ''
+
+  const description = `Created by ${safeLogin}`
   return {
-    avatar: author.avatarUrl,
-    user: author.login,
-    author: author.name,
-    twitter: author.twitterUsername,
+    avatar: safeAvatar,
+    user: safeLogin,
+    author: safeAuthorName,
+    twitter: safeTwitter,
     discussion: url,
     url,
     title,
@@ -63,7 +68,7 @@ const buildChoice = (node: any) => {
     id,
     body,
     value: url,
-    img: author.avatarUrl,
+    img: safeAvatar,
   }
 }
 
