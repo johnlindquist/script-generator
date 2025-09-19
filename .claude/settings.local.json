@@ -1,33 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:developer.chrome.com)",
-      "Bash(pnpm install:*)",
-      "Bash(mkdir:*)",
-      "Bash(mv:*)",
-      "Bash(ghx:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(ls:*)",
-      "Bash(rm:*)",
-      "Bash(find:*)",
-      "Bash(rg:*)",
-      "Bash(npm run lint)",
-      "Bash(npm run check:*)",
-      "Bash(npx tsc:*)",
-      "Bash(pnpm add:*)",
-      "Bash(vercel:*)",
-      "Bash(pnpm tsc:*)",
-      "Bash(pnpm eslint:*)",
-      "Bash(grep:*)",
+      "mcp__basic-memory__switch_project",
+      "mcp__basic-memory__write_note",
+      "Bash(chmod:*)",
       "Bash(pnpm check:*)",
-      "Bash(git push:*)",
-      "Bash(git restore:*)",
-      "mcp__deepwiki__ask_question",
-      "Bash(fd:*)",
-      "Bash(pnpm test:*)",
-      "Bash(git checkout:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git add:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

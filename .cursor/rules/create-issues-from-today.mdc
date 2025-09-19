@@ -1,0 +1,57 @@
+# Rule: create-issues-from-today
+
+## Description
+
+This rule describes the process for extracting content from today's daily note and organizing it into the correct folders in the `issues` memory project, following the conventional commit message types (e.g., fix, feature, chore, refactor, perf).
+
+## Available Folders
+
+- fix
+- feature
+- chore
+- refactor
+- perf
+
+## Steps (with MCP Tools)
+
+1. **Switch to the `issues` memory project**
+
+   - Tool: `mcp_basic-memory_switch_project`
+   - Usage: Ensure the active memory project is set to `issues` before making any changes.
+
+2. **Locate today's daily note**
+
+   - Tool: `mcp_basic-memory_list_directory` (to list notes)
+   - Tool: `mcp_basic-memory_read_content` (to read the note)
+   - Usage: Find the markdown file for today's date in the main notes or memories directory (e.g., `2025-07-16.md`).
+
+3. **Extract actionable items**
+
+   - (Manual step, or use AI to parse note content)
+   - Usage: Read through the note and identify distinct issues, bugs, features, chores, refactors, or performance topics. For each item, determine the appropriate conventional commit type (e.g., bug = `fix`, performance = `perf`).
+
+4. **Create or update notes in the correct folder**
+
+   - Tool: `mcp_basic-memory_write_note`
+   - Usage: For each extracted item, create a new markdown note in the corresponding folder inside the `issues` project (e.g., `fix/`, `perf/`). Use a descriptive title and include the relevant content from the daily note.
+
+5. **Repeat for all items**
+
+   - (Repeat steps 3–4 for each actionable item.)
+
+6. **(Optional) Add links or references**
+
+   - Tool: `mcp_basic-memory_write_note` (to add references/links in the note content)
+   - Usage: If needed, add references back to the original daily note for traceability.
+
+7. **Switch back to the "script-generator" project**
+
+   - Tool: `mcp_basic-memory_switch_project`
+   - Usage: Switch back to the "script-generator" project to continue working on the script.
+
+## Example
+
+- A bug described in the daily note becomes a file in `fix/`.
+- A performance concern becomes a file in `perf/`.
+
+This process ensures daily notes are systematically converted into actionable, categorized issues for tracking and follow-up.

@@ -1,38 +1,92 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "!.cache/**",
+      "!.history/**",
+      "!.npm-cache/**",
+      "!node_modules/**",
+      "!.vscode/**",
+      "!assets/**",
+      "!src/main/logs.ts"
+    ]
   },
   "linter": {
-    "enabled": true,
+    "includes": ["src/**/*.ts"],
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "a11y": {
+        "recommended": false
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "warn",
+        "useArrowFunction": "off"
+      },
+      "correctness": {
+        "noUndeclaredDependencies": "off",
+        "noUndeclaredVariables": "off",
+        "noConstantCondition": "off",
+        "noUnusedVariables": "off",
+        "noUnusedImports": "off",
+        "noNodejsModules": "off",
+        "useExhaustiveDependencies": "off",
+        "useImportExtensions": "off"
+      },
+      "style": {
+        "noNamespace": "off",
+        "noDefaultExport": "off",
+        "noParameterAssign": "off",
+        "useNamingConvention": "off",
+        "noParameterProperties": "off",
+        "noNonNullAssertion": "off",
+        "useTemplate": "off",
+        "useForOf": "off",
+        "useLiteralEnumMembers": "off",
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["camelCase", "kebab-case", "PascalCase"]
+          }
+        }
+      },
+      "suspicious": {
+        "noEmptyBlockStatements": "off",
+        "noDebugger": "off",
+        "noConsole": "off",
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noImplicitAnyLet": "off",
+        "noReactSpecificProps": "off"
+      }
     }
   },
   "formatter": {
     "enabled": true,
-    "formatWithErrors": false,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineEnding": "lf",
-    "lineWidth": 80,
-    "attributePosition": "auto"
+    "lineWidth": 120
   },
   "javascript": {
     "formatter": {
-      "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
-      "trailingCommas": "es5",
-      "semicolons": "asNeeded",
-      "arrowParentheses": "always",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
+      "enabled": true,
       "quoteStyle": "single",
-      "attributePosition": "auto"
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "bracketSpacing": true,
+      "arrowParentheses": "always"
     }
   },
-  "files": {
-    "include": ["src/**/*", "test/**/*", "tests/**/*", "config/**/*", "*.js", "*.ts", "*.jsx", "*.tsx", "*.json"],
-    "ignore": ["node_modules", "dist", "build", ".next", "out", "coverage", ".turbo", "generated", "playwright-report", "test-results", "*.min.js"]
+  "json": {
+    "formatter": {
+      "enabled": true
+    }
   }
 }

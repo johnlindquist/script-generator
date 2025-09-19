@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@ai-sdk/gateway':
-    specifier: 1.0.0-beta.1
-    version: 1.0.0-beta.1(zod@3.25.67)
+    specifier: 1.0.0-beta.11
+    version: 1.0.0-beta.11(zod@3.25.67)
   '@amplitude/analytics-node':
     specifier: ^1.3.8
     version: 1.3.8
@@ -295,6 +295,17 @@ packages:
       zod: 3.25.67
     dev: false
 
+  /@ai-sdk/gateway@1.0.0-beta.11(zod@3.25.67):
+    resolution: {integrity: sha512-dnRUPzSLvp3xvIx6M4FIz4ht8dfL8JkPKwH+akj10im4zbxUii3c3TQ3BJLRdx2Gq/SeljE9H0dX7PDtVyIrbQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4
+    dependencies:
+      '@ai-sdk/provider': 2.0.0-beta.1
+      '@ai-sdk/provider-utils': 3.0.0-beta.5(zod@3.25.67)
+      zod: 3.25.67
+    dev: false
+
   /@ai-sdk/provider-utils@2.1.10(zod@3.25.67):
     resolution: {integrity: sha512-4GZ8GHjOFxePFzkl3q42AU0DQOtTQ5w09vmaWUf/pKFXJPizlnzKSUkF0f+VkapIUfDugyMqPMT1ge8XQzVI7Q==}
     engines: {node: '>=18'}
@@ -316,6 +327,19 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.49
+    dependencies:
+      '@ai-sdk/provider': 2.0.0-beta.1
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.3
+      zod: 3.25.67
+      zod-to-json-schema: 3.24.3(zod@3.25.67)
+    dev: false
+
+  /@ai-sdk/provider-utils@3.0.0-beta.5(zod@3.25.67):
+    resolution: {integrity: sha512-4Dv/wiGZrvO6fI7P0yMLa4XZru0XW8LPibTObbkHBdweLUVGIze7aCfxxQeY44Uqcbl/h6/yBTkx2XmPtwf/Ow==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4
     dependencies:
       '@ai-sdk/provider': 2.0.0-beta.1
       '@standard-schema/spec': 1.0.0

@@ -1,12 +1,13 @@
 {
-	"editor.defaultFormatter": "esbenp.prettier-vscode",
-	"workbench.colorCustomizations": {
-		"editor.findMatchBorder": "#ffffffcc",
-		"editor.findMatchForeground": "#ffffff",
-		"editor.findMatchBackground": "#005500",
-		"editor.findMatchHighlightBorder": "#ffffff",
-		"editor.findMatchHighlightBackground": "#000000ee",
-		"editor.findMatchHighlightForeground": "#ffffffee",
-		"activityBar.activeBorder": "#340F1E"
-	}
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "workbench.colorCustomizations": {
+    "editor.findMatchBorder": "#ffffffcc",
+    "editor.findMatchForeground": "#ffffff",
+    "editor.findMatchBackground": "#005500",
+    "editor.findMatchHighlightBorder": "#ffffff",
+    "editor.findMatchHighlightBackground": "#000000ee",
+    "editor.findMatchHighlightForeground": "#ffffffee",
+    "activityBar.activeBorder": "#340F1E"
+  },
+  "foam.openDailyNote.directory": "notes"
 }
