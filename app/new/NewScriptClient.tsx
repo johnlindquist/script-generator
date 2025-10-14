@@ -2,9 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Editor } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import { toast } from 'react-hot-toast'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
+
+const Editor = dynamic(() => import('@monaco-editor/react').then(mod => mod.Editor), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-[#1e1e1e] rounded-md">
+      <div className="text-gray-400">Loading editor...</div>
+    </div>
+  ),
+})
 
 // Simple client-side script parser
 function parseScriptName(content: string): string | null {

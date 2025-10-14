@@ -13,6 +13,7 @@ export default [
       'scripts/**/*',
       'tests/**/*',
       'generated/**/*',
+      'prompts/kit-types.min.d.ts',
     ],
   },
   {

@@ -34,138 +34,220 @@ export function extractUserInfo(session: { user: SessionUser }, dbUser: DbUser |
   }
 }
 
-export function getKitTypes() {
-  const typesPath = path.join(process.cwd(), 'kit', 'types')
-  let allTypesContent = ''
+const CODE_BLOCK_REGEX = /```[\s\S]*?```/g
 
+function compressCodeContent(code: string): string {
+  const normalized = code.replace(/\r/g, '')
+  const lines = normalized.split('\n')
+  const compacted: string[] = []
+  let blankCount = 0
+
+  for (const line of lines) {
+    const trimmedLine = line.replace(/[ \t]+$/g, '')
+    if (trimmedLine.trim() === '') {
+      blankCount += 1
+      if (blankCount > 1) {
+        continue
+      }
+      compacted.push('')
+    } else {
+      blankCount = 0
+      compacted.push(trimmedLine)
+    }
+  }
+
+  while (compacted.length && compacted[0] === '') {
+    compacted.shift()
+  }
+
+  while (compacted.length && compacted[compacted.length - 1] === '') {
+    compacted.pop()
+  }
+
+  return compacted.join('\n')
+}
+
+function compressTextContent(content: string): string {
+  if (!content) {
+    return content
+  }
+
+  const blocks: { placeholder: string; value: string }[] = []
+  let working = content.replace(/\r/g, '').replace(CODE_BLOCK_REGEX, block => {
+    const index = blocks.length
+    const placeholder = `__CODE_BLOCK_${index}__`
+    const match = block.match(/^```([^\n]*)\n?([\s\S]*?)```$/)
+
+    if (match) {
+      const [, language = '', body = ''] = match
+      const header = language ? '```' + language : '```'
+      const compressedBody = compressCodeContent(body)
+      const codeSection = compressedBody
+        ? `${header}\n${compressedBody}\n\`\`\``
+        : `${header}\n\`\`\``
+      blocks.push({ placeholder, value: codeSection })
+    } else {
+      blocks.push({ placeholder, value: block })
+    }
+
+    return placeholder
+  })
+
+  const lines = working.split('\n').map(line => line.trim())
+
+  const compacted: string[] = []
+  let blankCount = 0
+
+  for (const line of lines) {
+    if (line === '') {
+      blankCount += 1
+      if (blankCount > 1) {
+        continue
+      }
+      compacted.push('')
+    } else {
+      blankCount = 0
+      compacted.push(line.replace(/\s{2,}/g, ' '))
+    }
+  }
+
+  let compressed = compacted
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  for (const block of blocks) {
+    compressed = compressed.replace(block.placeholder, block.value)
+  }
+
+  return compressed
+}
+
+export function getKitTypes() {
+  const condensedPath = path.join(process.cwd(), 'prompts', 'kit-types.min.d.ts')
+
+  try {
+    if (fs.existsSync(condensedPath)) {
+      return compressCodeContent(fs.readFileSync(condensedPath, 'utf-8'))
+    }
+    console.warn(`Condensed types missing at ${condensedPath}, falling back to raw definitions`)
+  } catch (error) {
+    console.error('Error reading condensed type definitions:', error)
+  }
+
+  const typesPath = path.join(process.cwd(), 'kit', 'types')
   try {
     if (!fs.existsSync(typesPath)) {
       console.warn(`Types directory not found at ${typesPath}`)
       return ''
     }
 
-    const files = fs
+    return fs
       .readdirSync(typesPath)
       .filter(file => file.endsWith('.ts') || file.endsWith('.d.ts'))
-      .sort() // Ensure consistent ordering
-
-    if (files.length === 0) {
-      console.warn('No TypeScript files found in types directory')
-      return ''
-    }
-
-    console.log(`Found ${files.length} type definition files`)
-
-    for (const file of files) {
-      try {
-        const filePath = path.join(typesPath, file)
-        const stats = fs.statSync(filePath)
-
-        // Skip if not a file or too large (> 100KB)
-        if (!stats.isFile() || stats.size > 100 * 1024) {
-          console.warn(`Skipping ${file}: ${!stats.isFile() ? 'Not a file' : 'Too large'}`)
-          continue
+      .sort()
+      .map(file => {
+        try {
+          const raw = fs.readFileSync(path.join(typesPath, file), 'utf-8')
+          const compressed = compressCodeContent(raw)
+          return `// ${file}\n${compressed}`
+        } catch (fileError) {
+          console.error(`Error reading file ${file}:`, fileError)
+          return ''
         }
-
-        const content = fs.readFileSync(filePath, 'utf-8')
-        allTypesContent += `\n---\nFile: ${file}\n${content}\n`
-      } catch (fileError) {
-        console.error(`Error reading file ${file}:`, fileError)
-        // Continue with other files
-      }
-    }
-
-    return allTypesContent
+      })
+      .filter(Boolean)
+      .join('\n\n')
   } catch (error) {
     console.error('Error reading type files:', error)
-    return '' // Return empty string on error, allowing generation to continue
+    return ''
   }
 }
 
 // Function to read example scripts
+const CURATED_EXAMPLES = [
+  'chatgpt.ts',
+  'express-server.ts',
+  'giphy-search.ts',
+  'journal.ts',
+  'main-menu-shortcuts.ts',
+  'openai-playground.ts',
+  'scrape-images.ts',
+  'todos.ts',
+]
+
 export function getExampleScripts() {
   const examplesPath = path.join(process.cwd(), 'kit', 'examples')
-  let allExampleContent = ''
-
   try {
     if (!fs.existsSync(examplesPath)) {
       console.warn(`Examples directory not found at ${examplesPath}`)
       return ''
     }
 
-    const files = fs
+    const available = fs
       .readdirSync(examplesPath)
-      .filter(file => file.endsWith('.ts') && !file.startsWith('.')) // Only .ts files, no hidden files
-      .sort() // Ensure consistent ordering
+      .filter(file => file.endsWith('.ts') && !file.startsWith('.'))
 
-    if (files.length === 0) {
-      console.warn('No .ts files found in examples directory')
-      return ''
-    }
+    const chosen = CURATED_EXAMPLES.filter(file => available.includes(file))
+    const fallback = chosen.length > 0 ? chosen : available.slice(0, 6)
 
-    console.log(`Found ${files.length} example scripts`)
-
-    for (const file of files) {
-      try {
-        const filePath = path.join(examplesPath, file)
-        const stats = fs.statSync(filePath)
-
-        // Skip if not a file or too large (> 100KB)
-        if (!stats.isFile() || stats.size > 100 * 1024) {
-          console.warn(`Skipping ${file}: ${!stats.isFile() ? 'Not a file' : 'Too large'}`)
-          continue
+    return fallback
+      .sort()
+      .map(file => {
+        try {
+          const raw = fs.readFileSync(path.join(examplesPath, file), 'utf-8')
+          const compressed = compressCodeContent(raw)
+          return `// ${file}\n${compressed}`
+        } catch (fileError) {
+          console.error(`Error reading example ${file}:`, fileError)
+          return ''
         }
-
-        const content = fs.readFileSync(filePath, 'utf-8')
-        allExampleContent += `\n---\nFile: ${file}\n${content}\n`
-      } catch (fileError) {
-        console.error(`Error reading file ${file}:`, fileError)
-        // Continue with other files
-      }
-    }
-
-    return allExampleContent
+      })
+      .filter(Boolean)
+      .join('\n\n')
   } catch (error) {
     console.error('Error reading example scripts:', error)
-    return '' // Return empty string on error, allowing generation to continue
+    return ''
   }
 }
 
 export function getMetadataContent() {
   const metadataPath = path.join(process.cwd(), 'prompts', 'METADATA.md')
-  const metadataContent = fs.readFileSync(metadataPath, 'utf-8')
-  return metadataContent
+  return compressTextContent(fs.readFileSync(metadataPath, 'utf-8'))
 }
 
 export function getSystemContent() {
   const systemPath = path.join(process.cwd(), 'prompts', 'SYSTEM.md')
-  const systemContent = fs.readFileSync(systemPath, 'utf-8')
-  return systemContent
+  return compressTextContent(fs.readFileSync(systemPath, 'utf-8'))
 }
 
 export function getGuideContent() {
-  const guidePath = path.join(process.cwd(), 'prompts', 'GUIDE.md')
-  const guideContent = fs.readFileSync(guidePath, 'utf-8')
-  return guideContent
+  const condensedPath = path.join(process.cwd(), 'prompts', 'GUIDE-PLAYBOOK.md')
+  const sourcePath = fs.existsSync(condensedPath)
+    ? condensedPath
+    : path.join(process.cwd(), 'prompts', 'GUIDE.md')
+  return compressTextContent(fs.readFileSync(sourcePath, 'utf-8'))
 }
 
 export function getAPIDocsContent() {
-  const apiPath = path.join(process.cwd(), 'prompts', 'API-GENERATED.md')
-  const apiContent = fs.readFileSync(apiPath, 'utf-8')
-  return apiContent
+  const apiPathCondensed = path.join(process.cwd(), 'prompts', 'API-REFERENCE.md')
+  const apiPathLegacy = path.join(process.cwd(), 'prompts', 'API-GENERATED.md')
+  const sourcePath = fs.existsSync(apiPathCondensed) ? apiPathCondensed : apiPathLegacy
+  return compressTextContent(fs.readFileSync(sourcePath, 'utf-8'))
 }
 
 export function getDocsMini() {
-  const docsPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
-  const docsContent = fs.readFileSync(docsPath, 'utf-8')
-  return docsContent
+  const condensedPath = path.join(process.cwd(), 'prompts', 'docs-mini-condensed.md')
+  const sourcePath = fs.existsSync(condensedPath)
+    ? condensedPath
+    : path.join(process.cwd(), 'prompts', 'docs-mini.md')
+  return compressTextContent(fs.readFileSync(sourcePath, 'utf-8'))
 }
 
 // Function to read docs-mini.md
 export function getPromptContent() {
   const promptPath = path.join(process.cwd(), 'prompts', 'prompt.md')
-  const promptContent = fs.readFileSync(promptPath, 'utf-8')
-  return promptContent
+  return compressTextContent(fs.readFileSync(promptPath, 'utf-8'))
 }
 
 // Simple code fence cleaner for script generation

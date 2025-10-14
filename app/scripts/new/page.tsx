@@ -3,9 +3,18 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Editor } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
+
+const Editor = dynamic(() => import('@monaco-editor/react').then(mod => mod.Editor), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-[#1e1e1e] rounded-md">
+      <div className="text-gray-400">Loading editor...</div>
+    </div>
+  ),
+})
 
 export default function NewScriptPage() {
   const { data: session, status } = useSession()
@@ -19,7 +28,7 @@ export default function NewScriptPage() {
 
   useEffect(() => {
     if (status === 'loading') return
-    
+
     if (!session) {
       // Preserve query params by encoding the full URL as the callbackUrl
       const params = searchParams?.toString() || ''
@@ -56,7 +65,7 @@ export default function NewScriptPage() {
         throw new Error('Failed to create script')
       }
 
-      const data = await response.json() as { id: string }
+      const data = (await response.json()) as { id: string }
       router.push(`/scripts/${data.id}`)
     } catch (err) {
       setError('Error creating script. Please try again.')

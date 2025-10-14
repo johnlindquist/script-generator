@@ -1,0 +1,22 @@
+# Generated files
+prompts/kit-types.min.d.ts
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Dependencies
+node_modules/
+
+# Database files
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp

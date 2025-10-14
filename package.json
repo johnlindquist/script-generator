@@ -59,6 +59,7 @@
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-virtual": "^3.13.10",
     "@types/fs-extra": "^11.0.4",

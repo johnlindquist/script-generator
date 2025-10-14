@@ -3,9 +3,18 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
-import { Editor } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import { monacoOptions, initializeTheme } from '@/lib/monaco'
 import { useSearchParams, useRouter } from 'next/navigation'
+
+const Editor = dynamic(() => import('@monaco-editor/react').then(mod => mod.Editor), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-[#1e1e1e] rounded-md">
+      <div className="text-gray-400">Loading editor...</div>
+    </div>
+  ),
+})
 
 import { DocumentCheckIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 import { motion } from 'framer-motion'
@@ -839,7 +848,7 @@ export default function ScriptGenerationClient({ isAuthenticated, heading }: Pro
 
   return (
     <div className="px-5 w-full">
-      <div className="min-h-[120px] flex items-center justify-center">
+      <div className="min-h-[120px] flex items-center justify-center mb-8">
         <h1
           ref={headingRef}
           className="text-2xl lg:text-3xl xl:text-5xl font-semibold mx-auto w-full text-center max-w-4xl"

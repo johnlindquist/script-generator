@@ -2,7 +2,11 @@
   "mcpServers": {
     "basic-memory": {
       "command": "uvx",
-      "args": ["basic-memory", "--project", "script-generator", "mcp"]
+      "args": ["basic-memory", "mcp", "--project", "script-generator"]
+    },
+    "chrome-devtools": {
+      "command": "bunx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
     }
   }
 }
