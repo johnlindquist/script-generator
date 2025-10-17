@@ -3,14 +3,20 @@ import { generateObject } from 'ai'
 import { z } from 'zod'
 import { gateway } from '@/lib/ai-gateway'
 import { logInteraction } from '@/lib/interaction-logger'
-import { getScriptKitDocs } from '@/lib/scriptKitDocs'
 import { NextSuggestionsSchema } from '@/lib/schemas'
 import type { GatewayModelId } from '@ai-sdk/gateway'
 
 export const runtime = 'nodejs'
 
 const DEFAULT_MODEL: GatewayModelId =
-  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
+  (process.env.SUGGESTIONS_AI_MODEL as GatewayModelId) || 'openai/gpt-5-nano'
+
+// Log model configuration on startup
+console.log('[SUGGESTIONS API] Model Configuration:', {
+  SUGGESTIONS_AI_MODEL: process.env.SUGGESTIONS_AI_MODEL || '(not set)',
+  DEFAULT_MODEL,
+  fallbackUsed: !process.env.SUGGESTIONS_AI_MODEL,
+})
 
 // Define the Zod schema for the expected suggestions
 const SuggestionsSchema = z.object({
@@ -22,42 +28,21 @@ const SuggestionsSchema = z.object({
     }),
 })
 
-const baseSystemPrompt = String.raw`You are a helping generate ideas for Script Kit scripts.
-Your task is to provide exactly five short, human-readable, title-cased suggestions based on the user's current path in the wizard.
+const baseSystemPrompt = String.raw`You are a UX copywriter for an automation script wizard.
+Provide exactly 5 short, title-cased button labels for the next step.
 
-As a reminder, here's the basic Script Kit api:
+Rules:
+- 3 suggestions continue the current path
+- 2 suggestions offer completely different directions
+- Keep each under 6 words
+- Think: files, text, clipboard, web, system, AI, data, images
 
-<SCRIPT_KIT_DOCS>
-${getScriptKitDocs()}
-</SCRIPT_KIT_DOCS>
-
-Guidelines for suggestions:
-1. Three suggestions should continue down the current path, building on the user's previous choices and the current context.
-2. Two suggestions should be branches for ai, prompts, terminal, editor, and other Script Kit features in case the user wants to go in a different direction.
-
-Return the suggestions as a JSON object matching the following schema:
-{
-  "type": "object",
-  "properties": {
-    "suggestions": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 5,
-      "maxItems": 5
-    }
-  },
-  "required": ["suggestions"]
-}
-
-Ensure each suggestion is concise and relevant to the provided path for the on-path suggestions, and genuinely diverse and exploratory for the off-ramp suggestions, adhering to the 3-on-path and 2-off-ramp structure.
-You are currently at step {currentStep} of a maximum {maxDepth}.`
+Step {currentStep}/{maxDepth}`
 
 // Base prompt for user message content
-const baseUserPrompt = String.raw`
-Current path chosen so far: {breadcrumb}
+const baseUserPrompt = String.raw`Path: {breadcrumb}
 
-Provide five suggestions for the next step, following the 3-on-path and 2-off-ramp guideline. The off-ramp suggestions should explore different Script Kit APIs.
-`
+Generate 5 next-step suggestions.`
 
 export async function POST(req: Request) {
   let sessionInteractionId: string | undefined
@@ -113,6 +98,24 @@ export async function POST(req: Request) {
     const systemPrompt = baseSystemPrompt
       .replace('{currentStep}', String(currentStep))
       .replace('{maxDepth}', String(maxDepth))
+
+    console.log('[SUGGESTIONS API] Generating suggestions with model:', {
+      model: DEFAULT_MODEL,
+      breadcrumb,
+      currentStep,
+      maxDepth,
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPromptContent.length,
+      totalPromptSize: `${Math.round((systemPrompt.length + userPromptContent.length) / 1024)}KB`,
+    })
+
+    console.log('[SUGGESTIONS API] System Prompt:', {
+      prompt: systemPrompt,
+    })
+
+    console.log('[SUGGESTIONS API] User Prompt:', {
+      prompt: userPromptContent,
+    })
 
     logInteraction(
       sessionInteractionId,

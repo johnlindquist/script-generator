@@ -7,7 +7,14 @@ import type { GatewayModelId } from '@ai-sdk/gateway'
 export const runtime = 'nodejs'
 
 const DEFAULT_MODEL: GatewayModelId =
-  (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
+  (process.env.SUGGESTIONS_AI_MODEL as GatewayModelId) || 'openai/gpt-5-nano'
+
+// Log model configuration on startup
+console.log('[DEBUG SUGGESTIONS API] Model Configuration:', {
+  SUGGESTIONS_AI_MODEL: process.env.SUGGESTIONS_AI_MODEL || '(not set)',
+  DEFAULT_MODEL,
+  fallbackUsed: !process.env.SUGGESTIONS_AI_MODEL,
+})
 
 // Use the same Zod schema as the real route
 const SuggestionsSchema = z.object({

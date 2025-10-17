@@ -20,6 +20,13 @@ const CLI_API_KEY = process.env.CLI_API_KEY
 const DEFAULT_MODEL: GatewayModelId =
   (process.env.DEFAULT_AI_SDK_MODEL as GatewayModelId) || 'openai/gpt-5'
 
+// Log model configuration on startup
+console.log('[SCRIPT GENERATOR API] Model Configuration:', {
+  DEFAULT_AI_SDK_MODEL: process.env.DEFAULT_AI_SDK_MODEL || '(not set)',
+  DEFAULT_MODEL,
+  fallbackUsed: !process.env.DEFAULT_AI_SDK_MODEL,
+})
+
 export async function POST(req: Request) {
   const requestId = Math.random().toString(36).slice(2, 7)
   const interactionTimestamp = req.headers.get('Interaction-Timestamp') || new Date().toISOString()
@@ -456,6 +463,25 @@ export async function POST(req: Request) {
       },
       { role: 'user', content: `${prompt} Generate _ONLY_ the script content below this line.` },
     ]
+
+    console.log('[SCRIPT GENERATOR API] Generating script with model:', {
+      model: DEFAULT_MODEL,
+      requestId,
+      userId,
+      userPromptLength: prompt.length,
+      systemPromptLength: draftFinalPrompt.length,
+      totalPromptSize: `${Math.round((draftFinalPrompt.length + prompt.length) / 1024)}KB`,
+      temperature: 0.4,
+    })
+
+    console.log('[SCRIPT GENERATOR API] System Prompt (first 500 chars):', {
+      prompt: draftFinalPrompt.substring(0, 500) + '...',
+      fullLength: draftFinalPrompt.length,
+    })
+
+    console.log('[SCRIPT GENERATOR API] User Prompt:', {
+      prompt: prompt,
+    })
 
     await logInteraction(
       interactionTimestamp,

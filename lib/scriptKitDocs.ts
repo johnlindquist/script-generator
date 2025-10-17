@@ -15,7 +15,8 @@ export interface ScriptKitDocs {
 
 export async function getScriptKitDocs(): Promise<ScriptKitDocs> {
   const bestPracticesPath = path.join(process.cwd(), 'prompts', 'BEST_PRACTICES.md')
-  const docsMiniPath = path.join(process.cwd(), 'prompts', 'docs-mini.md')
+  // Use condensed version for faster suggestions generation with gpt-5-nano
+  const docsMiniPath = path.join(process.cwd(), 'prompts', 'docs-mini-condensed.md')
   const bestPractices = fs.readFileSync(bestPracticesPath, 'utf-8').split('\n')
   const categories: ScriptKitCategory[] = []
   for (const line of bestPractices) {
