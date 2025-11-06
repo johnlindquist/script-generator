@@ -227,7 +227,10 @@ const DownloadButton = ({
 }) => {
   return (
     <Button asChild variant={variant}>
-      <a href={href}>
+      <a
+        href={href}
+        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium backdrop-blur-md bg-white/10 border border-white/20 hover:bg-white/20 text-white transition-all duration-200 hover:border-white/40"
+      >
         {icon}
         <span className="pl-1">{children}</span>
       </a>

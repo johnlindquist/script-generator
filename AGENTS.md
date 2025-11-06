@@ -76,6 +76,14 @@ So when instructing future agents: "Just write a markdown code block with `merma
 
 Before writing any code, you must always explain every "flow" (user interactions, data flows, channels, CRUD, etc) in mermaid diagrams so you fully understand the impact on the UX.
 
+### Mermaid Syntax Safety Rules
+
+- Keep each edge on its own line; avoid placing multiple statements on a single Mermaid line.
+- Node labels must stay plain text—do not embed raw object literals, GraphQL snippets, or code blocks inside `[ ... ]`. Describe structures in prose using commas or semicolons; avoid HTML line breaks because Obsidian rejects `<br/>`.
+- Avoid unescaped braces or brackets inside labels. Curly braces are reserved for decision nodes (`{}`), so use words like “payload includes …” instead of `{ foo: "bar" }`.
+- Quotes, pipes, and backslashes should be escaped only when absolutely necessary; prefer rephrasing to keep labels simple.
+- Never rely on Mermaid `style` overrides or custom fills—Obsidian’s renderer rejects them.
+
 ## Unified Impact Diagram (UID) Principles
 
 **Core Mandate:** Every diagram must connect technical implementation to user experience and business value. Do not create purely technical diagrams that ignore the user.

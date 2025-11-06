@@ -1,8 +1,10 @@
 {
   "mcpServers": {
-    "basic-memory": {
-      "command": "uvx",
-      "args": ["basic-memory", "mcp", "--project", "script-generator"]
+    "tools": {
+      "command": "bun",
+      "args": ["./.cursor/mcp/index.ts"],
+      "timeout": 300000,
+      "startupTimeout": 60000
     },
     "chrome-devtools": {
       "command": "bunx",
