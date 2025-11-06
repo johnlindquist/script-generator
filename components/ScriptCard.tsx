@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { LockClosedIcon } from '@heroicons/react/24/outline'
@@ -99,7 +99,14 @@ function getRelevantLines(
   }
 }
 
-function highlightText(text: string, searchQuery: string | undefined): React.ReactNode {
+// Memoized highlight component to avoid recreating on every render
+const HighlightedText = React.memo(function HighlightedText({
+  text,
+  searchQuery,
+}: {
+  text: string
+  searchQuery: string | undefined
+}) {
   if (!searchQuery || !text) return <>{text}</>
 
   const searchLower = searchQuery.toLowerCase()
@@ -117,7 +124,7 @@ function highlightText(text: string, searchQuery: string | undefined): React.Rea
       {text.slice(index + searchQuery.length)}
     </>
   )
-}
+})
 
 const ScriptCard = React.memo(function ScriptCard({
   script,
@@ -128,11 +135,33 @@ const ScriptCard = React.memo(function ScriptCard({
   searchQuery,
 }: ScriptCardProps) {
   const isOwner = currentUserId === script.owner?.id
+
+  // Memoize avatar URL to avoid recreating on every render
+  const avatarUrl = useMemo(
+    () => `https://avatars.githubusercontent.com/${script.owner?.username}?size=32`,
+    [script.owner?.username]
+  )
+
+  // Memoize GitHub profile URL
+  const githubProfileUrl = useMemo(
+    () => `https://github.com/${script.owner?.username}`,
+    [script.owner?.username]
+  )
+
+  // Memoize truncation calculation
   const {
     content: relevantContent,
     linesBefore,
     linesAfter,
-  } = getRelevantLines(script.content, searchQuery, truncate)
+  } = useMemo(
+    () => getRelevantLines(script.content, searchQuery, truncate),
+    [script.content, searchQuery, truncate]
+  )
+
+  // Memoize delete handler to prevent recreation
+  const handleDeleted = useCallback(() => {
+    onDeleted?.(script.id)
+  }, [onDeleted, script.id])
 
   return (
     <article
@@ -154,12 +183,12 @@ const ScriptCard = React.memo(function ScriptCard({
             className="block flex justify-between items-center"
           >
             <h3 className="text-xl font-semibold mb-2 select-text">
-              {highlightText(script.title, searchQuery)}
+              <HighlightedText text={script.title} searchQuery={searchQuery} />
             </h3>
           </Link>
           <Link href={`/${script.owner?.username}`} className="hover:underline transition-colors">
             <Image
-              src={`https://avatars.githubusercontent.com/${script.owner?.username}?size=32`}
+              src={avatarUrl}
               alt={`${script.owner?.username}'s avatar`}
               width={32}
               height={32}
@@ -171,12 +200,12 @@ const ScriptCard = React.memo(function ScriptCard({
           <div className="text-muted-foreground text-sm flex items-center gap-2">
             {script.owner?.sponsorship && <StarIcon className="w-4 h-4 mr-1 text-amber-300" />}
             <Link href={`/${script.owner?.username}`} className="hover:underline transition-colors">
-              {highlightText(script.owner?.fullName || script.owner?.username || '', searchQuery)}
+              <HighlightedText
+                text={script.owner?.fullName || script.owner?.username || ''}
+                searchQuery={searchQuery}
+              />
             </Link>
-            <Link
-              href={`https://github.com/${script.owner?.username}`}
-              className="transition-opacity"
-            >
+            <Link href={githubProfileUrl} className="transition-opacity">
               <span className="inline-flex items-center py-0.5 rounded-full text-xs font-medium bg-gray-400/10 text-gray-300">
                 <FaGithub className="w-4 h-4" />
               </span>
@@ -227,12 +256,7 @@ const ScriptCard = React.memo(function ScriptCard({
           {isOwner && (
             <>
               {!script.locked && <EditButtonClient scriptId={script.id} />}
-              <DeleteButtonClient
-                scriptId={script.id}
-                onDeleted={() => {
-                  onDeleted?.(script.id)
-                }}
-              />
+              <DeleteButtonClient scriptId={script.id} onDeleted={handleDeleted} />
             </>
           )}
           {isAuthenticated && (
